@@ -729,16 +729,15 @@
                 totalPrice += selectedSlots.length * SUNDAY_AIRCON_FEE;
             }
 
-            const bookingData = {
-                customerName,
-                email,
-                phone,
-                date: currentDate,
-                slots: selectedSlots,
-                duration: selectedDuration,
-                totalPrice
-            };
-
+        const bookingData = {
+            customerName: document.getElementById('customerName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            date: selectedDate,
+            startTime: selectedTime,
+            duration: Number(selectedDuration) || 60,  // 確保是數字
+            totalPrice: Number(totalPrice) || 280      // 確保是數字
+        }; 
             try {
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
                     method: 'POST',
