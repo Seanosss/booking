@@ -37,10 +37,17 @@ function generateSlotsForDuration(startTime, durationMinutes) {
     let currentMinutes = startHour * 60 + startMinute;
     const endMinutes = currentMinutes + durationMinutes;
     
-    // Generate slots in 30-minute intervals
+    // 每30分鐘生成一個時段
     while (currentMinutes < endMinutes) {
         const hour = Math.floor(currentMinutes / 60);
         const minute = currentMinutes % 60;
+        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(timeSlot);
+        currentMinutes += 30;
+    }
+    
+    return slots;
+}
         const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         slots.push(timeSlot);
         currentMinutes += 30;
@@ -114,7 +121,7 @@ app.post('/api/bookings', async (req, res) => {
         }
 
         // Generate all slots needed for this booking based on duration
-        const slots = generateSlotsForDuration(startTime, duration);
+        const slots = generateSlotsForDuration(startTime, Number(duration));
 
         const data = await readBookings();
 
