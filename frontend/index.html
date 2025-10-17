@@ -706,18 +706,26 @@ function updateUILanguage() {
         });
 
         // Handle booking submission
-        async function handleBookingSubmit(e) {
-            e.preventDefault();
-
-            const customerName = document.getElementById('customerName').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-
-            if (selectedSlots.length === 0) {
-                showAlert('Please select at least one time slot', 'warning');
-                return;
-            }
-
+async function handleBookingSubmit(e) {
+        e.preventDefault();
+    
+    // 檢查變數是否存在
+            if (typeof selectedDate === 'undefined' || !selectedDate) {
+            alert('請選擇日期');
+            return;
+    }
+    
+    if (typeof selectedTime === 'undefined' || !selectedTime) {
+            alert('請選擇時間');
+            return;
+    }
+    
+    // 收集表單資料
+            const customerName = document.getElementById('customerName')?.value;
+            const email = document.getElementById('email')?.value;
+            const phone = document.getElementById('phone')?.value;
+     
+}
             const pricePerSlot = selectedDuration === 60 ? PRICE_PER_HOUR : PRICE_PER_30MIN;
             let totalPrice = selectedSlots.length * pricePerSlot;
 
