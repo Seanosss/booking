@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rental Booking System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .booking-section {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .duration-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .duration-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .duration-option:hover {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .duration-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .time-slot {
+            padding: 12px 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            background: white;
+        }
+
+        .time-slot:hover:not(.booked):not(.selected) {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .time-slot.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .time-slot.booked {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        .pricing-info {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+
+        .pricing-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        .price-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #667eea;
+            padding-top: 15px;
+            margin-top: 10px;
+            border-top: 2px solid #667eea;
+        }
+
+        .selected-slots-display {
+            background: #fff8e1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .selected-slots-display h4 {
+            color: #f57c00;
+            margin-bottom: 10px;
+        }
+
+        .selected-slot-tag {
+            display: inline-block;
+            background: #ff9800;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin: 5px 5px 5px 0;
+            font-size: 0.85em;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-modal.active {
+            display: flex;
+        }
+
+        .payment-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .payment-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .payment-info {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .payment-info p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .payment-info strong {
+            color: #667eea;
+        }
+
+        .contact-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .contact-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+        }
+
+        .whatsapp-btn:hover {
+            background: #1fb855;
+            transform: translateY(-2px);
+        }
+
+        .email-btn {
+            background: #EA4335;
+            color: white;
+        }
+
+        .email-btn:hover {
+            background: #d33426;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .booking-section {
+                padding: 20px;
+            }
+
+            .duration-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .time-slots {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+
+            .contact-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Rental Booking System</h1>
+            <p>Monday - Sunday | 7:00 AM - 10:00 PM</p>
+        </div>
+
+        <div class="booking-section">
+            <div id="alertContainer"></div>
+
+            <div class="alert alert-warning">
+                <strong>📌 Important:</strong> Time slots are NOT blocked until we verify your payment. Please send payment confirmation quickly via WhatsApp or email to secure your booking.
+            </div>
+
+            <form id="bookingForm">
+                <div class="form-group">
+                    <label for="customerName">Full Name *</label>
+                    <input type="text" id="customerName" required placeholder="Enter your name">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" required placeholder="your.email@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" required placeholder="+852 1234 5678">
+                </div>
+
+                <div class="form-group">
+                    <label for="bookingDate">Select Date *</label>
+                    <input type="date" id="bookingDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Duration *</label>
+                    <div class="duration-selector">
+                        <div class="duration-option" data-duration="30">
+                            <div style="font-size: 1.5em; margin-bottom: 5px;">⏱️</div>
+                            <div style="font-weight: 600;">30 Minutes</div>
+                            <div style="font-size: 0.85em; margin-top: 5px;">HKD 140</div>
+                        </div>
+                        <div class="duration-option selected" data-duration="60">
+                            <div style="font-size: 1.5em; margin-bottom: 5px;">⏰</div>
+                            <div style="font-weight: 600;">1 Hour</div>
+                            <div style="font-size: 0.85em; margin-top: 5px;">HKD 280</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Time Slots * <span style="font-weight: normal; color: #666;">(Click to select multiple consecutive slots)</span></label>
+                    <div id="timeSlotsContainer" class="loading">
+                        Please select a date first...
+                    </div>
+                </div>
+
+                <div id="selectedSlotsDisplay" style="display: none;" class="selected-slots-display">
+                    <h4>Selected Time Slots:</h4>
+                    <div id="selectedSlotsList"></div>
+                </div>
+
+                <div class="pricing-info">
+                    <h3>💰 Booking Summary</h3>
+                    <div class="price-item">
+                        <span>Duration:</span>
+                        <span id="durationDisplay">1 hour per slot</span>
+                    </div>
+                    <div class="price-item">
+                        <span>Number of Slots:</span>
+                        <span id="slotsCount">0</span>
+                    </div>
+                    <div class="price-item">
+                        <span>Base Price:</span>
+                        <span id="basePrice">HKD 0</span>
+                    </div>
+                    <div class="price-item" id="airconFeeRow" style="display: none;">
+                        <span>Sunday Aircon Fee:</span>
+                        <span id="airconFee">HKD 0</span>
+                    </div>
+                    <div class="price-item">
+                        <span>Total Amount:</span>
+                        <span id="totalPrice">HKD 0</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    📅 Book Now
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="payment-modal" id="paymentModal">
+        <div class="payment-content">
+            <h2>✅ Booking Request Submitted!</h2>
+            <p><strong>⚠️ Your time slots are NOT yet blocked.</strong> Please send payment immediately to secure your booking. Once we verify your payment, we will confirm and block the slots for you.</p>
+            
+            <div class="payment-info">
+                <p><strong>Payment Methods:</strong></p>
+                <p>💳 <strong>Bank Transfer:</strong><br>Account Number: <strong>123-456789-001</strong><br>Bank: HSBC</p>
+                <p>📱 <strong>PayMe:</strong><br>Phone: <strong>+852 9872 5268</strong></p>
+                <p style="margin-top: 15px;"><strong>Total Amount: <span id="modalTotal">HKD 0</span></strong></p>
+            </div>
+
+            <p style="margin: 20px 0; line-height: 1.6;">
+                After payment, please send the payment screenshot to us via WhatsApp or email for confirmation.
+            </p>
+
+            <div class="contact-buttons">
+                <a href="#" id="whatsappLink" class="contact-btn whatsapp-btn" target="_blank">
+                    📱 WhatsApp Confirmation
+                </a>
+                <a href="#" id="emailLink" class="contact-btn email-btn" target="_blank">
+                    📧 Email Confirmation
+                </a>
+            </div>
+
+            <button onclick="closePaymentModal()" class="btn btn-primary" style="margin-top: 20px;">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const WHATSAPP_NUMBER = '85298725268';
+        const EMAIL = 'connectpoint@atsumaru.com';
+        const PRICE_PER_HOUR = 280;
+        const PRICE_PER_30MIN = 140;
+        const SUNDAY_AIRCON_FEE = 80;
+
+        let selectedDuration = 60; // Default 1 hour
+        let selectedSlots = [];
+        let availableSlots = [];
+        let currentDate = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('bookingDate').min = today;
+
+            // Duration selector
+            document.querySelectorAll('.duration-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.duration-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedDuration = parseInt(this.dataset.duration);
+                    updatePricing();
+                    document.getElementById('durationDisplay').textContent = 
+                        selectedDuration === 60 ? '1 hour per slot' : '30 minutes per slot';
+                });
+            });
+
+            // Date selector
+            document.getElementById('bookingDate').addEventListener('change', function() {
+                currentDate = this.value;
+                loadAvailableSlots(currentDate);
+            });
+
+            // Form submission
+            document.getElementById('bookingForm').addEventListener('submit', handleBookingSubmit);
+        });
+
+        // Load available slots for selected date
+        async function loadAvailableSlots(date) {
+            const container = document.getElementById('timeSlotsContainer');
+            container.innerHTML = '<div class="loading">Loading available slots...</div>';
+            selectedSlots = [];
+            updateSelectedSlotsDisplay();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/available-slots?date=${date}`);
+                const data = await response.json();
+                availableSlots = data.availableSlots;
+                
+                displayTimeSlots(data.availableSlots, data.bookedSlots);
+            } catch (error) {
+                showAlert('Failed to load time slots. Please try again.', 'error');
+                container.innerHTML = '<p style="color: red; text-align: center;">Failed to load slots</p>';
+            }
+        }
+
+        // Display time slots
+        function displayTimeSlots(available, booked) {
+            const container = document.getElementById('timeSlotsContainer');
+            container.innerHTML = '';
+            container.className = 'time-slots';
+
+            // Generate slots from 7am to 10pm
+            for (let hour = 7; hour < 22; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+                    slot.textContent = time;
+                    slot.dataset.time = time;
+
+                    if (booked.includes(time)) {
+                        slot.classList.add('booked');
+                        slot.title = 'Already booked';
+                    } else {
+                        slot.addEventListener('click', () => toggleSlot(time, slot));
+                    }
+
+                    container.appendChild(slot);
+                }
+            }
+        }
+
+        // Toggle slot selection
+        function toggleSlot(time, element) {
+            const index = selectedSlots.indexOf(time);
+            
+            if (index > -1) {
+                selectedSlots.splice(index, 1);
+                element.classList.remove('selected');
+            } else {
+                selectedSlots.push(time);
+                element.classList.add('selected');
+            }
+
+            // Sort selected slots
+            selectedSlots.sort();
+            updateSelectedSlotsDisplay();
+            updatePricing();
+            updateSubmitButton();
+        }
+
+        // Update selected slots display
+        function updateSelectedSlotsDisplay() {
+            const display = document.getElementById('selectedSlotsDisplay');
+            const list = document.getElementById('selectedSlotsList');
+
+            if (selectedSlots.length === 0) {
+                display.style.display = 'none';
+                return;
+            }
+
+            display.style.display = 'block';
+            list.innerHTML = selectedSlots.map(slot => 
+                `<span class="selected-slot-tag">${slot}</span>`
+            ).join('');
+        }
+
+        // Update pricing
+        function updatePricing() {
+            const numSlots = selectedSlots.length;
+            const pricePerSlot = selectedDuration === 60 ? PRICE_PER_HOUR : PRICE_PER_30MIN;
+            let basePrice = numSlots * pricePerSlot;
+            let airconFee = 0;
+
+            // Check if selected date is Sunday
+            if (currentDate) {
+                const date = new Date(currentDate + 'T00:00:00');
+                const isSunday = date.getDay() === 0;
+                
+                if (isSunday && selectedDuration === 60) {
+                    airconFee = numSlots * SUNDAY_AIRCON_FEE;
+                }
+            }
+
+            const totalPrice = basePrice + airconFee;
+
+            document.getElementById('slotsCount').textContent = numSlots;
+            document.getElementById('basePrice').textContent = `HKD ${basePrice}`;
+            document.getElementById('totalPrice').textContent = `HKD ${totalPrice}`;
+
+            const airconFeeRow = document.getElementById('airconFeeRow');
+            if (airconFee > 0) {
+                airconFeeRow.style.display = 'flex';
+                document.getElementById('airconFee').textContent = `HKD ${airconFee}`;
+            } else {
+                airconFeeRow.style.display = 'none';
+            }
+        }
+
+        // Update submit button state
+        function updateSubmitButton() {
+            const btn = document.getElementById('submitBtn');
+            const hasName = document.getElementById('customerName').value.trim() !== '';
+            const hasEmail = document.getElementById('email').value.trim() !== '';
+            const hasPhone = document.getElementById('phone').value.trim() !== '';
+            const hasDate = currentDate !== '';
+            const hasSlots = selectedSlots.length > 0;
+
+            btn.disabled = !(hasName && hasEmail && hasPhone && hasDate && hasSlots);
+        }
+
+        // Monitor form inputs
+        ['customerName', 'email', 'phone'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateSubmitButton);
+        });
+
+        // Handle booking submission
+        async function handleBookingSubmit(e) {
+            e.preventDefault();
+
+            const customerName = document.getElementById('customerName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            if (selectedSlots.length === 0) {
+                showAlert('Please select at least one time slot', 'warning');
+                return;
+            }
+
+            const pricePerSlot = selectedDuration === 60 ? PRICE_PER_HOUR : PRICE_PER_30MIN;
+            let totalPrice = selectedSlots.length * pricePerSlot;
+
+            // Add Sunday aircon fee if applicable
+            const date = new Date(currentDate + 'T00:00:00');
+            const isSunday = date.getDay() === 0;
+            if (isSunday && selectedDuration === 60) {
+                totalPrice += selectedSlots.length * SUNDAY_AIRCON_FEE;
+            }
+
+            const bookingData = {
+                customerName,
+                email,
+                phone,
+                date: currentDate,
+                slots: selectedSlots,
+                duration: selectedDuration,
+                totalPrice
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/bookings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Booking created successfully!', 'success');
+                    showPaymentModal(totalPrice, customerName, currentDate, selectedSlots);
+                } else {
+                    showAlert(data.error || 'Failed to create booking', 'error');
+                    if (response.status === 409) {
+                        // Refresh slots if there's a conflict
+                        loadAvailableSlots(currentDate);
+                    }
+                }
+            } catch (error) {
+                showAlert('Network error. Please check your connection and try again.', 'error');
+            }
+        }
+
+        // Show payment modal
+        function showPaymentModal(total, name, date, slots) {
+            document.getElementById('modalTotal').textContent = `HKD ${total}`;
+            
+            const message = `Hi! I'm ${name}. I've booked time slots on ${date}: ${slots.join(', ')}. Total: HKD ${total}. Sending payment proof.`;
+            const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            const emailSubject = `Booking Payment Confirmation - ${date}`;
+            const emailBody = `Name: ${name}\nDate: ${date}\nTime Slots: ${slots.join(', ')}\nTotal Amount: HKD ${total}\n\n[Attach payment screenshot]`;
+            const emailUrl = `mailto:${EMAIL}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            document.getElementById('whatsappLink').href = whatsappUrl;
+            document.getElementById('emailLink').href = emailUrl;
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        // Close payment modal
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+            // Reset form
+            document.getElementById('bookingForm').reset();
+            selectedSlots = [];
+            currentDate = '';
+            document.getElementById('timeSlotsContainer').innerHTML = '<div class="loading">Please select a date first...</div>';
+            updateSelectedSlotsDisplay();
+            updatePricing();
+            updateSubmitButton();
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
