@@ -12,11 +12,6 @@
         }
 
         body {
-           <!-- 語言切換 -->
-            <div class="language-toggle" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-            <button onclick="setLanguage('en')" style="padding: 10px 20px; background: white; border: 1px solid #ccc; cursor: pointer;">English</button>
-            <button onclick="setLanguage('zh')" style="padding: 10px 20px; background: white; border: 1px solid #ccc; cursor: pointer;">中文</button>
-            </div>
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
@@ -484,55 +479,6 @@
     </div>
 
     <script>
-        // 語言設定
-        let currentLanguage = 'en';
-        const translations = {
-    en: {
-        title: 'Rental Booking System',
-        selectDate: 'Select Date',
-        availableSlots: 'Available Time Slots',
-        selectDuration: 'Select Duration',
-        yourInfo: 'Your Information',
-        fullName: 'Full Name',
-        email: 'Email Address',
-        phone: 'Phone Number',
-        bookNow: 'Book Now',
-        loading: 'Loading...',
-        success: 'Booking created successfully!',
-        error: 'Failed to create booking'
-    },
-    zh: {
-        title: '場地租借系統',
-        selectDate: '選擇日期',
-        availableSlots: '可用時段',
-        selectDuration: '選擇時長',
-        yourInfo: '您的資料',
-        fullName: '姓名',
-        email: '電子郵件',
-        phone: '電話號碼',
-        bookNow: '立即預約',
-        loading: '載入中...',
-        success: '預約成功！',
-        error: '預約失敗'
-    }
-        };
-
-        function setLanguage(lang) {
-        currentLanguage = lang;
-        updateUILanguage();
-        }
-
-        function updateUILanguage() {
-        // 更新標題
-        const h1 = document.querySelector('h1');
-        if (h1) h1.textContent = translations[currentLanguage].title;
-    
-        // 更新按鈕
-        const bookBtn = document.getElementById('bookBtn');
-        if (bookBtn) bookBtn.textContent = translations[currentLanguage].bookNow;
-    
-        // 更新其他文字...
-        }
         const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
         const WHATSAPP_NUMBER = '85298725268';
         const EMAIL = 'connectpoint@atsumaru.com';
