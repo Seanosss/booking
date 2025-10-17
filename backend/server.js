@@ -30,6 +30,25 @@ async function writeBookings(data) {
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+// Generate all slots for a duration starting from a given time
+function generateSlotsForDuration(startTime, durationMinutes) {
+    const slots = [];
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    let currentMinutes = startHour * 60 + startMinute;
+    const endMinutes = currentMinutes + durationMinutes;
+    
+    // Generate slots in 30-minute intervals
+    while (currentMinutes < endMinutes) {
+        const hour = Math.floor(currentMinutes / 60);
+        const minute = currentMinutes % 60;
+        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(timeSlot);
+        currentMinutes += 30;
+    }
+    
+    return slots;
+}
+
 // Get all bookings
 app.get('/api/bookings', async (req, res) => {
     try {
@@ -87,18 +106,20 @@ app.get('/api/available-slots', async (req, res) => {
 // Create a new booking
 app.post('/api/bookings', async (req, res) => {
     try {
-        const { customerName, email, phone, date, slots, duration, totalPrice } = req.body;
+        const { customerName, email, phone, date, startTime, duration, totalPrice } = req.body;
 
         // Validation
-        if (!customerName || !email || !phone || !date || !slots || !duration) {
+        if (!customerName || !email || !phone || !date || !startTime || !duration) {
             return res.status(400).json({ error: 'All fields are required' });
         }
+
+        // Generate all slots needed for this booking based on duration
+        const slots = generateSlotsForDuration(startTime, duration);
 
         const data = await readBookings();
 
         // Check if slots are still available
         // IMPORTANT: Only count CONFIRMED bookings as blocked
-        // Pending bookings don't block slots until admin confirms
         const dayBookings = data.bookings.filter(b => 
             b.date === date && b.status === 'confirmed'
         );
@@ -120,10 +141,11 @@ app.post('/api/bookings', async (req, res) => {
             email,
             phone,
             date,
+            startTime,
             slots,
             duration,
             totalPrice,
-            status: 'pending', // pending, confirmed, cancelled
+            status: 'pending',
             createdAt: new Date().toISOString()
         };
 
