@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rental Booking System</title>
+    <title>Premium Studio Booking</title>
     <style>
         * {
             margin: 0;
@@ -12,201 +12,147 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #ff6b35 0%, #f77b00 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 900px;
             margin: 0 auto;
-            background: white;
+            background: rgba(255, 255, 255, 0.98);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
             color: white;
-            padding: 40px;
+            padding: 40px 30px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 2.5em;
+            font-size: 2.2em;
+            font-weight: 300;
+            letter-spacing: 1px;
             margin-bottom: 10px;
         }
 
-        .language-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            gap: 10px;
-        }
-
-        .lang-btn {
-            padding: 10px 20px;
-            background: white;
-            border: 2px solid #ff6b35;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
-        }
-
-        .lang-btn.active {
-            background: #ff6b35;
-            color: white;
-        }
-
-        .lang-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
         }
 
         .booking-content {
-            padding: 40px;
+            padding: 40px 30px;
         }
 
         .section {
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .section-title {
-            color: #ff6b35;
-            font-size: 1.5em;
+            color: #0056b3;
+            font-size: 1.4em;
             margin-bottom: 20px;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .package-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .package-card {
-            border: 2px solid #ffd4c4;
-            border-radius: 12px;
-            padding: 25px;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-        }
-
-        .package-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.2);
-        }
-
-        .package-card.selected {
-            border-color: #ff6b35;
-            background: linear-gradient(135deg, #fff5f0 0%, #ffe8e0 100%);
-        }
-
-        .package-title {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .package-price {
-            font-size: 1.8em;
-            color: #ff6b35;
-            margin-bottom: 15px;
-        }
-
-        .package-features {
-            list-style: none;
-            color: #666;
-        }
-
-        .package-features li {
-            padding: 5px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .date-input, .form-input {
+        .date-input {
             width: 100%;
             padding: 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #e1e8f0;
             border-radius: 10px;
             font-size: 1em;
             transition: all 0.3s;
+            background: #f8f9fa;
         }
 
-        .date-input:focus, .form-input:focus {
-            border-color: #ff6b35;
+        .date-input:focus {
+            border-color: #0056b3;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.1);
         }
 
         .time-slots {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
             margin-top: 20px;
         }
 
         .time-slot {
-            padding: 12px 20px;
-            border: 2px solid #e0e0e0;
+            padding: 12px 8px;
+            border: 2px solid #e1e8f0;
             border-radius: 10px;
             cursor: pointer;
             text-align: center;
             transition: all 0.3s;
             background: white;
+            font-weight: 500;
+            font-size: 0.95em;
         }
 
-        .time-slot:hover:not(.unavailable) {
-            border-color: #ff6b35;
+        .time-slot:hover:not(.unavailable):not(.pending) {
+            border-color: #0056b3;
+            background: #f0f6ff;
             transform: translateY(-2px);
         }
 
         .time-slot.selected {
-            background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
             color: white;
-            border-color: #ff6b35;
+            border-color: #0056b3;
         }
 
         .time-slot.unavailable {
-            background: #f5f5f5;
-            color: #999;
+            background: #f8f9fa;
+            color: #adb5bd;
             cursor: not-allowed;
-            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .time-slot.pending {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffc107;
+            cursor: not-allowed;
         }
 
         .duration-selector {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
             margin-top: 20px;
         }
 
         .duration-option {
-            flex: 1;
             padding: 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #e1e8f0;
             border-radius: 10px;
             cursor: pointer;
             text-align: center;
             transition: all 0.3s;
+            background: white;
         }
 
         .duration-option:hover {
-            border-color: #ff6b35;
+            border-color: #0056b3;
+            background: #f0f6ff;
         }
 
         .duration-option.selected {
-            border-color: #ff6b35;
-            background: #fff5f0;
+            border-color: #0056b3;
+            background: linear-gradient(135deg, #f0f6ff 0%, #e8f1ff 100%);
+            color: #0056b3;
+            font-weight: 600;
         }
 
         .form-group {
@@ -216,160 +162,275 @@
         .form-label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: #495057;
             font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8f0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .form-input:focus {
+            border-color: #0056b3;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.1);
+        }
+
+        .price-display {
+            background: linear-gradient(135deg, #f0f6ff 0%, #e8f1ff 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border: 2px solid #0056b3;
+        }
+
+        .price-breakdown {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #d1e0ff;
+        }
+
+        .price-breakdown:last-of-type {
+            border-bottom: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #0056b3;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #0056b3;
+        }
+
+        .payment-info {
+            background: #e7f3ff;
+            border: 2px solid #0056b3;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .payment-method {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .payment-method h4 {
+            color: #0056b3;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .account-number {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3em;
+            color: #004494;
+            background: #f0f6ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px dashed #0056b3;
         }
 
         .submit-btn {
             width: 100%;
             padding: 18px;
-            background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .submit-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(0, 86, 179, 0.3);
         }
 
         .submit-btn:disabled {
-            background: #ccc;
+            background: #6c757d;
             cursor: not-allowed;
+            transform: none;
         }
 
-        .total-price {
-            background: #fff5f0;
+        .instructions {
+            background: #fff9e6;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
             padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        .success-message, .error-message {
+            padding: 15px 20px;
             border-radius: 10px;
             margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .total-price .price {
-            font-size: 2em;
-            color: #ff6b35;
-            font-weight: bold;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #999;
+            animation: slideDown 0.3s ease;
         }
 
         .success-message {
             background: #d4edda;
             color: #155724;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
+            border: 1px solid #c3e6cb;
         }
 
         .error-message {
             background: #f8d7da;
             color: #721c24;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0056b3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive for Wix embedding */
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 0;
+            }
+            
+            .time-slots {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .duration-selector {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Language Toggle -->
-    <div class="language-toggle">
-        <button class="lang-btn active" onclick="setLanguage('en')">English</button>
-        <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
-    </div>
-
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1 id="main-title">Rental Booking System</h1>
-            <p id="sub-title">Book your perfect space</p>
+            <h1>Studio Booking System</h1>
+            <p>Professional Recording Studio • 7AM - 10PM Daily</p>
         </div>
 
         <!-- Booking Content -->
         <div class="booking-content">
-            <!-- Success/Error Messages -->
-            <div id="success-message" class="success-message"></div>
-            <div id="error-message" class="error-message"></div>
+            <!-- Messages -->
+            <div id="success-message" class="success-message" style="display: none;"></div>
+            <div id="error-message" class="error-message" style="display: none;"></div>
 
-            <!-- Package Selection -->
-            <div class="section">
-                <h2 class="section-title">
-                    <span>📦</span>
-                    <span id="package-title">Select Package</span>
-                </h2>
-                <div class="package-grid">
-                    <div class="package-card" onclick="selectPackage('basic', 80)">
-                        <div class="package-title" data-lang="package-basic">Basic</div>
-                        <div class="package-price">HK$80/hr</div>
-                        <ul class="package-features">
-                            <li data-lang="basic-feature1">Up to 4 people</li>
-                            <li data-lang="basic-feature2">Basic equipment</li>
-                            <li data-lang="basic-feature3">Free WiFi</li>
-                        </ul>
-                    </div>
-                    <div class="package-card" onclick="selectPackage('standard', 150)">
-                        <div class="package-title" data-lang="package-standard">Standard</div>
-                        <div class="package-price">HK$150/hr</div>
-                        <ul class="package-features">
-                            <li data-lang="standard-feature1">Up to 8 people</li>
-                            <li data-lang="standard-feature2">Professional equipment</li>
-                            <li data-lang="standard-feature3">Free WiFi + Refreshments</li>
-                        </ul>
-                    </div>
-                    <div class="package-card selected" onclick="selectPackage('premium', 280)">
-                        <div class="package-title" data-lang="package-premium">Premium</div>
-                        <div class="package-price">HK$280/hr</div>
-                        <ul class="package-features">
-                            <li data-lang="premium-feature1">Up to 15 people</li>
-                            <li data-lang="premium-feature2">Full studio setup</li>
-                            <li data-lang="premium-feature3">All amenities included</li>
-                        </ul>
-                    </div>
-                </div>
+            <!-- Booking Instructions -->
+            <div class="instructions">
+                <h4>
+                    <span>⚠️</span>
+                    <span>Important Booking Instructions</span>
+                </h4>
+                <ol>
+                    <li>Select your preferred date and time slot</li>
+                    <li>Fill in your contact information</li>
+                    <li>Make payment via Bank Transfer or PayMe</li>
+                    <li>Send payment proof to WhatsApp: 98725268</li>
+                    <li>Your booking will be confirmed within 30 minutes</li>
+                </ol>
             </div>
 
             <!-- Date Selection -->
             <div class="section">
                 <h2 class="section-title">
                     <span>📅</span>
-                    <span id="date-title">Select Date</span>
+                    <span>Select Date</span>
                 </h2>
                 <input type="date" id="date-input" class="date-input" onchange="handleDateChange(this.value)">
-            </div>
-
-            <!-- Time Slots -->
-            <div class="section" id="time-section" style="display: none;">
-                <h2 class="section-title">
-                    <span>⏰</span>
-                    <span id="time-title">Available Time Slots</span>
-                </h2>
-                <div id="time-slots" class="time-slots">
-                    <div class="loading">Loading available times...</div>
-                </div>
             </div>
 
             <!-- Duration Selection -->
             <div class="section" id="duration-section" style="display: none;">
                 <h2 class="section-title">
                     <span>⏱️</span>
-                    <span id="duration-title">Select Duration</span>
+                    <span>Select Duration</span>
                 </h2>
                 <div class="duration-selector">
-                    <div class="duration-option" onclick="selectDuration(30)">30 min</div>
-                    <div class="duration-option selected" onclick="selectDuration(60)">1 hour</div>
-                    <div class="duration-option" onclick="selectDuration(90)">1.5 hours</div>
-                    <div class="duration-option" onclick="selectDuration(120)">2 hours</div>
+                    <div class="duration-option" onclick="selectDuration(30)">
+                        <div style="font-size: 1.2em; font-weight: bold;">30 Minutes</div>
+                        <div style="color: #6c757d; margin-top: 5px;">HK$140</div>
+                    </div>
+                    <div class="duration-option selected" onclick="selectDuration(60)">
+                        <div style="font-size: 1.2em; font-weight: bold;">1 Hour</div>
+                        <div style="color: #6c757d; margin-top: 5px;">HK$280</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Slots -->
+            <div class="section" id="time-section" style="display: none;">
+                <h2 class="section-title">
+                    <span>⏰</span>
+                    <span>Available Time Slots</span>
+                </h2>
+                <div id="time-slots" class="time-slots">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Loading available times...</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 20px; font-size: 0.9em; color: #6c757d;">
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #f8f9fa; border: 1px solid #dee2e6; margin-right: 5px;"></span>Confirmed</div>
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #fff3cd; border: 1px solid #ffc107; margin-right: 5px;"></span>Pending Confirmation</div>
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: white; border: 1px solid #0056b3; margin-right: 5px;"></span>Available</div>
                 </div>
             </div>
 
@@ -377,189 +438,264 @@
             <div class="section" id="info-section" style="display: none;">
                 <h2 class="section-title">
                     <span>👤</span>
-                    <span id="info-title">Your Information</span>
+                    <span>Contact Information</span>
                 </h2>
                 <form id="booking-form">
                     <div class="form-group">
-                        <label class="form-label" for="customerName" id="name-label">Full Name</label>
+                        <label class="form-label" for="customerName">Full Name *</label>
                         <input type="text" id="customerName" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="email" id="email-label">Email Address</label>
+                        <label class="form-label" for="email">Email Address *</label>
                         <input type="email" id="email" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="phone" id="phone-label">Phone Number</label>
-                        <input type="tel" id="phone" class="form-input" required>
+                        <label class="form-label" for="phone">Phone Number (WhatsApp) *</label>
+                        <input type="tel" id="phone" class="form-input" placeholder="e.g., 98765432" required>
                     </div>
-                    
-                    <!-- Total Price Display -->
-                    <div class="total-price">
-                        <span id="total-label">Total Price:</span>
-                        <div class="price">HK$<span id="total-amount">280</span></div>
+                    <div class="form-group">
+                        <label class="form-label" for="notes">Special Requirements (Optional)</label>
+                        <textarea id="notes" class="form-input" rows="3" placeholder="Any special equipment or setup needs..."></textarea>
                     </div>
 
-                    <button type="submit" class="submit-btn" id="submit-btn">Book Now</button>
+                    <!-- Price Display -->
+                    <div class="price-display" id="price-display">
+                        <h3 style="color: #0056b3; margin-bottom: 15px;">Booking Summary</h3>
+                        <div class="price-breakdown">
+                            <span>Date:</span>
+                            <span id="summary-date">-</span>
+                        </div>
+                        <div class="price-breakdown">
+                            <span>Time:</span>
+                            <span id="summary-time">-</span>
+                        </div>
+                        <div class="price-breakdown">
+                            <span>Duration:</span>
+                            <span id="summary-duration">-</span>
+                        </div>
+                        <div class="price-breakdown">
+                            <span>Base Price:</span>
+                            <span id="base-price">HK$0</span>
+                        </div>
+                        <div class="price-breakdown" id="sunday-fee" style="display: none;">
+                            <span>Sunday A/C Fee:</span>
+                            <span>HK$<span id="sunday-fee-amount">80</span></span>
+                        </div>
+                        <div class="price-breakdown">
+                            <span>Total Amount:</span>
+                            <span>HK$<span id="total-amount">0</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="payment-info">
+                        <h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;">Payment Methods</h3>
+                        
+                        <div class="payment-method">
+                            <h4>🏦 Bank Transfer</h4>
+                            <div>HSBC Hong Kong</div>
+                            <div class="account-number">123-456789-001</div>
+                            <div style="color: #6c757d; font-size: 0.9em;">Account Name: Connect Point Studio Ltd</div>
+                        </div>
+
+                        <div class="payment-method">
+                            <h4>📱 PayMe</h4>
+                            <div class="account-number">+852 9872 5268</div>
+                            <div style="color: #6c757d; font-size: 0.9em;">Please include your name in payment reference</div>
+                        </div>
+
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                            <strong style="color: #856404;">📸 After Payment:</strong>
+                            <div style="color: #856404; margin-top: 10px;">
+                                Send payment screenshot to:<br>
+                                📱 WhatsApp: <a href="https://wa.me/85298725268" target="_blank" style="color: #004494;">9872 5268</a><br>
+                                ✉️ Email: <a href="mailto:connectpoint@atsumaru.com" style="color: #004494;">connectpoint@atsumaru.com</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        CONFIRM BOOKING REQUEST
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 
     <script>
-        // ===== GLOBAL VARIABLES =====
+        // ===== CONFIGURATION =====
         const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
-        const WHATSAPP_NUMBER = '85298725268';
-        const EMAIL = 'connectpoint@atsumaru.com';
+        let SETTINGS = {}; // Will be loaded dynamically
         
-        // State variables
-        let selectedPackage = 'premium';
-        let packagePrice = 280;
+        // ===== STATE VARIABLES =====
         let selectedDate = null;
         let selectedTime = null;
         let selectedDuration = 60;
-        let availableSlots = [];
-        let currentLanguage = 'en';
+        let selectedSlots = [];
         
-        // ===== TRANSLATIONS =====
-        const translations = {
-            en: {
-                'main-title': 'Rental Booking System',
-                'sub-title': 'Book your perfect space',
-                'package-title': 'Select Package',
-                'date-title': 'Select Date',
-                'time-title': 'Available Time Slots',
-                'duration-title': 'Select Duration',
-                'info-title': 'Your Information',
-                'name-label': 'Full Name',
-                'email-label': 'Email Address',
-                'phone-label': 'Phone Number',
-                'total-label': 'Total Price:',
-                'submit-btn': 'Book Now',
-                'package-basic': 'Basic',
-                'package-standard': 'Standard',
-                'package-premium': 'Premium',
-                'basic-feature1': 'Up to 4 people',
-                'basic-feature2': 'Basic equipment',
-                'basic-feature3': 'Free WiFi',
-                'standard-feature1': 'Up to 8 people',
-                'standard-feature2': 'Professional equipment',
-                'standard-feature3': 'Free WiFi + Refreshments',
-                'premium-feature1': 'Up to 15 people',
-                'premium-feature2': 'Full studio setup',
-                'premium-feature3': 'All amenities included',
-                'loading': 'Loading available times...',
-                'no-slots': 'No available time slots for this date',
-                'select-date-first': 'Please select a date first',
-                'select-time-first': 'Please select a time slot first',
-                'fill-all-fields': 'Please fill in all fields',
-                'booking-success': 'Booking successful! We will contact you soon.',
-                'booking-error': 'Booking failed. Please try again.',
-            },
-            zh: {
-                'main-title': '場地租借系統',
-                'sub-title': '預訂您的完美空間',
-                'package-title': '選擇套餐',
-                'date-title': '選擇日期',
-                'time-title': '可用時段',
-                'duration-title': '選擇時長',
-                'info-title': '您的資料',
-                'name-label': '姓名',
-                'email-label': '電子郵件',
-                'phone-label': '電話號碼',
-                'total-label': '總價：',
-                'submit-btn': '立即預約',
-                'package-basic': '基本',
-                'package-standard': '標準',
-                'package-premium': '高級',
-                'basic-feature1': '最多 4 人',
-                'basic-feature2': '基本設備',
-                'basic-feature3': '免費 WiFi',
-                'standard-feature1': '最多 8 人',
-                'standard-feature2': '專業設備',
-                'standard-feature3': '免費 WiFi + 茶點',
-                'premium-feature1': '最多 15 人',
-                'premium-feature2': '完整錄音室設置',
-                'premium-feature3': '所有設施包含',
-                'loading': '載入可用時段中...',
-                'no-slots': '該日期沒有可用時段',
-                'select-date-first': '請先選擇日期',
-                'select-time-first': '請先選擇時段',
-                'fill-all-fields': '請填寫所有欄位',
-                'booking-success': '預約成功！我們會盡快與您聯繫。',
-                'booking-error': '預約失敗，請重試。',
-            }
-        };
-
         // ===== INITIALIZATION =====
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded successfully');
-            initializePage();
-        });
-
-        function initializePage() {
-            // Set minimum date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date-input').min = today;
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load settings from backend
+            await loadSettings();
+            
+            // Set minimum date based on settings
+            const today = new Date();
+            const minAdvanceHours = SETTINGS.bookingRules?.minAdvanceBooking || 0;
+            const minDate = new Date(today.getTime() + (minAdvanceHours * 60 * 60 * 1000));
+            const formattedMinDate = minDate.toISOString().split('T')[0];
+            document.getElementById('date-input').min = formattedMinDate;
+            
+            // Set maximum date based on settings
+            const maxDays = SETTINGS.bookingRules?.maxAdvanceBooking || 30;
+            const maxDate = new Date(today);
+            maxDate.setDate(maxDate.getDate() + maxDays);
+            document.getElementById('date-input').max = maxDate.toISOString().split('T')[0];
             
             // Bind form submit
             document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
             
-            // Update UI language
-            updateLanguage();
-            
-            console.log('Initialization complete');
-        }
-
-        // ===== LANGUAGE FUNCTIONS =====
-        function setLanguage(lang) {
-            currentLanguage = lang;
-            
-            // Update button states
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            updateLanguage();
-        }
-
-        function updateLanguage() {
-            // Update all elements with IDs
-            Object.keys(translations[currentLanguage]).forEach(key => {
-                const element = document.getElementById(key);
-                if (element) {
-                    element.textContent = translations[currentLanguage][key];
+            // Update UI with settings
+            updateUIWithSettings();
+        });
+        
+        // ===== LOAD SETTINGS =====
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/settings`);
+                if (response.ok) {
+                    SETTINGS = await response.json();
+                    console.log('Settings loaded:', SETTINGS);
+                } else {
+                    console.error('Failed to load settings, using defaults');
+                    // Use default settings if loading fails
+                    SETTINGS = {
+                        businessName: "Premium Studio Booking",
+                        businessDescription: "Professional Recording Studio",
+                        operatingHours: {
+                            startTime: "07:00",
+                            endTime: "22:00"
+                        },
+                        pricing: {
+                            thirtyMinutes: 140,
+                            oneHour: 280,
+                            sundayAirconFee: 80
+                        },
+                        paymentMethods: {
+                            bankTransfer: {
+                                enabled: true,
+                                bankName: "HSBC Hong Kong",
+                                accountNumber: "123-456789-001",
+                                accountName: "Connect Point Studio Ltd"
+                            },
+                            payme: {
+                                enabled: true,
+                                phoneNumber: "+852 9872 5268",
+                                displayName: "Connect Point Studio"
+                            }
+                        },
+                        contactInfo: {
+                            whatsapp: "85298725268",
+                            email: "connectpoint@atsumaru.com",
+                            phone: "+852 9872 5268"
+                        },
+                        bookingRules: {
+                            minAdvanceBooking: 0,
+                            maxAdvanceBooking: 30,
+                            autoConfirm: false,
+                            requirePaymentProof: true
+                        },
+                        customMessage: {
+                            welcomeMessage: "Book your perfect space",
+                            bookingInstructions: "Please complete payment and send proof to WhatsApp after booking.",
+                            confirmationMessage: "Your booking will be confirmed within 30 minutes."
+                        }
+                    };
                 }
-            });
-            
-            // Update elements with data-lang attribute
-            document.querySelectorAll('[data-lang]').forEach(element => {
-                const key = element.getAttribute('data-lang');
-                if (translations[currentLanguage][key]) {
-                    element.textContent = translations[currentLanguage][key];
-                }
-            });
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
         }
-
-        function t(key) {
-            return translations[currentLanguage][key] || key;
+        
+        // ===== UPDATE UI WITH SETTINGS =====
+        function updateUIWithSettings() {
+            // Update header
+            document.querySelector('.header h1').textContent = SETTINGS.businessName || 'Studio Booking System';
+            document.querySelector('.header p').textContent = SETTINGS.businessDescription || 'Professional Recording Studio';
+            document.getElementById('sub-title').textContent = SETTINGS.customMessage?.welcomeMessage || 'Book your perfect space';
+            
+            // Update operating hours display
+            const startTime = SETTINGS.operatingHours?.startTime || "07:00";
+            const endTime = SETTINGS.operatingHours?.endTime || "22:00";
+            const startHour = parseInt(startTime.split(':')[0]);
+            const endHour = parseInt(endTime.split(':')[0]);
+            const startPeriod = startHour >= 12 ? 'PM' : 'AM';
+            const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+            const displayStartHour = startHour > 12 ? startHour - 12 : startHour;
+            const displayEndHour = endHour > 12 ? endHour - 12 : endHour;
+            
+            document.querySelector('.header p').textContent = 
+                `${SETTINGS.businessDescription} • ${displayStartHour}${startPeriod} - ${displayEndHour}${endPeriod} Daily`;
+            
+            // Update duration prices
+            document.querySelector('.duration-option[onclick*="30"] div:last-child').textContent = 
+                `HK$${SETTINGS.pricing?.thirtyMinutes || 140}`;
+            document.querySelector('.duration-option[onclick*="60"] div:last-child').textContent = 
+                `HK$${SETTINGS.pricing?.oneHour || 280}`;
+            
+            // Update payment information
+            updatePaymentInfo();
+            
+            // Update instructions if needed
+            if (SETTINGS.bookingRules?.autoConfirm) {
+                document.querySelector('.instructions ol li:last-child').textContent = 
+                    'Your booking will be confirmed immediately!';
+            } else {
+                document.querySelector('.instructions ol li:last-child').textContent = 
+                    SETTINGS.customMessage?.confirmationMessage || 'Your booking will be confirmed within 30 minutes';
+            }
         }
-
-        // ===== PACKAGE SELECTION =====
-        function selectPackage(type, price) {
-            selectedPackage = type;
-            packagePrice = price;
+        
+        // ===== UPDATE PAYMENT INFO =====
+        function updatePaymentInfo() {
+            const paymentInfoDiv = document.querySelector('.payment-info');
+            let paymentHTML = '<h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;">Payment Methods</h3>';
             
-            // Update UI
-            document.querySelectorAll('.package-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            event.target.closest('.package-card').classList.add('selected');
+            // Bank Transfer
+            if (SETTINGS.paymentMethods?.bankTransfer?.enabled) {
+                paymentHTML += `
+                    <div class="payment-method">
+                        <h4>🏦 Bank Transfer</h4>
+                        <div>${SETTINGS.paymentMethods.bankTransfer.bankName}</div>
+                        <div class="account-number">${SETTINGS.paymentMethods.bankTransfer.accountNumber}</div>
+                        <div style="color: #6c757d; font-size: 0.9em;">Account Name: ${SETTINGS.paymentMethods.bankTransfer.accountName}</div>
+                    </div>
+                `;
+            }
             
-            // Update total price
-            updateTotalPrice();
+            // PayMe
+            if (SETTINGS.paymentMethods?.payme?.enabled) {
+                paymentHTML += `
+                    <div class="payment-method">
+                        <h4>📱 PayMe</h4>
+                        <div class="account-number">${SETTINGS.paymentMethods.payme.phoneNumber}</div>
+                        <div style="color: #6c757d; font-size: 0.9em;">${SETTINGS.paymentMethods.payme.displayName || 'Please include your name in payment reference'}</div>
+                    </div>
+                `;
+            }
             
-            console.log('Package selected:', type, price);
+            // Contact info for payment proof
+            paymentHTML += `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <strong style="color: #856404;">📸 After Payment:</strong>
+                    <div style="color: #856404; margin-top: 10px;">
+                        Send payment screenshot to:<br>
+                        📱 WhatsApp: <a href="https://wa.me/${SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '')}" target="_blank" style="color: #004494;">${SETTINGS.contactInfo?.whatsapp}</a><br>
+                        ✉️ Email: <a href="mailto:${SETTINGS.contactInfo?.email}" style="color: #004494;">${SETTINGS.contactInfo?.email}</a>
+                    </div>
+                </div>
+            `;
+            
+            paymentInfoDiv.innerHTML = paymentHTML;
         }
 
         // ===== DATE SELECTION =====
@@ -567,57 +703,90 @@
             if (!date) return;
             
             selectedDate = date;
-            selectedTime = null; // Reset time selection
+            selectedTime = null;
+            selectedSlots = [];
             
-            console.log('Date selected:', date);
-            
-            // Show time section
-            document.getElementById('time-section').style.display = 'block';
+            // Show sections
             document.getElementById('duration-section').style.display = 'block';
+            document.getElementById('time-section').style.display = 'block';
+            
+            // Update summary
+            document.getElementById('summary-date').textContent = formatDate(date);
             
             // Load available slots
             loadAvailableSlots(date);
         }
 
+        // ===== DURATION SELECTION =====
+        function selectDuration(duration) {
+            selectedDuration = duration;
+            selectedSlots = [];
+            selectedTime = null;
+            
+            // Update UI
+            document.querySelectorAll('.duration-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.target.closest('.duration-option').classList.add('selected');
+            
+            // Update summary
+            document.getElementById('summary-duration').textContent = duration === 30 ? '30 minutes' : '1 hour';
+            
+            // Reload slots for new duration
+            if (selectedDate) {
+                loadAvailableSlots(selectedDate);
+            }
+        }
+
         // ===== TIME SLOTS =====
         async function loadAvailableSlots(date) {
             const slotsContainer = document.getElementById('time-slots');
-            slotsContainer.innerHTML = `<div class="loading">${t('loading')}</div>`;
+            slotsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading available times...</div></div>';
             
             try {
-                // Generate time slots (9:00 AM to 9:00 PM)
+                // Generate all possible time slots based on operating hours
                 const allSlots = [];
-                for (let hour = 9; hour <= 21; hour++) {
+                const [startHour, startMinute] = (SETTINGS.operatingHours?.startTime || "07:00").split(':').map(Number);
+                const [endHour, endMinute] = (SETTINGS.operatingHours?.endTime || "22:00").split(':').map(Number);
+                
+                for (let hour = startHour; hour < endHour; hour++) {
                     allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-                    if (hour < 21) {
+                    if (hour < endHour - 1 || (hour === endHour - 1 && selectedDuration === 30)) {
                         allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
                     }
                 }
                 
-                // Fetch booked slots from API
+                // Add final slot if it fits
+                if (endMinute === 30 && selectedDuration === 30) {
+                    allSlots.push(`${endHour.toString().padStart(2, '0')}:00`);
+                }
+                
+                // Fetch existing bookings
                 const response = await fetch(`${API_BASE_URL}/bookings?date=${date}`);
-                let bookedSlots = [];
+                let confirmedSlots = [];
+                let pendingSlots = [];
                 
                 if (response.ok) {
                     const bookings = await response.json();
                     
-                    // Extract booked time slots
                     bookings.forEach(booking => {
                         if (booking.date === date) {
-                            const startTime = booking.startTime;
-                            const duration = booking.duration || 60;
-                            const slots = generateSlotsForDuration(startTime, duration);
-                            bookedSlots = bookedSlots.concat(slots);
+                            const slots = generateSlotsForDuration(booking.startTime, booking.duration || 60);
+                            if (booking.status === 'confirmed') {
+                                confirmedSlots = confirmedSlots.concat(slots);
+                            } else if (booking.status === 'pending' && !SETTINGS.bookingRules?.autoConfirm) {
+                                pendingSlots = pendingSlots.concat(slots);
+                            }
                         }
                     });
                 }
                 
                 // Display slots
-                displayTimeSlots(allSlots, bookedSlots);
+                displayTimeSlots(allSlots, confirmedSlots, pendingSlots);
                 
             } catch (error) {
                 console.error('Error loading slots:', error);
-                slotsContainer.innerHTML = `<div class="error">${t('booking-error')}</div>`;
+                slotsContainer.innerHTML = '<div class="error">Failed to load available times. Please try again.</div>';
             }
         }
 
@@ -638,24 +807,36 @@
             return slots;
         }
 
-        function displayTimeSlots(allSlots, bookedSlots) {
+        function displayTimeSlots(allSlots, confirmedSlots, pendingSlots) {
             const container = document.getElementById('time-slots');
             container.innerHTML = '';
-            
-            if (allSlots.length === 0) {
-                container.innerHTML = `<div class="no-slots">${t('no-slots')}</div>`;
-                return;
-            }
             
             allSlots.forEach(slot => {
                 const slotElement = document.createElement('div');
                 slotElement.className = 'time-slot';
-                slotElement.textContent = slot;
+                slotElement.textContent = formatTime(slot);
                 
-                if (bookedSlots.includes(slot)) {
+                // Check if slot is available for selected duration
+                const requiredSlots = generateSlotsForDuration(slot, selectedDuration);
+                const isConfirmed = requiredSlots.some(s => confirmedSlots.includes(s));
+                const isPending = requiredSlots.some(s => pendingSlots.includes(s));
+                
+                if (isConfirmed) {
                     slotElement.classList.add('unavailable');
+                    slotElement.title = 'Already booked';
+                } else if (isPending) {
+                    slotElement.classList.add('pending');
+                    slotElement.title = 'Pending confirmation';
                 } else {
-                    slotElement.onclick = () => selectTimeSlot(slot);
+                    // Check if booking would exceed 10 PM
+                    const [hour, minute] = slot.split(':').map(Number);
+                    const endMinutes = hour * 60 + minute + selectedDuration;
+                    if (endMinutes > 22 * 60) {
+                        slotElement.classList.add('unavailable');
+                        slotElement.title = 'Exceeds operating hours';
+                    } else {
+                        slotElement.onclick = () => selectTimeSlot(slot);
+                    }
                 }
                 
                 container.appendChild(slotElement);
@@ -664,71 +845,77 @@
 
         function selectTimeSlot(time) {
             selectedTime = time;
+            selectedSlots = generateSlotsForDuration(time, selectedDuration);
             
             // Update UI
             document.querySelectorAll('.time-slot').forEach(slot => {
                 slot.classList.remove('selected');
-                if (slot.textContent === time) {
+                if (selectedSlots.includes(convertTimeToSlot(slot.textContent))) {
                     slot.classList.add('selected');
                 }
             });
             
-            // Show customer info section
+            // Show info section
             document.getElementById('info-section').style.display = 'block';
             
-            // Update total price
-            updateTotalPrice();
+            // Update summary
+            const endTime = calculateEndTime(time, selectedDuration);
+            document.getElementById('summary-time').textContent = `${formatTime(time)} - ${formatTime(endTime)}`;
             
-            console.log('Time selected:', time);
-        }
-
-        // ===== DURATION SELECTION =====
-        function selectDuration(duration) {
-            selectedDuration = duration;
-            
-            // Update UI
-            document.querySelectorAll('.duration-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            event.target.classList.add('selected');
-            
-            // Update total price
-            updateTotalPrice();
-            
-            console.log('Duration selected:', duration);
+            // Update price
+            updatePriceDisplay();
         }
 
         // ===== PRICE CALCULATION =====
-        function updateTotalPrice() {
-            const hours = selectedDuration / 60;
-            const total = packagePrice * hours;
-            document.getElementById('total-amount').textContent = total;
+        function updatePriceDisplay() {
+            const date = new Date(selectedDate);
+            const isSunday = date.getDay() === 0;
+            
+            let basePrice = selectedDuration === 30 
+                ? (SETTINGS.pricing?.thirtyMinutes || 140) 
+                : (SETTINGS.pricing?.oneHour || 280);
+            let totalPrice = basePrice;
+            
+            // Add Sunday A/C fee for 1-hour bookings
+            const sundayFee = SETTINGS.pricing?.sundayAirconFee || 80;
+            if (isSunday && selectedDuration === 60 && sundayFee > 0) {
+                totalPrice += sundayFee;
+                document.getElementById('sunday-fee').style.display = 'flex';
+                document.getElementById('sunday-fee').querySelector('span:last-child').textContent = `HK$${sundayFee}`;
+            } else {
+                document.getElementById('sunday-fee').style.display = 'none';
+            }
+            
+            document.getElementById('base-price').textContent = `HK$${basePrice}`;
+            document.getElementById('total-amount').textContent = totalPrice;
         }
 
         // ===== FORM SUBMISSION =====
         async function handleBookingSubmit(e) {
             e.preventDefault();
             
-            // Validate required fields
             if (!selectedDate || !selectedTime) {
-                alert(t('select-time-first'));
+                showMessage('error', 'Please select date and time slot');
                 return;
             }
             
-            // Get form data
             const customerName = document.getElementById('customerName').value.trim();
             const email = document.getElementById('email').value.trim();
             const phone = document.getElementById('phone').value.trim();
+            const notes = document.getElementById('notes').value.trim();
             
-            if (!customerName || !email || !phone) {
-                alert(t('fill-all-fields'));
-                return;
+            // Calculate total price using dynamic settings
+            const date = new Date(selectedDate);
+            const isSunday = date.getDay() === 0;
+            let totalPrice = selectedDuration === 30 
+                ? (SETTINGS.pricing?.thirtyMinutes || 140) 
+                : (SETTINGS.pricing?.oneHour || 280);
+            
+            const sundayFee = SETTINGS.pricing?.sundayAirconFee || 80;
+            if (isSunday && selectedDuration === 60 && sundayFee > 0) {
+                totalPrice += sundayFee;
             }
             
-            // Calculate total price
-            const totalPrice = packagePrice * (selectedDuration / 60);
-            
-            // Prepare booking data
             const bookingData = {
                 customerName: customerName,
                 email: email,
@@ -736,15 +923,15 @@
                 date: selectedDate,
                 startTime: selectedTime,
                 duration: selectedDuration,
-                totalPrice: totalPrice
+                totalPrice: totalPrice,
+                notes: notes,
+                status: SETTINGS.bookingRules?.autoConfirm ? 'confirmed' : 'pending'
             };
-            
-            console.log('Submitting booking:', bookingData);
             
             // Disable submit button
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
-            submitBtn.textContent = t('loading');
+            submitBtn.textContent = 'Processing...';
             
             try {
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
@@ -759,36 +946,93 @@
                 
                 if (response.ok) {
                     // Show success message
-                    showMessage('success', t('booking-success'));
+                    const successMsg = SETTINGS.bookingRules?.autoConfirm
+                        ? 'Booking confirmed successfully!'
+                        : `Booking request submitted successfully! ${SETTINGS.customMessage?.bookingInstructions || 'Please complete payment and send proof.'}`;
+                    
+                    showMessage('success', successMsg);
                     
                     // Reset form
                     document.getElementById('booking-form').reset();
                     selectedDate = null;
                     selectedTime = null;
+                    selectedSlots = [];
                     
                     // Hide sections
                     document.getElementById('time-section').style.display = 'none';
                     document.getElementById('duration-section').style.display = 'none';
                     document.getElementById('info-section').style.display = 'none';
                     
-                    // Clear date input
+                    // Clear date
                     document.getElementById('date-input').value = '';
                     
+                    // Open WhatsApp with pre-filled message if payment proof is required
+                    if (!SETTINGS.bookingRules?.autoConfirm && SETTINGS.bookingRules?.requirePaymentProof) {
+                        const whatsappNumber = SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '') || '85298725268';
+                        const whatsappMessage = encodeURIComponent(
+                            `Hi, I've just made a booking request:\n` +
+                            `Name: ${customerName}\n` +
+                            `Date: ${formatDate(bookingData.date)}\n` +
+                            `Time: ${formatTime(bookingData.startTime)} (${bookingData.duration} mins)\n` +
+                            `Total: HK$${totalPrice}\n` +
+                            `I will send payment proof shortly.`
+                        );
+                        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank');
+                    }
+                    
                 } else {
-                    showMessage('error', result.error || t('booking-error'));
+                    showMessage('error', result.error || 'Booking failed. Please try again.');
                 }
                 
             } catch (error) {
                 console.error('Booking error:', error);
-                showMessage('error', t('booking-error'));
+                showMessage('error', 'Network error. Please try again.');
             } finally {
-                // Re-enable submit button
                 submitBtn.disabled = false;
-                submitBtn.textContent = t('submit-btn');
+                submitBtn.textContent = 'CONFIRM BOOKING REQUEST';
             }
         }
 
         // ===== UTILITY FUNCTIONS =====
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function formatTime(timeString) {
+            const [hour, minute] = timeString.split(':').map(Number);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+            return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+        }
+
+        function convertTimeToSlot(formattedTime) {
+            // Convert "9:00 AM" back to "09:00"
+            const match = formattedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return formattedTime;
+            
+            let hour = parseInt(match[1]);
+            const minute = match[2];
+            const period = match[3];
+            
+            if (period === 'PM' && hour !== 12) {
+                hour += 12;
+            } else if (period === 'AM' && hour === 12) {
+                hour = 0;
+            }
+            
+            return `${hour.toString().padStart(2, '0')}:${minute}`;
+        }
+
+        function calculateEndTime(startTime, durationMinutes) {
+            const [hour, minute] = startTime.split(':').map(Number);
+            const totalMinutes = hour * 60 + minute + durationMinutes;
+            const endHour = Math.floor(totalMinutes / 60);
+            const endMinute = totalMinutes % 60;
+            return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+        }
+
         function showMessage(type, message) {
             const messageEl = type === 'success' 
                 ? document.getElementById('success-message')
@@ -797,15 +1041,14 @@
             messageEl.textContent = message;
             messageEl.style.display = 'block';
             
-            // Auto hide after 5 seconds
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Auto hide after 10 seconds
             setTimeout(() => {
                 messageEl.style.display = 'none';
-            }, 5000);
+            }, 10000);
         }
-
-        // ===== DEBUG INFO =====
-        console.log('Script loaded. API URL:', API_BASE_URL);
-        console.log('Available functions: selectPackage, selectTimeSlot, selectDuration, handleBookingSubmit');
     </script>
 </body>
 </html>
