@@ -487,9 +487,20 @@
     </div>
 
     <script>
-        // 語言設定
+        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
+        const WHATSAPP_NUMBER = '85298725268';
+        const EMAIL = 'connectpoint@atsumaru.com';
+        const PRICE_PER_HOUR = 280; 
+        const PRICE_PER_30MIN = 140;
+        const SUNDAY_AIRCON_FEE = 80;
+
+    // 狀態變數
+        let selectedDate = null;
+        let selectedTime = null;
+        let selectedDuration = 60;  // 預設 60 分鐘
         let currentLanguage = 'en';
-        const translations = {
+let currentLanguage = 'en';
+const translations = {
     en: {
         title: 'Rental Booking System',
         selectDate: 'Select Date',
@@ -518,37 +529,25 @@
         success: '預約成功！',
         error: '預約失敗'
     }
-        };
+};
 
-        function setLanguage(lang) {
-        currentLanguage = lang;
-        updateUILanguage();
-        }
+function setLanguage(lang) {
+    currentLanguage = lang;
+    updateUILanguage();
+}
 
-        function updateUILanguage() {
-        // 更新標題
+function updateUILanguage() {
+    // 更新標題
         const h1 = document.querySelector('h1');
         if (h1) h1.textContent = translations[currentLanguage].title;
     
-        // 更新按鈕
+    // 更新按鈕
         const bookBtn = document.getElementById('bookBtn');
         if (bookBtn) bookBtn.textContent = translations[currentLanguage].bookNow;
     
-        // 更新其他文字...
-        }
-        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
-        const WHATSAPP_NUMBER = '85298725268';
-        const EMAIL = 'connectpoint@atsumaru.com';
-        const PRICE_PER_HOUR = 280; 
-        const PRICE_PER_30MIN = 140;
-        const SUNDAY_AIRCON_FEE = 80;
-
-        let selectedDuration = 60; // Default 1 hour
-        let selectedSlots = [];
-        let availableSlots = [];
-        let currentDate = '';
-
-        // Initialize
+ 
+   // 更新其他文字...
+}        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             // Set minimum date to today
             const today = new Date().toISOString().split('T')[0];
