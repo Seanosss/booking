@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Studio Booking</title>
+    <title>Studio Booking System 專業錄音室預約系統</title>
     <style>
         * {
             margin: 0;
@@ -12,10 +12,43 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+        }
+
+        .language-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 5px;
+            border-radius: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .lang-btn {
+            padding: 8px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+            color: white;
+        }
+
+        .lang-btn:hover {
+            opacity: 0.8;
         }
 
         .container {
@@ -98,6 +131,7 @@
             background: white;
             font-weight: 500;
             font-size: 0.95em;
+            user-select: none;
         }
 
         .time-slot:hover:not(.unavailable):not(.pending) {
@@ -110,6 +144,11 @@
             background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
             color: white;
             border-color: #0056b3;
+        }
+
+        .time-slot.in-range {
+            background: #e8f1ff;
+            border-color: #4a90e2;
         }
 
         .time-slot.unavailable {
@@ -126,33 +165,30 @@
             cursor: not-allowed;
         }
 
-        .duration-selector {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .duration-option {
+        .slot-instruction {
+            background: #e7f3ff;
             padding: 15px;
-            border: 2px solid #e1e8f0;
             border-radius: 10px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.3s;
-            background: white;
+            margin-bottom: 20px;
+            border-left: 4px solid #0056b3;
         }
 
-        .duration-option:hover {
-            border-color: #0056b3;
+        .slot-instruction p {
+            color: #004494;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+        }
+
+        .selected-slots-display {
             background: #f0f6ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
         }
 
-        .duration-option.selected {
-            border-color: #0056b3;
-            background: linear-gradient(135deg, #f0f6ff 0%, #e8f1ff 100%);
-            color: #0056b3;
-            font-weight: 600;
+        .selected-slots-display.show {
+            display: block;
         }
 
         .form-group {
@@ -252,7 +288,6 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            text-transform: uppercase;
             letter-spacing: 1px;
         }
 
@@ -343,6 +378,37 @@
             100% { transform: rotate(360deg); }
         }
 
+        .clear-selection-btn {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .clear-selection-btn:hover {
+            background: #5a6268;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .legend-box {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+        }
+
         /* Responsive for Wix embedding */
         @media (max-width: 600px) {
             .container {
@@ -352,19 +418,26 @@
             .time-slots {
                 grid-template-columns: repeat(3, 1fr);
             }
-            
-            .duration-selector {
-                grid-template-columns: 1fr;
+
+            .language-toggle {
+                top: 10px;
+                right: 10px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Language Toggle -->
+    <div class="language-toggle">
+        <button class="lang-btn active" onclick="setLanguage('zh')" id="zh-btn">中文</button>
+        <button class="lang-btn" onclick="setLanguage('en')" id="en-btn">English</button>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Studio Booking System</h1>
-            <p>Professional Recording Studio • 7AM - 10PM Daily</p>
+            <h1 id="main-title">專業錄音室預約系統</h1>
+            <p id="sub-title">專業錄音室 • 每日營業</p>
         </div>
 
         <!-- Booking Content -->
@@ -377,14 +450,15 @@
             <div class="instructions">
                 <h4>
                     <span>⚠️</span>
-                    <span>Important Booking Instructions</span>
+                    <span id="instructions-title">重要預約須知</span>
                 </h4>
-                <ol>
-                    <li>Select your preferred date and time slot</li>
-                    <li>Fill in your contact information</li>
-                    <li>Make payment via Bank Transfer or PayMe</li>
-                    <li>Send payment proof to WhatsApp: 98725268</li>
-                    <li>Your booking will be confirmed within 30 minutes</li>
+                <ol id="instructions-list">
+                    <li id="instruction-1">選擇您想要的日期</li>
+                    <li id="instruction-2">點擊開始時段，再點擊結束時段（可選擇多個連續時段）</li>
+                    <li id="instruction-3">填寫您的聯絡資料</li>
+                    <li id="instruction-4">透過銀行轉帳或 PayMe 付款</li>
+                    <li id="instruction-5">將付款證明傳送至 WhatsApp: 98725268</li>
+                    <li id="instruction-6">您的預約將在 30 分鐘內確認</li>
                 </ol>
             </div>
 
@@ -392,45 +466,46 @@
             <div class="section">
                 <h2 class="section-title">
                     <span>📅</span>
-                    <span>Select Date</span>
+                    <span id="date-title">選擇日期</span>
                 </h2>
                 <input type="date" id="date-input" class="date-input" onchange="handleDateChange(this.value)">
-            </div>
-
-            <!-- Duration Selection -->
-            <div class="section" id="duration-section" style="display: none;">
-                <h2 class="section-title">
-                    <span>⏱️</span>
-                    <span>Select Duration</span>
-                </h2>
-                <div class="duration-selector">
-                    <div class="duration-option" onclick="selectDuration(30)">
-                        <div style="font-size: 1.2em; font-weight: bold;">30 Minutes</div>
-                        <div style="color: #6c757d; margin-top: 5px;">HK$140</div>
-                    </div>
-                    <div class="duration-option selected" onclick="selectDuration(60)">
-                        <div style="font-size: 1.2em; font-weight: bold;">1 Hour</div>
-                        <div style="color: #6c757d; margin-top: 5px;">HK$280</div>
-                    </div>
-                </div>
             </div>
 
             <!-- Time Slots -->
             <div class="section" id="time-section" style="display: none;">
                 <h2 class="section-title">
                     <span>⏰</span>
-                    <span>Available Time Slots</span>
+                    <span id="time-title">選擇時段</span>
                 </h2>
+                
+                <div class="slot-instruction">
+                    <p><strong id="select-method">選擇方式：</strong></p>
+                    <p id="select-step1">1. 點擊第一個時段（開始時間）</p>
+                    <p id="select-step2">2. 再點擊最後一個時段（結束時間）</p>
+                    <p id="select-step3">3. 系統會自動選取中間的所有時段</p>
+                </div>
+
                 <div id="time-slots" class="time-slots">
                     <div class="loading">
                         <div class="spinner"></div>
-                        <div>Loading available times...</div>
+                        <div id="loading-text">載入可用時段中...</div>
                     </div>
                 </div>
+                
+                <div class="selected-slots-display" id="selected-slots-display">
+                    <strong id="selected-label">已選擇時段：</strong>
+                    <span id="selected-time-range">-</span>
+                    <br>
+                    <strong id="duration-label">總時長：</strong>
+                    <span id="total-duration">-</span>
+                    <br>
+                    <button class="clear-selection-btn" onclick="clearTimeSelection()" id="clear-btn">清除選擇</button>
+                </div>
+
                 <div style="margin-top: 20px; display: flex; gap: 20px; font-size: 0.9em; color: #6c757d;">
-                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #f8f9fa; border: 1px solid #dee2e6; margin-right: 5px;"></span>Confirmed</div>
-                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #fff3cd; border: 1px solid #ffc107; margin-right: 5px;"></span>Pending Confirmation</div>
-                    <div><span style="display: inline-block; width: 15px; height: 15px; background: white; border: 1px solid #0056b3; margin-right: 5px;"></span>Available</div>
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #f8f9fa; border: 1px solid #dee2e6; margin-right: 5px;"></span><span id="legend-confirmed">已確認</span></div>
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: #fff3cd; border: 1px solid #ffc107; margin-right: 5px;"></span><span id="legend-pending">待確認</span></div>
+                    <div><span style="display: inline-block; width: 15px; height: 15px; background: white; border: 1px solid #0056b3; margin-right: 5px;"></span><span id="legend-available">可預約</span></div>
                 </div>
             </div>
 
@@ -438,84 +513,63 @@
             <div class="section" id="info-section" style="display: none;">
                 <h2 class="section-title">
                     <span>👤</span>
-                    <span>Contact Information</span>
+                    <span id="info-title">聯絡資料</span>
                 </h2>
                 <form id="booking-form">
                     <div class="form-group">
-                        <label class="form-label" for="customerName">Full Name *</label>
+                        <label class="form-label" for="customerName" id="name-label">姓名 *</label>
                         <input type="text" id="customerName" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="email">Email Address *</label>
+                        <label class="form-label" for="email" id="email-label">電子郵件 *</label>
                         <input type="email" id="email" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="phone">Phone Number (WhatsApp) *</label>
-                        <input type="tel" id="phone" class="form-input" placeholder="e.g., 98765432" required>
+                        <label class="form-label" for="phone" id="phone-label">電話號碼 (WhatsApp) *</label>
+                        <input type="tel" id="phone" class="form-input" placeholder="例如：98765432" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="notes">Special Requirements (Optional)</label>
-                        <textarea id="notes" class="form-input" rows="3" placeholder="Any special equipment or setup needs..."></textarea>
+                        <label class="form-label" for="notes" id="notes-label">特殊要求（選填）</label>
+                        <textarea id="notes" class="form-input" rows="3" placeholder="任何特殊設備或設置需求..."></textarea>
                     </div>
 
                     <!-- Price Display -->
                     <div class="price-display" id="price-display">
-                        <h3 style="color: #0056b3; margin-bottom: 15px;">Booking Summary</h3>
+                        <h3 style="color: #0056b3; margin-bottom: 15px;" id="summary-title">預約摘要</h3>
                         <div class="price-breakdown">
-                            <span>Date:</span>
+                            <span id="summary-date-label">日期：</span>
                             <span id="summary-date">-</span>
                         </div>
                         <div class="price-breakdown">
-                            <span>Time:</span>
+                            <span id="summary-time-label">時段：</span>
                             <span id="summary-time">-</span>
                         </div>
                         <div class="price-breakdown">
-                            <span>Duration:</span>
+                            <span id="summary-duration-label">總時長：</span>
                             <span id="summary-duration">-</span>
                         </div>
                         <div class="price-breakdown">
-                            <span>Base Price:</span>
+                            <span id="base-price-label">基本價格：</span>
                             <span id="base-price">HK$0</span>
                         </div>
                         <div class="price-breakdown" id="sunday-fee" style="display: none;">
-                            <span>Sunday A/C Fee:</span>
-                            <span>HK$<span id="sunday-fee-amount">80</span></span>
+                            <span id="sunday-fee-label">週日冷氣費：</span>
+                            <span>HK$<span id="sunday-fee-amount">0</span></span>
                         </div>
                         <div class="price-breakdown">
-                            <span>Total Amount:</span>
+                            <span id="total-label">總金額：</span>
                             <span>HK$<span id="total-amount">0</span></span>
                         </div>
                     </div>
 
                     <!-- Payment Information -->
-                    <div class="payment-info">
-                        <h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;">Payment Methods</h3>
-                        
-                        <div class="payment-method">
-                            <h4>🏦 Bank Transfer</h4>
-                            <div>HSBC Hong Kong</div>
-                            <div class="account-number">123-456789-001</div>
-                            <div style="color: #6c757d; font-size: 0.9em;">Account Name: Connect Point Studio Ltd</div>
-                        </div>
-
-                        <div class="payment-method">
-                            <h4>📱 PayMe</h4>
-                            <div class="account-number">+852 9872 5268</div>
-                            <div style="color: #6c757d; font-size: 0.9em;">Please include your name in payment reference</div>
-                        </div>
-
-                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                            <strong style="color: #856404;">📸 After Payment:</strong>
-                            <div style="color: #856404; margin-top: 10px;">
-                                Send payment screenshot to:<br>
-                                📱 WhatsApp: <a href="https://wa.me/85298725268" target="_blank" style="color: #004494;">9872 5268</a><br>
-                                ✉️ Email: <a href="mailto:connectpoint@atsumaru.com" style="color: #004494;">connectpoint@atsumaru.com</a>
-                            </div>
-                        </div>
+                    <div class="payment-info" id="payment-info">
+                        <h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;" id="payment-title">付款方式</h3>
+                        <!-- Payment methods will be loaded dynamically -->
                     </div>
 
                     <button type="submit" class="submit-btn" id="submit-btn">
-                        CONFIRM BOOKING REQUEST
+                        確認預約申請
                     </button>
                 </form>
             </div>
@@ -529,9 +583,91 @@
         
         // ===== STATE VARIABLES =====
         let selectedDate = null;
-        let selectedTime = null;
-        let selectedDuration = 60;
         let selectedSlots = [];
+        let firstSlotSelected = null;
+        let startTime = null;
+        let endTime = null;
+        let totalDuration = 0;
+        let allTimeSlots = [];
+        let currentLanguage = 'zh';
+        
+        // ===== TRANSLATIONS =====
+        const translations = {
+            zh: {
+                'main-title': '專業錄音室預約系統',
+                'sub-title': '專業錄音室 • 每日營業',
+                'instructions-title': '重要預約須知',
+                'date-title': '選擇日期',
+                'time-title': '選擇時段',
+                'info-title': '聯絡資料',
+                'name-label': '姓名 *',
+                'email-label': '電子郵件 *',
+                'phone-label': '電話號碼 (WhatsApp) *',
+                'notes-label': '特殊要求（選填）',
+                'summary-title': '預約摘要',
+                'summary-date-label': '日期：',
+                'summary-time-label': '時段：',
+                'summary-duration-label': '總時長：',
+                'base-price-label': '基本價格：',
+                'sunday-fee-label': '週日冷氣費：',
+                'total-label': '總金額：',
+                'payment-title': '付款方式',
+                'submit-btn': '確認預約申請',
+                'select-method': '選擇方式：',
+                'select-step1': '1. 點擊第一個時段（開始時間）',
+                'select-step2': '2. 再點擊最後一個時段（結束時間）',
+                'select-step3': '3. 系統會自動選取中間的所有時段',
+                'selected-label': '已選擇時段：',
+                'duration-label': '總時長：',
+                'clear-btn': '清除選擇',
+                'loading-text': '載入可用時段中...',
+                'legend-confirmed': '已確認',
+                'legend-pending': '待確認',
+                'legend-available': '可預約',
+                'error-select-date': '請選擇日期和時段',
+                'error-end-before-start': '結束時間必須在開始時間之後',
+                'error-unavailable': '選擇的時段範圍包含已預訂或待確認的時段',
+                'success-booking': '預約申請已成功提交！',
+                'error-booking': '預約失敗，請重試。'
+            },
+            en: {
+                'main-title': 'Professional Studio Booking',
+                'sub-title': 'Professional Recording Studio • Open Daily',
+                'instructions-title': 'Important Booking Instructions',
+                'date-title': 'Select Date',
+                'time-title': 'Select Time Slots',
+                'info-title': 'Contact Information',
+                'name-label': 'Full Name *',
+                'email-label': 'Email Address *',
+                'phone-label': 'Phone Number (WhatsApp) *',
+                'notes-label': 'Special Requirements (Optional)',
+                'summary-title': 'Booking Summary',
+                'summary-date-label': 'Date:',
+                'summary-time-label': 'Time:',
+                'summary-duration-label': 'Total Duration:',
+                'base-price-label': 'Base Price:',
+                'sunday-fee-label': 'Sunday A/C Fee:',
+                'total-label': 'Total Amount:',
+                'payment-title': 'Payment Methods',
+                'submit-btn': 'CONFIRM BOOKING REQUEST',
+                'select-method': 'How to select:',
+                'select-step1': '1. Click first slot (start time)',
+                'select-step2': '2. Click last slot (end time)',
+                'select-step3': '3. System will auto-select all slots in between',
+                'selected-label': 'Selected Slots:',
+                'duration-label': 'Total Duration:',
+                'clear-btn': 'Clear Selection',
+                'loading-text': 'Loading available slots...',
+                'legend-confirmed': 'Confirmed',
+                'legend-pending': 'Pending',
+                'legend-available': 'Available',
+                'error-select-date': 'Please select date and time slots',
+                'error-end-before-start': 'End time must be after start time',
+                'error-unavailable': 'Selected range contains booked or pending slots',
+                'success-booking': 'Booking request submitted successfully!',
+                'error-booking': 'Booking failed. Please try again.'
+            }
+        };
         
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', async function() {
@@ -558,6 +694,35 @@
             updateUIWithSettings();
         });
         
+        // ===== LANGUAGE FUNCTIONS =====
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            
+            // Update button states
+            document.getElementById('zh-btn').classList.toggle('active', lang === 'zh');
+            document.getElementById('en-btn').classList.toggle('active', lang === 'en');
+            
+            // Update all text elements
+            Object.keys(translations[lang]).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+            
+            // Update instructions from settings
+            updateInstructions();
+            
+            // Update placeholder texts
+            if (lang === 'zh') {
+                document.getElementById('phone').placeholder = '例如：98765432';
+                document.getElementById('notes').placeholder = '任何特殊設備或設置需求...';
+            } else {
+                document.getElementById('phone').placeholder = 'e.g., 98765432';
+                document.getElementById('notes').placeholder = 'Any special equipment or setup needs...';
+            }
+        }
+        
         // ===== LOAD SETTINGS =====
         async function loadSettings() {
             try {
@@ -565,109 +730,75 @@
                 if (response.ok) {
                     SETTINGS = await response.json();
                     console.log('Settings loaded:', SETTINGS);
-                } else {
-                    console.error('Failed to load settings, using defaults');
-                    // Use default settings if loading fails
-                    SETTINGS = {
-                        businessName: "Premium Studio Booking",
-                        businessDescription: "Professional Recording Studio",
-                        operatingHours: {
-                            startTime: "07:00",
-                            endTime: "22:00"
-                        },
-                        pricing: {
-                            thirtyMinutes: 140,
-                            oneHour: 280,
-                            sundayAirconFee: 80
-                        },
-                        paymentMethods: {
-                            bankTransfer: {
-                                enabled: true,
-                                bankName: "HSBC Hong Kong",
-                                accountNumber: "123-456789-001",
-                                accountName: "Connect Point Studio Ltd"
-                            },
-                            payme: {
-                                enabled: true,
-                                phoneNumber: "+852 9872 5268",
-                                displayName: "Connect Point Studio"
-                            }
-                        },
-                        contactInfo: {
-                            whatsapp: "85298725268",
-                            email: "connectpoint@atsumaru.com",
-                            phone: "+852 9872 5268"
-                        },
-                        bookingRules: {
-                            minAdvanceBooking: 0,
-                            maxAdvanceBooking: 30,
-                            autoConfirm: false,
-                            requirePaymentProof: true
-                        },
-                        customMessage: {
-                            welcomeMessage: "Book your perfect space",
-                            bookingInstructions: "Please complete payment and send proof to WhatsApp after booking.",
-                            confirmationMessage: "Your booking will be confirmed within 30 minutes."
-                        }
-                    };
                 }
             } catch (error) {
                 console.error('Error loading settings:', error);
+                // Use default settings if loading fails
+                SETTINGS = {
+                    businessName: "Professional Studio Booking",
+                    businessNameZh: "專業錄音室預約系統",
+                    operatingHours: { startTime: "07:00", endTime: "22:00" },
+                    pricing: { thirtyMinutes: 140, oneHour: 280, sundayAirconFee: 80 },
+                    bookingRules: { minAdvanceBooking: 0, maxAdvanceBooking: 30 }
+                };
             }
         }
         
         // ===== UPDATE UI WITH SETTINGS =====
         function updateUIWithSettings() {
-            // Update header
-            document.querySelector('.header h1').textContent = SETTINGS.businessName || 'Studio Booking System';
-            document.querySelector('.header p').textContent = SETTINGS.businessDescription || 'Professional Recording Studio';
-            document.getElementById('sub-title').textContent = SETTINGS.customMessage?.welcomeMessage || 'Book your perfect space';
-            
-            // Update operating hours display
-            const startTime = SETTINGS.operatingHours?.startTime || "07:00";
-            const endTime = SETTINGS.operatingHours?.endTime || "22:00";
-            const startHour = parseInt(startTime.split(':')[0]);
-            const endHour = parseInt(endTime.split(':')[0]);
-            const startPeriod = startHour >= 12 ? 'PM' : 'AM';
-            const endPeriod = endHour >= 12 ? 'PM' : 'AM';
-            const displayStartHour = startHour > 12 ? startHour - 12 : startHour;
-            const displayEndHour = endHour > 12 ? endHour - 12 : endHour;
-            
-            document.querySelector('.header p').textContent = 
-                `${SETTINGS.businessDescription} • ${displayStartHour}${startPeriod} - ${displayEndHour}${endPeriod} Daily`;
-            
-            // Update duration prices
-            document.querySelector('.duration-option[onclick*="30"] div:last-child').textContent = 
-                `HK$${SETTINGS.pricing?.thirtyMinutes || 140}`;
-            document.querySelector('.duration-option[onclick*="60"] div:last-child').textContent = 
-                `HK$${SETTINGS.pricing?.oneHour || 280}`;
-            
-            // Update payment information
+            // Update titles based on language
+            updateTitles();
+            updateInstructions();
             updatePaymentInfo();
-            
-            // Update instructions if needed
-            if (SETTINGS.bookingRules?.autoConfirm) {
-                document.querySelector('.instructions ol li:last-child').textContent = 
-                    'Your booking will be confirmed immediately!';
+        }
+        
+        function updateTitles() {
+            if (currentLanguage === 'zh') {
+                document.getElementById('main-title').textContent = SETTINGS.businessNameZh || '專業錄音室預約系統';
             } else {
-                document.querySelector('.instructions ol li:last-child').textContent = 
-                    SETTINGS.customMessage?.confirmationMessage || 'Your booking will be confirmed within 30 minutes';
+                document.getElementById('main-title').textContent = SETTINGS.businessName || 'Professional Studio Booking';
+            }
+        }
+        
+        function updateInstructions() {
+            const instructions = SETTINGS.bookingInstructions || {};
+            
+            if (currentLanguage === 'zh') {
+                document.getElementById('instructions-title').textContent = instructions.titleZh || '重要預約須知';
+                document.getElementById('instruction-1').textContent = instructions.instruction1Zh || '選擇您想要的日期';
+                document.getElementById('instruction-2').textContent = instructions.instruction2Zh || '點擊開始時段，再點擊結束時段';
+                document.getElementById('instruction-3').textContent = instructions.instruction3Zh || '填寫您的聯絡資料';
+                document.getElementById('instruction-4').textContent = instructions.instruction4Zh || '透過銀行轉帳或 PayMe 付款';
+                document.getElementById('instruction-5').textContent = instructions.instruction5Zh || '將付款證明傳送至 WhatsApp';
+                document.getElementById('instruction-6').textContent = instructions.instruction6Zh || '您的預約將在 30 分鐘內確認';
+            } else {
+                document.getElementById('instructions-title').textContent = instructions.titleEn || 'Important Booking Instructions';
+                document.getElementById('instruction-1').textContent = instructions.instruction1En || 'Select your preferred date';
+                document.getElementById('instruction-2').textContent = instructions.instruction2En || 'Click start time, then end time';
+                document.getElementById('instruction-3').textContent = instructions.instruction3En || 'Fill in your contact information';
+                document.getElementById('instruction-4').textContent = instructions.instruction4En || 'Make payment via Bank Transfer or PayMe';
+                document.getElementById('instruction-5').textContent = instructions.instruction5En || 'Send payment proof to WhatsApp';
+                document.getElementById('instruction-6').textContent = instructions.instruction6En || 'Your booking will be confirmed within 30 minutes';
             }
         }
         
         // ===== UPDATE PAYMENT INFO =====
         function updatePaymentInfo() {
-            const paymentInfoDiv = document.querySelector('.payment-info');
-            let paymentHTML = '<h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;">Payment Methods</h3>';
+            const paymentInfoDiv = document.getElementById('payment-info');
+            let paymentHTML = `<h3 style="color: #0056b3; margin-bottom: 20px; text-align: center;">${
+                currentLanguage === 'zh' ? '付款方式' : 'Payment Methods'
+            }</h3>`;
             
             // Bank Transfer
             if (SETTINGS.paymentMethods?.bankTransfer?.enabled) {
                 paymentHTML += `
                     <div class="payment-method">
-                        <h4>🏦 Bank Transfer</h4>
+                        <h4>🏦 ${currentLanguage === 'zh' ? '銀行轉帳' : 'Bank Transfer'}</h4>
                         <div>${SETTINGS.paymentMethods.bankTransfer.bankName}</div>
                         <div class="account-number">${SETTINGS.paymentMethods.bankTransfer.accountNumber}</div>
-                        <div style="color: #6c757d; font-size: 0.9em;">Account Name: ${SETTINGS.paymentMethods.bankTransfer.accountName}</div>
+                        <div style="color: #6c757d; font-size: 0.9em;">${
+                            currentLanguage === 'zh' ? '戶名：' : 'Account Name: '
+                        }${SETTINGS.paymentMethods.bankTransfer.accountName}</div>
                     </div>
                 `;
             }
@@ -678,7 +809,11 @@
                     <div class="payment-method">
                         <h4>📱 PayMe</h4>
                         <div class="account-number">${SETTINGS.paymentMethods.payme.phoneNumber}</div>
-                        <div style="color: #6c757d; font-size: 0.9em;">${SETTINGS.paymentMethods.payme.displayName || 'Please include your name in payment reference'}</div>
+                        <div style="color: #6c757d; font-size: 0.9em;">${
+                            currentLanguage === 'zh' 
+                                ? '請在付款備註中加入您的姓名' 
+                                : 'Please include your name in payment reference'
+                        }</div>
                     </div>
                 `;
             }
@@ -686,9 +821,11 @@
             // Contact info for payment proof
             paymentHTML += `
                 <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                    <strong style="color: #856404;">📸 After Payment:</strong>
+                    <strong style="color: #856404;">📸 ${
+                        currentLanguage === 'zh' ? '付款後：' : 'After Payment:'
+                    }</strong>
                     <div style="color: #856404; margin-top: 10px;">
-                        Send payment screenshot to:<br>
+                        ${currentLanguage === 'zh' ? '請將付款截圖傳送至：' : 'Send payment screenshot to:'}<br>
                         📱 WhatsApp: <a href="https://wa.me/${SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '')}" target="_blank" style="color: #004494;">${SETTINGS.contactInfo?.whatsapp}</a><br>
                         ✉️ Email: <a href="mailto:${SETTINGS.contactInfo?.email}" style="color: #004494;">${SETTINGS.contactInfo?.email}</a>
                     </div>
@@ -703,11 +840,9 @@
             if (!date) return;
             
             selectedDate = date;
-            selectedTime = null;
-            selectedSlots = [];
+            clearTimeSelection();
             
-            // Show sections
-            document.getElementById('duration-section').style.display = 'block';
+            // Show time section
             document.getElementById('time-section').style.display = 'block';
             
             // Update summary
@@ -717,48 +852,22 @@
             loadAvailableSlots(date);
         }
 
-        // ===== DURATION SELECTION =====
-        function selectDuration(duration) {
-            selectedDuration = duration;
-            selectedSlots = [];
-            selectedTime = null;
-            
-            // Update UI
-            document.querySelectorAll('.duration-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            event.target.closest('.duration-option').classList.add('selected');
-            
-            // Update summary
-            document.getElementById('summary-duration').textContent = duration === 30 ? '30 minutes' : '1 hour';
-            
-            // Reload slots for new duration
-            if (selectedDate) {
-                loadAvailableSlots(selectedDate);
-            }
-        }
-
         // ===== TIME SLOTS =====
         async function loadAvailableSlots(date) {
             const slotsContainer = document.getElementById('time-slots');
-            slotsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading available times...</div></div>';
+            slotsContainer.innerHTML = `<div class="loading"><div class="spinner"></div><div>${
+                currentLanguage === 'zh' ? '載入可用時段中...' : 'Loading available slots...'
+            }</div></div>`;
             
             try {
                 // Generate all possible time slots based on operating hours
-                const allSlots = [];
-                const [startHour, startMinute] = (SETTINGS.operatingHours?.startTime || "07:00").split(':').map(Number);
-                const [endHour, endMinute] = (SETTINGS.operatingHours?.endTime || "22:00").split(':').map(Number);
+                allTimeSlots = [];
+                const [startHour] = (SETTINGS.operatingHours?.startTime || "07:00").split(':').map(Number);
+                const [endHour] = (SETTINGS.operatingHours?.endTime || "22:00").split(':').map(Number);
                 
                 for (let hour = startHour; hour < endHour; hour++) {
-                    allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-                    if (hour < endHour - 1 || (hour === endHour - 1 && selectedDuration === 30)) {
-                        allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
-                    }
-                }
-                
-                // Add final slot if it fits
-                if (endMinute === 30 && selectedDuration === 30) {
-                    allSlots.push(`${endHour.toString().padStart(2, '0')}:00`);
+                    allTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+                    allTimeSlots.push(`${hour.toString().padStart(2, '0')}:30`);
                 }
                 
                 // Fetch existing bookings
@@ -782,11 +891,13 @@
                 }
                 
                 // Display slots
-                displayTimeSlots(allSlots, confirmedSlots, pendingSlots);
+                displayTimeSlots(allTimeSlots, confirmedSlots, pendingSlots);
                 
             } catch (error) {
                 console.error('Error loading slots:', error);
-                slotsContainer.innerHTML = '<div class="error">Failed to load available times. Please try again.</div>';
+                slotsContainer.innerHTML = `<div class="error">${
+                    currentLanguage === 'zh' ? '無法載入可用時段，請重試。' : 'Failed to load available slots. Please try again.'
+                }</div>`;
             }
         }
 
@@ -811,59 +922,139 @@
             const container = document.getElementById('time-slots');
             container.innerHTML = '';
             
-            allSlots.forEach(slot => {
+            allSlots.forEach((slot, index) => {
                 const slotElement = document.createElement('div');
                 slotElement.className = 'time-slot';
                 slotElement.textContent = formatTime(slot);
+                slotElement.dataset.slot = slot;
+                slotElement.dataset.index = index;
                 
-                // Check if slot is available for selected duration
-                const requiredSlots = generateSlotsForDuration(slot, selectedDuration);
-                const isConfirmed = requiredSlots.some(s => confirmedSlots.includes(s));
-                const isPending = requiredSlots.some(s => pendingSlots.includes(s));
-                
-                if (isConfirmed) {
+                if (confirmedSlots.includes(slot)) {
                     slotElement.classList.add('unavailable');
-                    slotElement.title = 'Already booked';
-                } else if (isPending) {
+                    slotElement.title = currentLanguage === 'zh' ? '已預訂' : 'Booked';
+                } else if (pendingSlots.includes(slot)) {
                     slotElement.classList.add('pending');
-                    slotElement.title = 'Pending confirmation';
+                    slotElement.title = currentLanguage === 'zh' ? '待確認' : 'Pending';
                 } else {
-                    // Check if booking would exceed 10 PM
-                    const [hour, minute] = slot.split(':').map(Number);
-                    const endMinutes = hour * 60 + minute + selectedDuration;
-                    if (endMinutes > 22 * 60) {
-                        slotElement.classList.add('unavailable');
-                        slotElement.title = 'Exceeds operating hours';
-                    } else {
-                        slotElement.onclick = () => selectTimeSlot(slot);
-                    }
+                    slotElement.onclick = () => handleTimeSlotClick(slot, index);
                 }
                 
                 container.appendChild(slotElement);
             });
         }
 
-        function selectTimeSlot(time) {
-            selectedTime = time;
-            selectedSlots = generateSlotsForDuration(time, selectedDuration);
-            
-            // Update UI
-            document.querySelectorAll('.time-slot').forEach(slot => {
-                slot.classList.remove('selected');
-                if (selectedSlots.includes(convertTimeToSlot(slot.textContent))) {
-                    slot.classList.add('selected');
+        function handleTimeSlotClick(slot, index) {
+            if (!firstSlotSelected) {
+                // First click - select start time
+                firstSlotSelected = { slot, index };
+                selectedSlots = [slot];
+                startTime = slot;
+                
+                // Highlight the first slot
+                updateSlotHighlights();
+                
+            } else {
+                // Second click - select end time
+                const startIndex = firstSlotSelected.index;
+                const endIndex = index;
+                
+                if (endIndex < startIndex) {
+                    // User clicked before the start time
+                    showMessage('error', translations[currentLanguage]['error-end-before-start']);
+                    return;
                 }
+                
+                // Check if any slots in range are unavailable
+                selectedSlots = [];
+                for (let i = Math.min(startIndex, endIndex); i <= Math.max(startIndex, endIndex); i++) {
+                    const checkSlot = allTimeSlots[i];
+                    const slotElement = document.querySelector(`[data-slot="${checkSlot}"]`);
+                    
+                    if (slotElement && (slotElement.classList.contains('unavailable') || slotElement.classList.contains('pending'))) {
+                        showMessage('error', translations[currentLanguage]['error-unavailable']);
+                        clearTimeSelection();
+                        return;
+                    }
+                    
+                    selectedSlots.push(checkSlot);
+                }
+                
+                // Calculate end time (30 minutes after the last slot)
+                const [endHour, endMinute] = slot.split(':').map(Number);
+                const endTotalMinutes = endHour * 60 + endMinute + 30;
+                const finalEndHour = Math.floor(endTotalMinutes / 60);
+                const finalEndMinute = endTotalMinutes % 60;
+                endTime = `${finalEndHour.toString().padStart(2, '0')}:${finalEndMinute.toString().padStart(2, '0')}`;
+                
+                // Calculate total duration
+                totalDuration = selectedSlots.length * 30;
+                
+                // Update display
+                updateSlotHighlights();
+                updateSelectedSlotsDisplay();
+                
+                // Show customer info section
+                document.getElementById('info-section').style.display = 'block';
+                
+                // Update price
+                updatePriceDisplay();
+            }
+        }
+
+        function clearTimeSelection() {
+            selectedSlots = [];
+            firstSlotSelected = null;
+            startTime = null;
+            endTime = null;
+            totalDuration = 0;
+            
+            // Clear highlights
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected', 'in-range');
             });
             
-            // Show info section
-            document.getElementById('info-section').style.display = 'block';
+            // Hide display
+            document.getElementById('selected-slots-display').classList.remove('show');
+            document.getElementById('info-section').style.display = 'none';
+        }
+
+        function updateSlotHighlights() {
+            // Clear all highlights
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected', 'in-range');
+            });
             
-            // Update summary
-            const endTime = calculateEndTime(time, selectedDuration);
-            document.getElementById('summary-time').textContent = `${formatTime(time)} - ${formatTime(endTime)}`;
-            
-            // Update price
-            updatePriceDisplay();
+            // Highlight selected slots
+            selectedSlots.forEach(slot => {
+                const slotElement = document.querySelector(`[data-slot="${slot}"]`);
+                if (slotElement) {
+                    if (slot === startTime || (endTime && slot === selectedSlots[selectedSlots.length - 1])) {
+                        slotElement.classList.add('selected');
+                    } else {
+                        slotElement.classList.add('in-range');
+                    }
+                }
+            });
+        }
+
+        function updateSelectedSlotsDisplay() {
+            if (selectedSlots.length > 0) {
+                document.getElementById('selected-slots-display').classList.add('show');
+                document.getElementById('selected-time-range').textContent = 
+                    `${formatTime(startTime)} - ${formatTime(endTime)}`;
+                document.getElementById('total-duration').textContent = 
+                    currentLanguage === 'zh' 
+                        ? `${totalDuration} 分鐘 (${totalDuration / 60} 小時)`
+                        : `${totalDuration} minutes (${totalDuration / 60} hours)`;
+                
+                // Update summary
+                document.getElementById('summary-time').textContent = 
+                    `${formatTime(startTime)} - ${formatTime(endTime)}`;
+                document.getElementById('summary-duration').textContent = 
+                    currentLanguage === 'zh' ? `${totalDuration} 分鐘` : `${totalDuration} minutes`;
+            } else {
+                document.getElementById('selected-slots-display').classList.remove('show');
+            }
         }
 
         // ===== PRICE CALCULATION =====
@@ -871,17 +1062,21 @@
             const date = new Date(selectedDate);
             const isSunday = date.getDay() === 0;
             
-            let basePrice = selectedDuration === 30 
-                ? (SETTINGS.pricing?.thirtyMinutes || 140) 
-                : (SETTINGS.pricing?.oneHour || 280);
+            // Calculate base price based on duration
+            const halfHours = totalDuration / 30;
+            const pricePerHalfHour = SETTINGS.pricing?.thirtyMinutes || 140;
+            let basePrice = pricePerHalfHour * halfHours;
             let totalPrice = basePrice;
             
-            // Add Sunday A/C fee for 1-hour bookings
+            // Add Sunday A/C fee if applicable
             const sundayFee = SETTINGS.pricing?.sundayAirconFee || 80;
-            if (isSunday && selectedDuration === 60 && sundayFee > 0) {
-                totalPrice += sundayFee;
+            if (isSunday && sundayFee > 0) {
+                // Calculate fee based on hours
+                const hours = Math.ceil(totalDuration / 60);
+                const totalSundayFee = sundayFee * hours;
+                totalPrice += totalSundayFee;
                 document.getElementById('sunday-fee').style.display = 'flex';
-                document.getElementById('sunday-fee').querySelector('span:last-child').textContent = `HK$${sundayFee}`;
+                document.getElementById('sunday-fee-amount').textContent = totalSundayFee;
             } else {
                 document.getElementById('sunday-fee').style.display = 'none';
             }
@@ -894,8 +1089,8 @@
         async function handleBookingSubmit(e) {
             e.preventDefault();
             
-            if (!selectedDate || !selectedTime) {
-                showMessage('error', 'Please select date and time slot');
+            if (!selectedDate || selectedSlots.length === 0) {
+                showMessage('error', translations[currentLanguage]['error-select-date']);
                 return;
             }
             
@@ -904,16 +1099,17 @@
             const phone = document.getElementById('phone').value.trim();
             const notes = document.getElementById('notes').value.trim();
             
-            // Calculate total price using dynamic settings
+            // Calculate total price
             const date = new Date(selectedDate);
             const isSunday = date.getDay() === 0;
-            let totalPrice = selectedDuration === 30 
-                ? (SETTINGS.pricing?.thirtyMinutes || 140) 
-                : (SETTINGS.pricing?.oneHour || 280);
+            const halfHours = totalDuration / 30;
+            const pricePerHalfHour = SETTINGS.pricing?.thirtyMinutes || 140;
+            let totalPrice = pricePerHalfHour * halfHours;
             
             const sundayFee = SETTINGS.pricing?.sundayAirconFee || 80;
-            if (isSunday && selectedDuration === 60 && sundayFee > 0) {
-                totalPrice += sundayFee;
+            if (isSunday && sundayFee > 0) {
+                const hours = Math.ceil(totalDuration / 60);
+                totalPrice += (sundayFee * hours);
             }
             
             const bookingData = {
@@ -921,8 +1117,8 @@
                 email: email,
                 phone: phone,
                 date: selectedDate,
-                startTime: selectedTime,
-                duration: selectedDuration,
+                startTime: startTime,
+                duration: totalDuration,
                 totalPrice: totalPrice,
                 notes: notes,
                 status: SETTINGS.bookingRules?.autoConfirm ? 'confirmed' : 'pending'
@@ -931,7 +1127,7 @@
             // Disable submit button
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing...';
+            submitBtn.textContent = currentLanguage === 'zh' ? '處理中...' : 'Processing...';
             
             try {
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
@@ -946,91 +1142,71 @@
                 
                 if (response.ok) {
                     // Show success message
-                    const successMsg = SETTINGS.bookingRules?.autoConfirm
-                        ? 'Booking confirmed successfully!'
-                        : `Booking request submitted successfully! ${SETTINGS.customMessage?.bookingInstructions || 'Please complete payment and send proof.'}`;
-                    
-                    showMessage('success', successMsg);
+                    showMessage('success', translations[currentLanguage]['success-booking']);
                     
                     // Reset form
                     document.getElementById('booking-form').reset();
                     selectedDate = null;
-                    selectedTime = null;
-                    selectedSlots = [];
+                    clearTimeSelection();
                     
                     // Hide sections
                     document.getElementById('time-section').style.display = 'none';
-                    document.getElementById('duration-section').style.display = 'none';
                     document.getElementById('info-section').style.display = 'none';
                     
                     // Clear date
                     document.getElementById('date-input').value = '';
                     
-                    // Open WhatsApp with pre-filled message if payment proof is required
-                    if (!SETTINGS.bookingRules?.autoConfirm && SETTINGS.bookingRules?.requirePaymentProof) {
-                        const whatsappNumber = SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '') || '85298725268';
-                        const whatsappMessage = encodeURIComponent(
-                            `Hi, I've just made a booking request:\n` +
-                            `Name: ${customerName}\n` +
-                            `Date: ${formatDate(bookingData.date)}\n` +
-                            `Time: ${formatTime(bookingData.startTime)} (${bookingData.duration} mins)\n` +
-                            `Total: HK$${totalPrice}\n` +
-                            `I will send payment proof shortly.`
-                        );
-                        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank');
-                    }
+                    // Open WhatsApp with pre-filled message
+                    const whatsappNumber = SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '') || '85298725268';
+                    const whatsappMessage = encodeURIComponent(
+                        currentLanguage === 'zh' 
+                            ? `您好，我剛完成預約申請：\n姓名：${customerName}\n日期：${formatDate(bookingData.date)}\n時段：${formatTime(startTime)} - ${formatTime(endTime)} (${totalDuration} 分鐘)\n總金額：HK$${totalPrice}\n我會盡快傳送付款證明。`
+                            : `Hi, I've just made a booking request:\nName: ${customerName}\nDate: ${formatDate(bookingData.date)}\nTime: ${formatTime(startTime)} - ${formatTime(endTime)} (${totalDuration} mins)\nTotal: HK$${totalPrice}\nI will send payment proof shortly.`
+                    );
+                    window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank');
                     
                 } else {
-                    showMessage('error', result.error || 'Booking failed. Please try again.');
+                    showMessage('error', result.error || translations[currentLanguage]['error-booking']);
                 }
                 
             } catch (error) {
                 console.error('Booking error:', error);
-                showMessage('error', 'Network error. Please try again.');
+                showMessage('error', translations[currentLanguage]['error-booking']);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'CONFIRM BOOKING REQUEST';
+                submitBtn.textContent = translations[currentLanguage]['submit-btn'];
             }
         }
 
         // ===== UTILITY FUNCTIONS =====
         function formatDate(dateString) {
             const date = new Date(dateString + 'T00:00:00');
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
+            
+            if (currentLanguage === 'zh') {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+                const weekday = weekdays[date.getDay()];
+                return `${year}年${month}月${day}日 (${weekday})`;
+            } else {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                return date.toLocaleDateString('en-US', options);
+            }
         }
 
         function formatTime(timeString) {
             const [hour, minute] = timeString.split(':').map(Number);
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-            return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
-        }
-
-        function convertTimeToSlot(formattedTime) {
-            // Convert "9:00 AM" back to "09:00"
-            const match = formattedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (!match) return formattedTime;
             
-            let hour = parseInt(match[1]);
-            const minute = match[2];
-            const period = match[3];
-            
-            if (period === 'PM' && hour !== 12) {
-                hour += 12;
-            } else if (period === 'AM' && hour === 12) {
-                hour = 0;
+            if (currentLanguage === 'zh') {
+                const period = hour >= 12 ? '下午' : '上午';
+                const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+                return `${period} ${displayHour}:${minute.toString().padStart(2, '0')}`;
+            } else {
+                const period = hour >= 12 ? 'PM' : 'AM';
+                const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+                return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
             }
-            
-            return `${hour.toString().padStart(2, '0')}:${minute}`;
-        }
-
-        function calculateEndTime(startTime, durationMinutes) {
-            const [hour, minute] = startTime.split(':').map(Number);
-            const totalMinutes = hour * 60 + minute + durationMinutes;
-            const endHour = Math.floor(totalMinutes / 60);
-            const endMinute = totalMinutes % 60;
-            return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
         }
 
         function showMessage(type, message) {
@@ -1049,6 +1225,9 @@
                 messageEl.style.display = 'none';
             }, 10000);
         }
+
+        // ===== DEBUG INFO =====
+        console.log('Script loaded. API URL:', API_BASE_URL);
     </script>
 </body>
 </html>

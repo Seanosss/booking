@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,10 +13,12 @@ const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 app.use(cors());
 app.use(express.json());
 
-// Default settings
+// Default settings with password and bilingual instructions
 const defaultSettings = {
     businessName: "Premium Studio Booking",
+    businessNameZh: "專業錄音室預約系統",
     businessDescription: "Professional Recording Studio",
+    businessDescriptionZh: "專業錄音室",
     operatingHours: {
         startTime: "07:00",
         endTime: "22:00"
@@ -44,19 +47,36 @@ const defaultSettings = {
         phone: "+852 9872 5268"
     },
     bookingRules: {
-        minAdvanceBooking: 0, // hours
-        maxAdvanceBooking: 30, // days
-        slotInterval: 30, // minutes
+        minAdvanceBooking: 0,
+        maxAdvanceBooking: 30,
+        slotInterval: 30,
         autoConfirm: false,
         requirePaymentProof: true
     },
-    customMessage: {
-        welcomeMessage: "Book your perfect space",
-        bookingInstructions: "Please complete payment and send proof to WhatsApp after booking.",
-        confirmationMessage: "Your booking will be confirmed within 30 minutes."
+    bookingInstructions: {
+        titleZh: "重要預約須知",
+        titleEn: "Important Booking Instructions",
+        instruction1Zh: "選擇您想要的日期",
+        instruction1En: "Select your preferred date",
+        instruction2Zh: "點擊開始時段，再點擊結束時段（可選擇多個連續時段）",
+        instruction2En: "Click start time, then click end time (can select multiple consecutive slots)",
+        instruction3Zh: "填寫您的聯絡資料",
+        instruction3En: "Fill in your contact information",
+        instruction4Zh: "透過銀行轉帳或 PayMe 付款",
+        instruction4En: "Make payment via Bank Transfer or PayMe",
+        instruction5Zh: "將付款證明傳送至 WhatsApp: 98725268",
+        instruction5En: "Send payment proof to WhatsApp: 98725268",
+        instruction6Zh: "您的預約將在 30 分鐘內確認",
+        instruction6En: "Your booking will be confirmed within 30 minutes"
     },
+    adminPassword: "admin123", // Default password - CHANGE THIS!
     updatedAt: new Date().toISOString()
 };
+
+// Hash password
+function hashPassword(password) {
+    return crypto.createHash('sha256').update(password).digest('hex');
+}
 
 // Initialize files
 async function initFiles() {
@@ -72,8 +92,10 @@ async function initFiles() {
     try {
         await fs.access(SETTINGS_FILE);
     } catch (error) {
+        // Hash the default password before saving
+        defaultSettings.adminPassword = hashPassword(defaultSettings.adminPassword);
         await fs.writeFile(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-        console.log('Created settings.json file with defaults');
+        console.log('Created settings.json with default password: admin123');
     }
 }
 
@@ -83,7 +105,7 @@ async function loadSettings() {
         const data = await fs.readFile(SETTINGS_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        console.error('Error loading settings, using defaults:', error);
+        console.error('Error loading settings:', error);
         return defaultSettings;
     }
 }
@@ -150,7 +172,6 @@ async function areSlotsAvailable(date, startTime, duration, excludeBookingId = n
     const bookings = await loadBookings();
     const requestedSlots = generateSlotsForDuration(startTime, duration);
     
-    // Only check confirmed bookings for conflicts
     const confirmedBookings = bookings.filter(b => 
         b.date === date && 
         b.status === 'confirmed' && 
@@ -179,34 +200,104 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// ===== SETTINGS ROUTES =====
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'Password required' });
+        }
+        
+        const settings = await loadSettings();
+        const hashedPassword = hashPassword(password);
+        
+        if (hashedPassword === settings.adminPassword) {
+            // Generate session token
+            const token = crypto.randomBytes(32).toString('hex');
+            
+            res.json({
+                success: true,
+                token: token,
+                message: 'Login successful'
+            });
+        } else {
+            res.status(401).json({ 
+                success: false,
+                error: 'Invalid password' 
+            });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
 
-// Get current settings
+// Change admin password
+app.post('/api/admin/change-password', async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ error: 'Both old and new passwords required' });
+        }
+        
+        const settings = await loadSettings();
+        const hashedOldPassword = hashPassword(oldPassword);
+        
+        if (hashedOldPassword !== settings.adminPassword) {
+            return res.status(401).json({ error: 'Current password incorrect' });
+        }
+        
+        settings.adminPassword = hashPassword(newPassword);
+        const saved = await saveSettings(settings);
+        
+        if (saved) {
+            res.json({
+                success: true,
+                message: 'Password changed successfully'
+            });
+        } else {
+            res.status(500).json({ error: 'Failed to save new password' });
+        }
+    } catch (error) {
+        console.error('Password change error:', error);
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+
+// Get settings (public version without password)
 app.get('/api/settings', async (req, res) => {
     try {
         const settings = await loadSettings();
-        res.json(settings);
+        // Remove password before sending
+        const publicSettings = { ...settings };
+        delete publicSettings.adminPassword;
+        res.json(publicSettings);
     } catch (error) {
         console.error('Error getting settings:', error);
         res.status(500).json({ error: 'Failed to retrieve settings' });
     }
 });
 
-// Update settings
+// Update settings (requires admin access)
 app.put('/api/settings', async (req, res) => {
     try {
         const currentSettings = await loadSettings();
         const updatedSettings = {
             ...currentSettings,
             ...req.body,
+            adminPassword: currentSettings.adminPassword, // Keep existing password
             updatedAt: new Date().toISOString()
         };
         
         const saved = await saveSettings(updatedSettings);
         if (saved) {
+            const publicSettings = { ...updatedSettings };
+            delete publicSettings.adminPassword;
             res.json({
                 success: true,
-                settings: updatedSettings,
+                settings: publicSettings,
                 message: 'Settings updated successfully'
             });
         } else {
@@ -218,55 +309,19 @@ app.put('/api/settings', async (req, res) => {
     }
 });
 
-// Update specific setting category
-app.patch('/api/settings/:category', async (req, res) => {
-    try {
-        const { category } = req.params;
-        const settings = await loadSettings();
-        
-        if (!settings[category]) {
-            return res.status(400).json({ error: 'Invalid settings category' });
-        }
-        
-        settings[category] = {
-            ...settings[category],
-            ...req.body
-        };
-        
-        const saved = await saveSettings(settings);
-        if (saved) {
-            res.json({
-                success: true,
-                settings: settings,
-                message: `${category} settings updated successfully`
-            });
-        } else {
-            res.status(500).json({ error: 'Failed to save settings' });
-        }
-    } catch (error) {
-        console.error('Error updating settings category:', error);
-        res.status(500).json({ error: 'Failed to update settings' });
-    }
-});
-
-// ===== BOOKING ROUTES =====
-
-// Get all bookings or filter by date
+// Get all bookings
 app.get('/api/bookings', async (req, res) => {
     try {
         let bookings = await loadBookings();
         
-        // Filter by date if provided
         if (req.query.date) {
             bookings = bookings.filter(b => b.date === req.query.date);
         }
         
-        // Filter by status if provided
         if (req.query.status) {
             bookings = bookings.filter(b => b.status === req.query.status);
         }
         
-        // Sort by date and time
         bookings.sort((a, b) => {
             const dateA = new Date(a.date + 'T' + a.startTime);
             const dateB = new Date(b.date + 'T' + b.startTime);
@@ -280,12 +335,11 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
-// Create new booking (always starts as pending unless autoConfirm is enabled)
+// Create new booking
 app.post('/api/bookings', async (req, res) => {
     try {
         const { customerName, email, phone, date, startTime, duration, totalPrice, notes } = req.body;
         
-        // Validate required fields
         if (!customerName || !email || !phone || !date || !startTime || !duration || !totalPrice) {
             return res.status(400).json({ 
                 error: 'Missing required fields',
@@ -293,12 +347,6 @@ app.post('/api/bookings', async (req, res) => {
             });
         }
         
-        // Validate duration
-        if (duration !== 30 && duration !== 60) {
-            return res.status(400).json({ error: 'Duration must be 30 or 60 minutes' });
-        }
-        
-        // Check if time slots are available (only check against confirmed bookings)
         const available = await areSlotsAvailable(date, startTime, duration);
         if (!available) {
             return res.status(400).json({ 
@@ -306,11 +354,9 @@ app.post('/api/bookings', async (req, res) => {
             });
         }
         
-        // Get settings to check if autoConfirm is enabled
         const settings = await loadSettings();
         const status = settings.bookingRules.autoConfirm ? 'confirmed' : 'pending';
         
-        // Create new booking
         const newBooking = {
             id: generateBookingId(),
             customerName,
@@ -328,7 +374,6 @@ app.post('/api/bookings', async (req, res) => {
             cancelledAt: null
         };
         
-        // Add booking to database
         const bookings = await loadBookings();
         bookings.push(newBooking);
         await saveBookings(bookings);
@@ -349,13 +394,12 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-// Update booking status (for admin use)
+// Update booking status
 app.patch('/api/bookings/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes } = req.body;
         
-        // Validate status
         const validStatuses = ['pending', 'confirmed', 'cancelled'];
         if (!status || !validStatuses.includes(status)) {
             return res.status(400).json({ 
@@ -372,7 +416,6 @@ app.patch('/api/bookings/:id/status', async (req, res) => {
         
         const booking = bookings[bookingIndex];
         
-        // If confirming, check availability again
         if (status === 'confirmed' && booking.status !== 'confirmed') {
             const available = await areSlotsAvailable(
                 booking.date, 
@@ -388,7 +431,6 @@ app.patch('/api/bookings/:id/status', async (req, res) => {
             }
         }
         
-        // Update booking
         booking.status = status;
         booking.updatedAt = new Date().toISOString();
         
@@ -434,7 +476,7 @@ app.get('/api/bookings/:id', async (req, res) => {
     }
 });
 
-// Delete booking (admin only)
+// Delete booking
 app.delete('/api/bookings/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -459,7 +501,7 @@ app.delete('/api/bookings/:id', async (req, res) => {
     }
 });
 
-// Get statistics (admin use)
+// Get statistics
 app.get('/api/stats', async (req, res) => {
     try {
         const bookings = await loadBookings();
@@ -484,34 +526,6 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Clean up old cancelled/pending bookings (older than 30 days)
-app.post('/api/cleanup', async (req, res) => {
-    try {
-        const bookings = await loadBookings();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const cleanedBookings = bookings.filter(b => {
-            const bookingDate = new Date(b.date);
-            // Keep all confirmed bookings and recent bookings
-            return b.status === 'confirmed' || bookingDate > thirtyDaysAgo;
-        });
-        
-        const removedCount = bookings.length - cleanedBookings.length;
-        await saveBookings(cleanedBookings);
-        
-        res.json({
-            success: true,
-            message: `Cleaned up ${removedCount} old bookings`,
-            removedCount: removedCount
-        });
-        
-    } catch (error) {
-        console.error('Error cleaning up bookings:', error);
-        res.status(500).json({ error: 'Failed to clean up bookings' });
-    }
-});
-
 // Start server
 async function startServer() {
     await initFiles();
@@ -521,13 +535,9 @@ async function startServer() {
         console.log(`🚀 Booking Server Running`);
         console.log(`====================================`);
         console.log(`📍 Port: ${PORT}`);
-        console.log(`🌐 API Base: http://localhost:${PORT}/api`);
-        console.log(`📊 Health Check: http://localhost:${PORT}/api/health`);
-        console.log(`⚙️ Settings: http://localhost:${PORT}/api/settings`);
-        console.log(`📅 Bookings: http://localhost:${PORT}/api/bookings`);
-        console.log(`====================================`);
-        console.log(`⏰ Timezone: Asia/Hong_Kong`);
-        console.log(`📝 Dynamic settings loaded from settings.json`);
+        console.log(`🌐 API: http://localhost:${PORT}/api`);
+        console.log(`🔐 Default Admin Password: admin123`);
+        console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
         console.log(`====================================`);
     });
 }
