@@ -223,6 +223,75 @@ function generateBookingId() {
     return `BK-${timestamp}-${random}`.toUpperCase();
 }
 
+function mapClassRow(row) {
+    if (!row) {
+        return null;
+    }
+
+    const tags = Array.isArray(row.tags)
+        ? row.tags
+        : (() => {
+            if (!row.tags) return [];
+            if (typeof row.tags === 'string') {
+                try {
+                    const parsed = JSON.parse(row.tags);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (error) {
+                    return [];
+                }
+            }
+            if (typeof row.tags === 'object') {
+                return Array.isArray(row.tags) ? row.tags : Object.values(row.tags || {});
+            }
+            return [];
+        })();
+
+    return {
+        id: row.id,
+        name: row.name,
+        description: row.description || '',
+        instructor: row.instructor,
+        location: row.location || '',
+        startTime: row.start_time ? new Date(row.start_time).toISOString() : null,
+        endTime: row.end_time ? new Date(row.end_time).toISOString() : null,
+        capacity: Number(row.capacity || 0),
+        price: row.price === null ? null : Number(row.price),
+        tags,
+        isTrialOnly: Boolean(row.is_trial_only),
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    };
+}
+
+function mapClassBookingRow(row) {
+    return {
+        id: row.id,
+        classId: row.class_id,
+        customerName: row.customer_name,
+        email: row.email,
+        phone: row.phone,
+        status: row.status,
+        peopleCount: Number(row.people_count || 1),
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+    };
+}
+
+function mapClassProductRow(row) {
+    return {
+        id: row.id,
+        type: row.type,
+        name: row.name,
+        description: row.description || '',
+        price: row.price === null ? null : Number(row.price),
+        numberOfClasses: Number(row.number_of_classes || 0),
+        validityPeriodDays: row.validity_period_days === null
+            ? null
+            : Number(row.validity_period_days),
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    };
+}
+
 async function initializeDatabase() {
     try {
         await pool.query('SELECT 1');
@@ -321,6 +390,63 @@ async function initializeDatabase() {
     await pool.query(`
         ALTER TABLE bookings
         ALTER COLUMN total_people SET DEFAULT 0
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS classes (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            instructor TEXT,
+            location TEXT,
+            start_time TIMESTAMPTZ NOT NULL,
+            end_time TIMESTAMPTZ NOT NULL,
+            tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+            capacity INTEGER NOT NULL,
+            price NUMERIC(10, 2) NOT NULL,
+            is_trial_only BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS class_bookings (
+            id SERIAL PRIMARY KEY,
+            class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+            customer_name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            people_count INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS class_products (
+            id SERIAL PRIMARY KEY,
+            type TEXT NOT NULL CHECK (type IN ('package', 'trial')),
+            name TEXT NOT NULL,
+            description TEXT,
+            price NUMERIC(10, 2) NOT NULL,
+            number_of_classes INTEGER NOT NULL,
+            validity_period_days INTEGER,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_classes_start_time ON classes(start_time)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_classes_tags ON classes USING GIN (tags)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_class_bookings_class_id ON class_bookings(class_id)
     `);
 
     // Ensure at least one settings row exists
@@ -833,6 +959,257 @@ async function getCatalogItemCapacityUsage(catalogItemId, excludeBookingId = nul
     return Number(result.rows[0].used_capacity);
 }
 
+async function getClasses({ includePast = false, startDate = null, endDate = null, onDate = null } = {}) {
+    const conditions = [];
+    const params = [];
+
+    if (!includePast) {
+        params.push(new Date().toISOString());
+        conditions.push(`end_time >= $${params.length}::timestamptz`);
+    }
+
+    if (onDate) {
+        params.push(onDate);
+        conditions.push(`DATE(start_time) = $${params.length}`);
+    } else {
+        if (startDate) {
+            params.push(startDate);
+            conditions.push(`start_time >= $${params.length}::timestamptz`);
+        }
+        if (endDate) {
+            params.push(endDate);
+            conditions.push(`start_time <= $${params.length}::timestamptz`);
+        }
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await pool.query(`
+        SELECT * FROM classes
+        ${whereClause}
+        ORDER BY start_time ASC
+    `, params);
+
+    return result.rows.map(mapClassRow);
+}
+
+async function getClassById(id) {
+    const result = await pool.query('SELECT * FROM classes WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+        return null;
+    }
+    return mapClassRow(result.rows[0]);
+}
+
+async function createClass(data) {
+    const tags = JSON.stringify(Array.isArray(data.tags) ? data.tags : []);
+
+    const result = await pool.query(`
+        INSERT INTO classes (
+            name,
+            description,
+            instructor,
+            location,
+            start_time,
+            end_time,
+            tags,
+            capacity,
+            price,
+            is_trial_only
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
+        RETURNING *
+    `, [
+        data.name,
+        data.description || null,
+        data.instructor || null,
+        data.location || null,
+        data.startTime,
+        data.endTime,
+        tags,
+        data.capacity,
+        data.price,
+        Boolean(data.isTrialOnly)
+    ]);
+
+    return mapClassRow(result.rows[0]);
+}
+
+async function updateClass(id, data) {
+    const tags = JSON.stringify(Array.isArray(data.tags) ? data.tags : []);
+
+    const result = await pool.query(`
+        UPDATE classes
+        SET
+            name = $1,
+            description = $2,
+            instructor = $3,
+            location = $4,
+            start_time = $5,
+            end_time = $6,
+            tags = $7::jsonb,
+            capacity = $8,
+            price = $9,
+            is_trial_only = $10,
+            updated_at = NOW()
+        WHERE id = $11
+        RETURNING *
+    `, [
+        data.name,
+        data.description || null,
+        data.instructor || null,
+        data.location || null,
+        data.startTime,
+        data.endTime,
+        tags,
+        data.capacity,
+        data.price,
+        Boolean(data.isTrialOnly),
+        id
+    ]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapClassRow(result.rows[0]);
+}
+
+async function deleteClass(id) {
+    const result = await pool.query('DELETE FROM classes WHERE id = $1', [id]);
+    return result.rowCount > 0;
+}
+
+async function getClassCapacityUsage(classId, excludeBookingId = null) {
+    const params = [classId];
+    let query = `
+        SELECT COALESCE(SUM(people_count), 0) AS used_capacity
+        FROM class_bookings
+        WHERE class_id = $1
+          AND status IN ('pending', 'confirmed')
+    `;
+
+    if (excludeBookingId) {
+        params.push(excludeBookingId);
+        query += ` AND id <> $${params.length}`;
+    }
+
+    const result = await pool.query(query, params);
+    return Number(result.rows[0].used_capacity);
+}
+
+async function createClassBooking(data) {
+    const result = await pool.query(`
+        INSERT INTO class_bookings (
+            class_id,
+            customer_name,
+            email,
+            phone,
+            status,
+            people_count
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        RETURNING *
+    `, [
+        data.classId,
+        data.customerName,
+        data.email,
+        data.phone,
+        data.status || 'pending',
+        data.peopleCount || 1
+    ]);
+
+    return mapClassBookingRow(result.rows[0]);
+}
+
+async function getClassBookings(classId) {
+    const result = await pool.query(
+        `SELECT * FROM class_bookings WHERE class_id = $1 ORDER BY created_at DESC`,
+        [classId]
+    );
+
+    return result.rows.map(mapClassBookingRow);
+}
+
+async function getClassProducts({ type = null } = {}) {
+    const conditions = [];
+    const params = [];
+
+    if (type) {
+        params.push(type);
+        conditions.push(`type = $${params.length}`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await pool.query(`
+        SELECT * FROM class_products
+        ${whereClause}
+        ORDER BY price ASC, name ASC
+    `, params);
+
+    return result.rows.map(mapClassProductRow);
+}
+
+async function createClassProduct(product) {
+    const result = await pool.query(`
+        INSERT INTO class_products (
+            type,
+            name,
+            description,
+            price,
+            number_of_classes,
+            validity_period_days
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        RETURNING *
+    `, [
+        product.type,
+        product.name,
+        product.description || null,
+        product.price,
+        product.numberOfClasses,
+        product.validityPeriodDays || null
+    ]);
+
+    return mapClassProductRow(result.rows[0]);
+}
+
+async function updateClassProduct(id, product) {
+    const result = await pool.query(`
+        UPDATE class_products
+        SET
+            type = $1,
+            name = $2,
+            description = $3,
+            price = $4,
+            number_of_classes = $5,
+            validity_period_days = $6,
+            updated_at = NOW()
+        WHERE id = $7
+        RETURNING *
+    `, [
+        product.type,
+        product.name,
+        product.description || null,
+        product.price,
+        product.numberOfClasses,
+        product.validityPeriodDays || null,
+        id
+    ]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapClassProductRow(result.rows[0]);
+}
+
+async function deleteClassProduct(id) {
+    const result = await pool.query('DELETE FROM class_products WHERE id = $1', [id]);
+    return result.rowCount > 0;
+}
+
 module.exports = {
     pool,
     getPool,
@@ -856,5 +1233,17 @@ module.exports = {
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
-    getCatalogItemCapacityUsage
+    getCatalogItemCapacityUsage,
+    getClasses,
+    getClassById,
+    createClass,
+    updateClass,
+    deleteClass,
+    getClassCapacityUsage,
+    createClassBooking,
+    getClassBookings,
+    getClassProducts,
+    createClassProduct,
+    updateClassProduct,
+    deleteClassProduct
 };

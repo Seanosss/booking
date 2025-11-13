@@ -22,6 +22,18 @@ const {
     updateCatalogItem,
     deleteCatalogItem,
     getCatalogItemCapacityUsage,
+    getClasses,
+    getClassById,
+    createClass,
+    updateClass,
+    deleteClass,
+    getClassCapacityUsage,
+    createClassBooking,
+    getClassBookings,
+    getClassProducts,
+    createClassProduct,
+    updateClassProduct,
+    deleteClassProduct,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -262,6 +274,202 @@ async function buildCatalogItemResponse(items) {
         });
     }
     return enriched;
+}
+
+async function buildClassResponse(classes) {
+    const enriched = [];
+    for (const cls of classes) {
+        const used = await getClassCapacityUsage(cls.id);
+        enriched.push({
+            ...cls,
+            seatsRemaining: Math.max(cls.capacity - used, 0),
+            usedCapacity: used
+        });
+    }
+    return enriched;
+}
+
+async function getRentalAvailability(date) {
+    const settings = await loadSettings();
+    const items = await getBookingItemsByDate(date);
+    const confirmedSlots = [];
+    const pendingSlots = [];
+
+    const operatingHours = settings.operatingHours || {};
+    const openingHours = {
+        startTime: operatingHours.startTime || '07:00',
+        endTime: operatingHours.endTime || '22:00'
+    };
+
+    items.forEach(item => {
+        if (item.itemType !== 'room_rental') {
+            return;
+        }
+
+        const slots = generateSlotsForRange(item.startTime, item.endTime);
+        if (item.status === 'confirmed') {
+            confirmedSlots.push(...slots);
+        } else {
+            pendingSlots.push(...slots);
+        }
+    });
+
+    return {
+        date,
+        confirmedSlots,
+        pendingSlots,
+        openingHours
+    };
+}
+
+function validateClassPayload(payload) {
+    const errors = [];
+    const name = typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : '';
+    const instructor = typeof payload.instructor === 'string' && payload.instructor.trim()
+        ? payload.instructor.trim()
+        : null;
+    const location = typeof payload.location === 'string' && payload.location.trim()
+        ? payload.location.trim()
+        : null;
+    const description = typeof payload.description === 'string' ? payload.description : '';
+    const startTime = payload.startTime ? new Date(payload.startTime) : null;
+    const endTime = payload.endTime ? new Date(payload.endTime) : null;
+    const capacity = Number.parseInt(payload.capacity, 10);
+    const price = Number.parseFloat(payload.price);
+    const tags = Array.isArray(payload.tags)
+        ? payload.tags.map(tag => tag.toString().trim()).filter(Boolean)
+        : [];
+    const isTrialOnly = Boolean(payload.isTrialOnly);
+
+    if (!name) {
+        errors.push('Class name is required.');
+    }
+
+    if (!startTime || Number.isNaN(startTime.getTime())) {
+        errors.push('Valid start time is required.');
+    }
+
+    if (!endTime || Number.isNaN(endTime.getTime())) {
+        errors.push('Valid end time is required.');
+    }
+
+    if (startTime && endTime && startTime >= endTime) {
+        errors.push('End time must be after start time.');
+    }
+
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+        errors.push('Capacity must be a positive integer.');
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+        errors.push('Price must be a positive number.');
+    }
+
+    if (errors.length > 0) {
+        return { errors };
+    }
+
+    return {
+        errors: null,
+        data: {
+            name,
+            description,
+            instructor,
+            location,
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            capacity,
+            price,
+            tags,
+            isTrialOnly
+        }
+    };
+}
+
+function validateClassProductPayload(payload) {
+    const errors = [];
+    const type = payload.type === 'trial' ? 'trial' : 'package';
+    const name = typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : '';
+    const description = typeof payload.description === 'string' ? payload.description : '';
+    const price = Number.parseFloat(payload.price);
+    const numberOfClasses = Number.parseInt(payload.numberOfClasses, 10);
+    const validity = payload.validityPeriodDays === null || payload.validityPeriodDays === undefined
+        ? null
+        : Number.parseInt(payload.validityPeriodDays, 10);
+
+    if (!name) {
+        errors.push('Name is required.');
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+        errors.push('Price must be a positive number.');
+    }
+
+    if (!Number.isFinite(numberOfClasses) || numberOfClasses <= 0) {
+        errors.push('Number of classes must be a positive integer.');
+    }
+
+    if (validity !== null && (!Number.isFinite(validity) || validity <= 0)) {
+        errors.push('Validity period must be a positive integer when provided.');
+    }
+
+    if (errors.length > 0) {
+        return { errors };
+    }
+
+    return {
+        errors: null,
+        data: {
+            type,
+            name,
+            description,
+            price,
+            numberOfClasses,
+            validityPeriodDays: validity
+        }
+    };
+}
+
+function validateClassBookingPayload(payload) {
+    const errors = [];
+    const classId = Number.parseInt(payload.classId, 10);
+    const customerName = typeof payload.customerName === 'string' && payload.customerName.trim()
+        ? payload.customerName.trim()
+        : '';
+    const email = typeof payload.email === 'string' && payload.email.trim() ? payload.email.trim() : '';
+    const phone = typeof payload.phone === 'string' && payload.phone.trim() ? payload.phone.trim() : '';
+    const peopleCount = Number.parseInt(payload.peopleCount ?? 1, 10);
+
+    if (!Number.isInteger(classId) || classId <= 0) {
+        errors.push('Valid classId is required.');
+    }
+    if (!customerName) {
+        errors.push('Customer name is required.');
+    }
+    if (!email) {
+        errors.push('Email is required.');
+    }
+    if (!phone) {
+        errors.push('Phone is required.');
+    }
+    if (!Number.isInteger(peopleCount) || peopleCount <= 0) {
+        errors.push('peopleCount must be a positive integer.');
+    }
+
+    if (errors.length > 0) {
+        return { errors };
+    }
+
+    return {
+        errors: null,
+        data: {
+            classId,
+            customerName,
+            email,
+            phone,
+            peopleCount
+        }
+    };
 }
 
 // ===== ROUTES =====
@@ -563,39 +771,26 @@ app.get('/api/availability', async (req, res) => {
             return res.status(400).json({ error: 'Date parameter required' });
         }
 
-        const settings = await loadSettings();
-        const items = await getBookingItemsByDate(date);
-        const confirmedSlots = [];
-        const pendingSlots = [];
-
-        const operatingHours = settings.operatingHours || {};
-        const openingHours = {
-            startTime: operatingHours.startTime || '07:00',
-            endTime: operatingHours.endTime || '22:00'
-        };
-
-        items.forEach(item => {
-            if (item.itemType !== 'room_rental') {
-                return;
-            }
-
-            const slots = generateSlotsForRange(item.startTime, item.endTime);
-            if (item.status === 'confirmed') {
-                confirmedSlots.push(...slots);
-            } else {
-                pendingSlots.push(...slots);
-            }
-        });
-
-        res.json({
-            date,
-            confirmedSlots,
-            pendingSlots,
-            openingHours
-        });
+        const availability = await getRentalAvailability(date);
+        res.json(availability);
     } catch (error) {
         console.error('Error getting availability:', error);
         res.status(500).json({ error: 'Failed to retrieve availability' });
+    }
+});
+
+app.get('/api/rentals/availability', async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ error: 'Date parameter required' });
+        }
+
+        const availability = await getRentalAvailability(date);
+        res.json(availability);
+    } catch (error) {
+        console.error('Error getting rental availability:', error);
+        res.status(500).json({ error: 'Failed to retrieve rental availability' });
     }
 });
 
@@ -618,13 +813,26 @@ app.get('/api/items', async (req, res) => {
 
 app.get('/api/classes', async (req, res) => {
     try {
-        const { date } = req.query;
-        const filters = { includePast: false, type: 'workshop_class' };
+        const { date, start, end, includeTrial, onlyTrial } = req.query;
+        const filters = { includePast: false };
         if (date) {
             filters.onDate = date;
+        } else {
+            if (start) {
+                filters.startDate = start;
+            }
+            if (end) {
+                filters.endDate = end;
+            }
         }
-        const classes = await getCatalogItems(filters);
-        const enriched = await buildCatalogItemResponse(classes);
+        const classes = await getClasses(filters);
+        let filtered = classes;
+        if (onlyTrial === 'true') {
+            filtered = filtered.filter(cls => cls.isTrialOnly);
+        } else if (includeTrial !== 'true') {
+            filtered = filtered.filter(cls => !cls.isTrialOnly);
+        }
+        const enriched = await buildClassResponse(filtered);
         res.json(enriched);
     } catch (error) {
         console.error('Error getting classes:', error);
@@ -634,16 +842,68 @@ app.get('/api/classes', async (req, res) => {
 
 app.get('/api/classes/:id', async (req, res) => {
     try {
-        const item = await getCatalogItemById(req.params.id);
-        if (!item || item.type !== 'workshop_class') {
+        const cls = await getClassById(req.params.id);
+        if (!cls) {
             return res.status(404).json({ error: 'Class not found' });
         }
 
-        const enriched = await buildCatalogItemResponse([item]);
-        res.json(enriched[0]);
+        const [enriched] = await buildClassResponse([cls]);
+        res.json(enriched);
     } catch (error) {
         console.error('Error getting class details:', error);
         res.status(500).json({ error: 'Failed to retrieve class' });
+    }
+});
+
+app.post('/api/class-bookings', async (req, res) => {
+    try {
+        const { errors, data } = validateClassBookingPayload(req.body || {});
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const cls = await getClassById(data.classId);
+        if (!cls) {
+            return res.status(404).json({ error: 'Class not found' });
+        }
+
+        if (cls.isTrialOnly) {
+            return res.status(400).json({ error: 'This class is only available through trial plans.' });
+        }
+
+        const used = await getClassCapacityUsage(cls.id);
+        if (used + data.peopleCount > cls.capacity) {
+            const remaining = Math.max(cls.capacity - used, 0);
+            return res.status(400).json({
+                error: remaining > 0
+                    ? `Only ${remaining} seat(s) remaining for ${cls.name}.`
+                    : `${cls.name} is fully booked.`
+            });
+        }
+
+        const booking = await createClassBooking({
+            ...data,
+            status: 'pending'
+        });
+
+        res.status(201).json({
+            success: true,
+            booking
+        });
+    } catch (error) {
+        console.error('Error creating class booking:', error);
+        res.status(500).json({ error: 'Failed to create class booking' });
+    }
+});
+
+app.get('/api/class-products', async (req, res) => {
+    try {
+        const { type } = req.query;
+        const products = await getClassProducts({ type: type === 'trial' ? 'trial' : type === 'package' ? 'package' : null });
+        res.json(products);
+    } catch (error) {
+        console.error('Error getting class products:', error);
+        res.status(500).json({ error: 'Failed to retrieve class products' });
     }
 });
 
@@ -655,6 +915,149 @@ app.get('/api/admin/items', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error listing catalog items:', error);
         res.status(500).json({ error: 'Failed to retrieve items' });
+    }
+});
+
+app.get('/api/admin/classes', authenticateAdmin, async (req, res) => {
+    try {
+        const { includePast, start, end } = req.query;
+        const classes = await getClasses({
+            includePast: includePast === 'true',
+            startDate: start,
+            endDate: end
+        });
+        const enriched = await buildClassResponse(classes);
+        res.json(enriched);
+    } catch (error) {
+        console.error('Error listing classes:', error);
+        res.status(500).json({ error: 'Failed to retrieve classes' });
+    }
+});
+
+app.get('/api/admin/classes/:id/bookings', authenticateAdmin, async (req, res) => {
+    try {
+        const cls = await getClassById(req.params.id);
+        if (!cls) {
+            return res.status(404).json({ error: 'Class not found' });
+        }
+
+        const bookings = await getClassBookings(cls.id);
+        res.json({
+            class: cls,
+            bookings
+        });
+    } catch (error) {
+        console.error('Error listing class bookings:', error);
+        res.status(500).json({ error: 'Failed to retrieve class bookings' });
+    }
+});
+
+app.post('/api/admin/classes', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateClassPayload(req.body || {});
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const cls = await createClass(data);
+        const [enriched] = await buildClassResponse([cls]);
+        res.status(201).json(enriched);
+    } catch (error) {
+        console.error('Error creating class:', error);
+        res.status(500).json({ error: 'Failed to create class' });
+    }
+});
+
+app.put('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateClassPayload(req.body || {});
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const updated = await updateClass(req.params.id, data);
+        if (!updated) {
+            return res.status(404).json({ error: 'Class not found' });
+        }
+
+        const [enriched] = await buildClassResponse([updated]);
+        res.json(enriched);
+    } catch (error) {
+        console.error('Error updating class:', error);
+        res.status(500).json({ error: 'Failed to update class' });
+    }
+});
+
+app.delete('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const deleted = await deleteClass(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Class not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting class:', error);
+        res.status(500).json({ error: 'Failed to delete class' });
+    }
+});
+
+app.get('/api/admin/class-products', authenticateAdmin, async (req, res) => {
+    try {
+        const { type } = req.query;
+        const products = await getClassProducts({ type: type === 'trial' ? 'trial' : type === 'package' ? 'package' : null });
+        res.json(products);
+    } catch (error) {
+        console.error('Error listing class products:', error);
+        res.status(500).json({ error: 'Failed to retrieve class products' });
+    }
+});
+
+app.post('/api/admin/class-products', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateClassProductPayload(req.body || {});
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const product = await createClassProduct(data);
+        res.status(201).json(product);
+    } catch (error) {
+        console.error('Error creating class product:', error);
+        res.status(500).json({ error: 'Failed to create class product' });
+    }
+});
+
+app.put('/api/admin/class-products/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateClassProductPayload(req.body || {});
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const product = await updateClassProduct(req.params.id, data);
+        if (!product) {
+            return res.status(404).json({ error: 'Class product not found' });
+        }
+
+        res.json(product);
+    } catch (error) {
+        console.error('Error updating class product:', error);
+        res.status(500).json({ error: 'Failed to update class product' });
+    }
+});
+
+app.delete('/api/admin/class-products/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const deleted = await deleteClassProduct(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Class product not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting class product:', error);
+        res.status(500).json({ error: 'Failed to delete class product' });
     }
 });
 

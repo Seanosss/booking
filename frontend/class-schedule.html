@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課堂時間表 | Studio Booking</title>
+    <style>
+        :root {
+            --brand-primary: #0b4f6c;
+            --brand-secondary: #145da0;
+            --surface: #f8f9fb;
+            --surface-strong: #ffffff;
+            --accent: #f2c94c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #edf1f7;
+            color: #1f2933;
+        }
+        header {
+            padding: 40px 24px 30px;
+            background: linear-gradient(135deg, rgba(20,93,160,0.85), rgba(11,79,108,0.95));
+            color: #fff;
+        }
+        header h1 { margin: 0 0 12px; font-size: 2.4rem; }
+        header p { margin: 0; opacity: 0.92; }
+        main { max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; margin-top: -30px; }
+        .layout { display: grid; gap: 24px; }
+        @media (min-width: 960px) {
+            .layout { grid-template-columns: 7fr 4fr; }
+        }
+        .card {
+            background: var(--surface-strong);
+            border-radius: 22px;
+            padding: 28px;
+            box-shadow: 0 28px 50px rgba(15,55,98,0.12);
+            border: 1px solid rgba(20,93,160,0.1);
+        }
+        nav { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        nav a { color: #fff; text-decoration: none; font-weight: 600; }
+        .week-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .week-nav button {
+            border: none;
+            background: rgba(20,93,160,0.12);
+            color: var(--brand-secondary);
+            padding: 8px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .day-buttons { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 12px; margin-bottom: 24px; }
+        .day-button {
+            border: 2px solid rgba(20,93,160,0.18);
+            border-radius: 14px;
+            padding: 14px 12px;
+            background: #fff;
+            cursor: pointer;
+            text-align: center;
+            transition: border 0.2s, transform 0.2s;
+        }
+        .day-button.active {
+            border-color: var(--brand-secondary);
+            background: linear-gradient(135deg, rgba(20,93,160,0.12), rgba(20,93,160,0.18));
+        }
+        .class-item {
+            border: 1px solid #dbe2ed;
+            border-radius: 18px;
+            padding: 18px 20px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .class-item + .class-item { margin-top: 16px; }
+        .class-header { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .class-name { font-size: 1.2rem; color: var(--brand-primary); font-weight: 700; }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag {
+            background: var(--surface);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            color: #475569;
+            border: 1px solid rgba(20,93,160,0.18);
+        }
+        .class-meta { color: #475569; font-size: 0.95rem; display: grid; gap: 6px; }
+        .class-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .class-actions button {
+            border: none;
+            background: linear-gradient(135deg, var(--brand-secondary), var(--brand-primary));
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .class-actions button:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+        .schedule-empty { text-align: center; color: #64748b; padding: 24px; border: 1px dashed #cbd5e1; border-radius: 16px; }
+        .booking-card h2 { margin-top: 0; }
+        .booking-card form { display: grid; gap: 18px; }
+        label { font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px 14px; border: 2px solid #d6dde6; border-radius: 12px; font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--brand-secondary); box-shadow: 0 0 0 3px rgba(20,93,160,0.12); }
+        .status-message { display: none; border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+        .status-message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .booking-summary { background: var(--surface); border-radius: 16px; padding: 16px; border: 1px solid #dbe2ed; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="./classes.html">← 回到課堂專區</a>
+            <a href="./index.html">首頁</a>
+        </nav>
+        <h1>課堂時間表</h1>
+        <p>按週瀏覽課程，查看講師、地點與剩餘名額，直接提交預約資訊。</p>
+    </header>
+    <main>
+        <div class="layout">
+            <div class="card">
+                <div class="week-nav">
+                    <button id="prev-week">← 上一週</button>
+                    <div id="week-label" style="font-weight:700;color:var(--brand-secondary);"></div>
+                    <button id="next-week">下一週 →</button>
+                </div>
+                <div class="day-buttons" id="day-buttons"></div>
+                <div id="classes-container"></div>
+            </div>
+            <div class="card booking-card" id="booking-card" style="display:none;">
+                <h2>預約課堂</h2>
+                <div class="booking-summary" id="booking-summary"></div>
+                <div id="class-success" class="status-message success"></div>
+                <div id="class-error" class="status-message error"></div>
+                <form id="class-booking-form">
+                    <div>
+                        <label for="class-name">課堂</label>
+                        <input type="text" id="class-name" disabled>
+                    </div>
+                    <div>
+                        <label for="class-customer">姓名 *</label>
+                        <input type="text" id="class-customer" required>
+                    </div>
+                    <div>
+                        <label for="class-email">電子郵件 *</label>
+                        <input type="email" id="class-email" required>
+                    </div>
+                    <div>
+                        <label for="class-phone">電話 / WhatsApp *</label>
+                        <input type="tel" id="class-phone" required>
+                    </div>
+                    <div>
+                        <label for="class-people">人數 *</label>
+                        <input type="number" id="class-people" min="1" max="6" value="1" required>
+                    </div>
+                    <button type="submit">提交課堂預約</button>
+                </form>
+            </div>
+        </div>
+    </main>
+    <script>
+        function resolveApiBaseUrl(storageKey) {
+            const DEFAULT_API_PATH = '/api';
+            const RENDER_API_ORIGIN = 'https://booking-ub69.onrender.com';
+            const fallbackOrigin = RENDER_API_ORIGIN;
+            const baseOrigin = (window.location.origin && window.location.origin !== 'null')
+                ? window.location.origin
+                : fallbackOrigin;
+
+            const normalizeBaseUrl = (value) => {
+                if (!value) return null;
+                try {
+                    const url = new URL(value, baseOrigin);
+                    const normalizedPath = url.pathname.replace(/\/+$/, '');
+                    return normalizedPath ? `${url.origin}${normalizedPath}` : url.origin;
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+
+            const params = new URLSearchParams(window.location.search);
+            const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
+            if (queryOverride) {
+                const resolved = normalizeBaseUrl(queryOverride);
+                if (resolved) {
+                    try { localStorage.setItem(storageKey, resolved); } catch (error) {}
+                    return resolved;
+                }
+            }
+            try {
+                const stored = normalizeBaseUrl(localStorage.getItem(storageKey));
+                if (stored) return stored;
+            } catch (error) {}
+
+            const inlineConfig = normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl);
+            if (inlineConfig) return inlineConfig;
+
+            const metaTag = document.querySelector('meta[name="api-base-url"]');
+            const metaUrl = normalizeBaseUrl(metaTag?.content);
+            if (metaUrl) return metaUrl;
+
+            const appendApiPath = (origin) => `${origin.replace(/\/+$/, '')}${DEFAULT_API_PATH}`;
+            const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
+            const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
+            if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
+                return appendApiPath(normalizedCurrentOrigin);
+            }
+            const isLocalhost = normalizedCurrentOrigin
+                ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin)
+                : false;
+            if (isLocalhost && normalizedCurrentOrigin) {
+                return appendApiPath(normalizedCurrentOrigin);
+            }
+            return appendApiPath(normalizedRenderOrigin);
+        }
+
+        const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');
+
+        const state = {
+            weekStart: null,
+            selectedDate: null,
+            classes: [],
+            selectedClass: null
+        };
+
+        const elements = {
+            prevWeek: document.getElementById('prev-week'),
+            nextWeek: document.getElementById('next-week'),
+            weekLabel: document.getElementById('week-label'),
+            dayButtons: document.getElementById('day-buttons'),
+            classesContainer: document.getElementById('classes-container'),
+            bookingCard: document.getElementById('booking-card'),
+            bookingSummary: document.getElementById('booking-summary'),
+            bookingForm: document.getElementById('class-booking-form'),
+            classNameInput: document.getElementById('class-name'),
+            customerInput: document.getElementById('class-customer'),
+            emailInput: document.getElementById('class-email'),
+            phoneInput: document.getElementById('class-phone'),
+            peopleInput: document.getElementById('class-people'),
+            successMessage: document.getElementById('class-success'),
+            errorMessage: document.getElementById('class-error')
+        };
+
+        function startOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day; // start from Sunday
+            d.setDate(diff);
+            d.setHours(0,0,0,0);
+            return d;
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDisplayDate(date) {
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+
+        function updateWeekLabel() {
+            const start = new Date(state.weekStart);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            elements.weekLabel.textContent = `${start.getFullYear()}年 ${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+        }
+
+        function renderDayButtons() {
+            elements.dayButtons.innerHTML = '';
+            for (let i = 0; i < 7; i += 1) {
+                const date = new Date(state.weekStart);
+                date.setDate(date.getDate() + i);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'day-button';
+                const iso = formatDate(date);
+                button.dataset.date = iso;
+                button.innerHTML = `<div style="font-weight:700;">${['日','一','二','三','四','五','六'][date.getDay()]}</div><div>${formatDisplayDate(date)}</div>`;
+                if (state.selectedDate === iso) {
+                    button.classList.add('active');
+                }
+                button.addEventListener('click', () => {
+                    state.selectedDate = iso;
+                    renderDayButtons();
+                    loadClasses(iso);
+                });
+                elements.dayButtons.appendChild(button);
+            }
+        }
+
+        function renderClasses() {
+            elements.classesContainer.innerHTML = '';
+            if (!state.classes || state.classes.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'schedule-empty';
+                empty.textContent = '當日沒有公開課程。';
+                elements.classesContainer.appendChild(empty);
+                return;
+            }
+            state.classes.forEach(cls => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'class-item';
+                const header = document.createElement('div');
+                header.className = 'class-header';
+                header.innerHTML = `<div>
+                    <div style="font-weight:600; color:#0f172a;">${cls.startTime.substring(11,16)} - ${cls.endTime.substring(11,16)}</div>
+                    <div class="class-name">${cls.name}</div>
+                </div>`;
+                const tags = document.createElement('div');
+                tags.className = 'tag-list';
+                (cls.tags || []).forEach(tag => {
+                    const span = document.createElement('span');
+                    span.className = 'tag';
+                    span.textContent = tag;
+                    tags.appendChild(span);
+                });
+                header.appendChild(tags);
+                wrapper.appendChild(header);
+
+                const meta = document.createElement('div');
+                meta.className = 'class-meta';
+                meta.innerHTML = `
+                    <div>講師：${cls.instructor || '待定'}</div>
+                    <div>地點：${cls.location || 'Studio'}</div>
+                    <div>名額：剩餘 ${cls.seatsRemaining} / ${cls.capacity}</div>
+                    <div>價格：HK$ ${Number(cls.price || 0).toFixed(2)}</div>
+                `;
+                wrapper.appendChild(meta);
+
+                const actions = document.createElement('div');
+                actions.className = 'class-actions';
+                const availability = document.createElement('div');
+                availability.textContent = cls.seatsRemaining > 0 ? '立即預約' : '已滿額';
+                availability.style.fontWeight = '600';
+                availability.style.color = cls.seatsRemaining > 0 ? '#0f766e' : '#b91c1c';
+                const bookBtn = document.createElement('button');
+                bookBtn.type = 'button';
+                bookBtn.textContent = '預約 / 加入名單';
+                bookBtn.disabled = cls.seatsRemaining <= 0 || cls.isTrialOnly;
+                bookBtn.addEventListener('click', () => openBookingForm(cls));
+                actions.appendChild(availability);
+                actions.appendChild(bookBtn);
+                wrapper.appendChild(actions);
+
+                if (cls.isTrialOnly) {
+                    const trialNote = document.createElement('div');
+                    trialNote.style.color = '#b45309';
+                    trialNote.style.fontSize = '0.9rem';
+                    trialNote.textContent = '此課堂僅限試堂套票預約。';
+                    wrapper.appendChild(trialNote);
+                }
+
+                elements.classesContainer.appendChild(wrapper);
+            });
+        }
+
+        async function loadClasses(date) {
+            try {
+                elements.classesContainer.innerHTML = '<p style="color:#475569;">載入中...</p>';
+                const response = await fetch(`${API_BASE_URL}/classes?date=${date}&includeTrial=true`);
+                if (!response.ok) {
+                    throw new Error('無法取得課程資料');
+                }
+                const data = await response.json();
+                state.classes = data;
+                renderClasses();
+            } catch (error) {
+                console.error(error);
+                elements.classesContainer.innerHTML = `<div class="schedule-empty">${error.message || '載入課程失敗，請稍後再試。'}</div>`;
+            }
+        }
+
+        function openBookingForm(cls) {
+            state.selectedClass = cls;
+            elements.bookingCard.style.display = 'block';
+            elements.classNameInput.value = `${cls.name}`;
+            elements.peopleInput.value = '1';
+            elements.successMessage.style.display = 'none';
+            elements.errorMessage.style.display = 'none';
+            const start = new Date(cls.startTime);
+            const end = new Date(cls.endTime);
+            elements.bookingSummary.innerHTML = `
+                <div><strong>${start.getFullYear()}-${(start.getMonth()+1).toString().padStart(2,'0')}-${start.getDate().toString().padStart(2,'0')}</strong></div>
+                <div>時間：${start.toTimeString().slice(0,5)} - ${end.toTimeString().slice(0,5)}</div>
+                <div>講師：${cls.instructor || '待定'}</div>
+                <div>地點：${cls.location || 'Studio'}</div>
+                <div>剩餘名額：${cls.seatsRemaining}</div>
+            `;
+        }
+
+        elements.bookingForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            elements.successMessage.style.display = 'none';
+            elements.errorMessage.style.display = 'none';
+            if (!state.selectedClass) {
+                elements.errorMessage.textContent = '請先選擇課堂。';
+                elements.errorMessage.style.display = 'block';
+                return;
+            }
+            const payload = {
+                classId: state.selectedClass.id,
+                customerName: elements.customerInput.value.trim(),
+                email: elements.emailInput.value.trim(),
+                phone: elements.phoneInput.value.trim(),
+                peopleCount: Number(elements.peopleInput.value) || 1
+            };
+            if (!payload.customerName || !payload.email || !payload.phone) {
+                elements.errorMessage.textContent = '請填寫完整聯絡資訊。';
+                elements.errorMessage.style.display = 'block';
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/class-bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '預約失敗');
+                }
+                elements.successMessage.textContent = '預約提交成功！請留意工作人員確認。';
+                elements.successMessage.style.display = 'block';
+                elements.bookingForm.reset();
+                await loadClasses(state.selectedDate);
+            } catch (error) {
+                elements.errorMessage.textContent = error.message || '預約失敗，請稍後再試。';
+                elements.errorMessage.style.display = 'block';
+            }
+        });
+
+        elements.prevWeek.addEventListener('click', () => {
+            state.weekStart.setDate(state.weekStart.getDate() - 7);
+            updateWeekLabel();
+            renderDayButtons();
+            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                state.selectedDate = formatDate(state.weekStart);
+            }
+            loadClasses(state.selectedDate);
+        });
+
+        elements.nextWeek.addEventListener('click', () => {
+            state.weekStart.setDate(state.weekStart.getDate() + 7);
+            updateWeekLabel();
+            renderDayButtons();
+            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                state.selectedDate = formatDate(state.weekStart);
+            }
+            loadClasses(state.selectedDate);
+        });
+
+        function init() {
+            const today = new Date();
+            state.weekStart = startOfWeek(today);
+            state.selectedDate = formatDate(today);
+            updateWeekLabel();
+            renderDayButtons();
+            loadClasses(state.selectedDate);
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -3,1026 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio Booking System 專業錄音室預約系統</title>
+    <title>Studio Booking | 首頁</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #EDEDE9; color: #2c2c2c; min-height: 100vh; padding: 20px; }
-        a { color: #0b4f6c; }
-        .language-toggle { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; background: rgba(255,255,255,0.95); padding: 5px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
-        .lang-btn { padding: 8px 20px; background: transparent; border: none; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 500; color: #333; }
-        .lang-btn.active { background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; }
-        .container { max-width: 1100px; margin: 60px auto 40px; background: rgba(255,255,255,0.98); border-radius: 24px; box-shadow: 0 28px 60px rgba(0,0,0,0.15); overflow: hidden; }
-        .header { background: linear-gradient(135deg,#145da0 0%,#0b4f6c 100%); color: #fff; padding: 50px 40px; text-align: center; }
-        .header h1 { font-size: 2.3em; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px; }
-        .header p { font-size: 1.05em; opacity: 0.95; }
-        .booking-content { padding: 40px 40px 50px; background: rgba(255,255,255,0.9); }
-        .section { margin-bottom: 32px; }
-        .section-title { color: #145da0; font-size: 1.45em; margin-bottom: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-        .panel { background: #f8f9fb; border-radius: 18px; padding: 24px; box-shadow: inset 0 0 0 1px rgba(20,93,160,0.06); }
-        .grid-two-columns { display: grid; gap: 24px; }
-        @media (min-width: 860px) { .grid-two-columns { grid-template-columns: 2fr 1fr; } }
-        .date-input { width: 100%; padding: 14px 16px; border: 2px solid #d6dde6; border-radius: 12px; font-size: 1em; background: #fff; color: #2c2c2c; transition: all 0.3s; }
-        .date-input:focus, .form-input:focus, textarea:focus, .form-select:focus { border-color: #145da0; outline: none; box-shadow: 0 0 0 4px rgba(20,93,160,0.15); }
-        .time-slots { display: grid; grid-template-columns: repeat(auto-fill,minmax(90px,1fr)); gap: 10px; margin-top: 16px; }
-        .time-slot { padding: 10px 6px; border: 2px solid #e2e7ef; border-radius: 10px; text-align: center; font-weight: 600; font-size: 0.9em; background: #fff; cursor: pointer; transition: all 0.25s; }
-        .time-slot:hover:not(.unavailable):not(.pending) { border-color: #145da0; background: #ecf2fb; transform: translateY(-2px); }
-        .time-slot.selected { background: linear-gradient(135deg,#145da0 0%,#0b4f6c 100%); color: #fff; border-color: #0b4f6c; }
-        .time-slot.in-range { background: #dce7f7; border-color: #0b4f6c; }
-        .time-slot.unavailable { background: #f0f0f0; color: #9aa5b1; cursor: not-allowed; text-decoration: line-through; }
-        .time-slot.pending { background: #fff3cd; color: #856404; border-color: #f2c94c; cursor: not-allowed; }
-        .slot-instruction { background: #ecf2fb; padding: 16px; border-radius: 12px; margin: 18px 0; border-left: 4px solid #145da0; color: #0b4f6c; }
-        .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.9em; color: #516273; margin-top: 18px; }
-        .legend-box { width: 16px; height: 16px; border: 1px solid #d6dde6; border-radius: 4px; display: inline-block; }
-        .form-group { margin-bottom: 18px; }
-        .form-label { display: block; margin-bottom: 8px; color: #495057; font-weight: 600; }
-        .form-input, .form-select, textarea { width: 100%; padding: 12px 14px; border: 2px solid #d6dde6; border-radius: 12px; font-size: 1em; background: #fff; color: #2c2c2c; transition: all 0.3s; }
-        .add-session-btn, .catalog-actions button, .submit-btn { background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .add-session-btn { width: 100%; padding: 14px; margin-top: 12px; }
-        .add-session-btn:disabled, .catalog-actions button:disabled, .submit-btn:disabled { background: #b8c5d6; cursor: not-allowed; box-shadow: none; }
-        .add-session-btn:not(:disabled):hover, .catalog-actions button:not(:disabled):hover, .submit-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(11,79,108,0.25); }
-        .cart { display: flex; flex-direction: column; gap: 15px; }
-        .cart-item { background: #fff; border-radius: 14px; padding: 16px; border: 1px solid #dbe2ed; box-shadow: 0 6px 18px rgba(0,0,0,0.05); position: relative; }
-        .cart-item-title { font-weight: 600; color: #0b4f6c; margin-bottom: 6px; }
-        .cart-item-meta { font-size: 0.9em; color: #57606c; line-height: 1.6; }
-        .remove-btn { position: absolute; top: 12px; right: 12px; border: none; background: #f2545b; color: #fff; padding: 6px 10px; border-radius: 18px; font-size: 0.8em; cursor: pointer; }
-        .summary-card { background: #fff; border-radius: 18px; padding: 22px; border: 1px solid #dbe2ed; }
-        .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #edf1f7; color: #43566a; }
-        .summary-row.total { font-size: 1.2em; font-weight: 700; color: #0b4f6c; border-bottom: none; padding-top: 14px; }
-        .instructions { background: #fff7e6; border: 1px solid #f2c94c; border-radius: 14px; padding: 22px; margin-bottom: 30px; }
-        .instructions h4 { color: #b07902; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .instructions ol { margin-left: 20px; color: #b07902; line-height: 1.7; }
-        .item-list { display: grid; gap: 18px; }
-        @media (min-width: 720px) { .item-list { grid-template-columns: repeat(2,1fr); } }
-        .catalog-card { background: #f8f9fb; border-radius: 16px; padding: 18px; border: 1px solid rgba(20,93,160,0.1); box-shadow: 0 10px 18px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 10px; }
-        .catalog-card h3 { color: #0b4f6c; font-size: 1.2em; }
-        .catalog-meta { font-size: 0.92em; color: #516273; line-height: 1.5; }
-        .catalog-actions { display: flex; gap: 10px; align-items: center; }
-        .catalog-actions input { width: 90px; padding: 8px 10px; border: 2px solid #d6dde6; border-radius: 10px; }
-        .catalog-actions button { flex: 1; padding: 10px 12px; border-radius: 10px; }
-        .view-toggle { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-        .view-btn { padding: 12px 28px; border-radius: 999px; border: 2px solid #145da0; background: transparent; color: #145da0; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .view-btn.active { background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; border-color: transparent; box-shadow: 0 12px 24px rgba(11,79,108,0.2); }
-        .view-panel { display: none; }
-        .view-panel.active { display: block; }
-        .classes-filter { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
-        .classes-card { background: #fff; border-radius: 16px; border: 1px solid #dbe2ed; padding: 18px; box-shadow: 0 12px 24px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 12px; }
-        .classes-card.full { opacity: 0.7; }
-        .classes-card.full .classes-actions { opacity: 0.85; }
-        .classes-card h3 { color: #0b4f6c; font-size: 1.2em; }
-        .classes-meta { color: #516273; font-size: 0.95em; line-height: 1.6; }
-        .classes-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .classes-actions input { width: 100px; padding: 10px; border: 2px solid #d6dde6; border-radius: 10px; }
-        .classes-filter .btn { padding: 12px 20px; border-radius: 12px; border: none; background: #e4ebf5; color: #1f2933; font-weight: 600; cursor: pointer; transition: background 0.3s; }
-        .classes-filter .btn:hover { background: #d1dae9; }
-        .classes-empty { padding: 18px; border: 1px dashed #d6dde6; border-radius: 12px; color: #516273; background: #f8f9fb; font-size: 0.95em; text-align: center; }
-        .submit-btn { width: 100%; padding: 18px; font-size: 1.08em; letter-spacing: 0.5px; margin-top: 18px; }
-        .success-message, .error-message { padding: 15px 18px; border-radius: 12px; margin-bottom: 18px; font-weight: 600; display: none; }
-        .success-message { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error-message { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        @media (max-width: 768px) { .container { margin: 90px 0 20px; border-radius: 0; box-shadow: none; } .booking-content { padding: 30px 22px 40px; } .time-slots { grid-template-columns: repeat(3,1fr); } .language-toggle { top: 10px; right: 10px; } }
+        :root {
+            --brand-primary: #0b4f6c;
+            --brand-secondary: #145da0;
+            --surface: #f8f9fb;
+            --surface-strong: #ffffff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: radial-gradient(circle at top, rgba(20,93,160,0.18), transparent 55%), #edf1f7;
+            color: #1f2933;
+            min-height: 100vh;
+        }
+        header {
+            padding: 60px 24px 40px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.8rem;
+            color: var(--brand-primary);
+            margin-bottom: 12px;
+        }
+        header p { color: #475569; font-size: 1.1rem; }
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px 60px;
+        }
+        .card-grid {
+            display: grid;
+            gap: 28px;
+        }
+        @media (min-width: 768px) {
+            .card-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+        .nav-card {
+            position: relative;
+            background: var(--surface-strong);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 24px 48px rgba(12,42,89,0.12);
+            border: 1px solid rgba(20,93,160,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        .nav-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 32px 60px rgba(15,55,98,0.18);
+        }
+        .nav-card h2 {
+            font-size: 1.8rem;
+            color: var(--brand-secondary);
+            margin-bottom: 12px;
+        }
+        .nav-card p { color: #475569; line-height: 1.6; }
+        .nav-card span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+        footer {
+            text-align: center;
+            padding: 40px 24px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .badge {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(20,93,160,0.1);
+            color: var(--brand-secondary);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
-    <div class="language-toggle">
-        <button class="lang-btn active" onclick="setLanguage('zh')" id="zh-btn">中文</button>
-        <button class="lang-btn" onclick="setLanguage('en')" id="en-btn">English</button>
-    </div>
-    <div class="container">
-        <div class="header">
-            <h1 id="main-title">專業錄音室預約系統</h1>
-            <p id="sub-title">專業錄音室 • 每日營業</p>
+    <header>
+        <h1>Studio Booking</h1>
+        <p>選擇您需要的服務流程：場地租用或課堂體驗</p>
+    </header>
+    <main>
+        <div class="card-grid">
+            <a class="nav-card" href="./rental.html">
+                <div class="badge">Rental 場地租用</div>
+                <h2>Whole Venue Rental</h2>
+                <p>查看營業時間，選擇多個 30 分鐘時段並一次提交。支援尖峰 / 非尖峰自動計價，以及人數需求設定。</p>
+                <span>進入場地預約 →</span>
+            </a>
+            <a class="nav-card" href="./classes.html">
+                <div class="badge" style="background:rgba(242,201,76,0.2);color:#a16207;">Class 課堂預約</div>
+                <h2>Class & Trial Centre</h2>
+                <p>瀏覽每週課堂時間表、購買課程套票或探索試堂方案。掌握即時名額與講師資訊。</p>
+                <span>前往課堂專區 →</span>
+            </a>
         </div>
-        <div class="booking-content">
-            <div class="view-toggle">
-                <button class="view-btn active" data-view="studio" id="view-studio-btn"><span id="view-studio-text">場地預約</span></button>
-                <button class="view-btn" data-view="classes" id="view-classes-btn"><span id="view-classes-text">課程 / 工作坊</span></button>
-            </div>
-            <div id="studio-view" class="view-panel active">
-                <div id="success-message" class="success-message"></div>
-                <div id="error-message" class="error-message"></div>
-                <div class="instructions">
-                    <h4><span>⚠️</span><span id="instructions-title">重要預約須知</span></h4>
-                    <ol id="instructions-list">
-                        <li id="instruction-1">選擇您想要的日期</li>
-                        <li id="instruction-2">點擊開始時段，再點擊結束時段（可選擇多個連續時段）</li>
-                        <li id="instruction-3">填寫您的聯絡資料</li>
-                        <li id="instruction-4">透過銀行轉帳或 PayMe 付款</li>
-                        <li id="instruction-5">將付款證明傳送至 WhatsApp: 98725268</li>
-                        <li id="instruction-6">您的預約將在 30 分鐘內確認</li>
-                    </ol>
-                </div>
-                <div class="section grid-two-columns">
-                    <div class="panel">
-                        <h2 class="section-title"><span>📅</span><span id="date-title">選擇日期</span></h2>
-                        <input type="date" id="date-input" class="date-input" onchange="handleDateChange(this.value)">
-                        <div id="time-section" style="display:none;margin-top:20px;">
-                            <h2 class="section-title"><span>⏰</span><span id="time-title">選擇時段</span></h2>
-                            <div class="slot-instruction">
-                                <p><strong id="select-method">選擇方式：</strong></p>
-                                <p id="select-step1">1. 點擊第一個時段（開始時間）</p>
-                                <p id="select-step2">2. 再點擊最後一個時段（結束時間）</p>
-                                <p id="select-step3">3. 系統會自動選取中間的所有時段</p>
-                            </div>
-                            <div id="time-slots" class="time-slots"></div>
-                            <div class="legend">
-                                <span><span class="legend-box" style="background:#f0f0f0;"></span><span id="legend-confirmed">已確認</span></span>
-                                <span><span class="legend-box" style="background:#fff3cd;border-color:#f2c94c;"></span><span id="legend-pending">待確認</span></span>
-                                <span><span class="legend-box" style="background:#fff;border-color:#145da0;"></span><span id="legend-available">可預約</span></span>
-                            </div>
-                            <div class="form-group" style="margin-top:20px;">
-                                <label class="form-label" for="people-count" id="people-label">參與人數 *</label>
-                                <input type="number" id="people-count" class="form-input" min="1" max="18" value="4">
-                            </div>
-                            <button class="add-session-btn" id="add-session-btn" onclick="addSelectedSessionToCart()" disabled><span id="add-session-text">加入購物車</span></button>
-                        </div>
-                    </div>
-                    <div class="panel">
-                        <h2 class="section-title"><span>🛒</span><span id="cart-title">預約購物車</span></h2>
-                        <div id="cart" class="cart"></div>
-                        <div class="summary-card" style="margin-top:20px;">
-                            <div class="summary-row"><span id="summary-items-label">已選擇項目：</span><span id="summary-items">0</span></div>
-                            <div class="summary-row"><span id="summary-people-label">總人數：</span><span id="summary-people">0</span></div>
-                            <div class="summary-row total"><span id="total-label">總金額：</span><span>HK$<span id="total-amount">0</span></span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="section" id="rental-section">
-                    <h2 class="section-title" style="margin-top:32px;"><span>🏢</span><span id="rental-title">場地租用選項</span></h2>
-                    <div id="rental-list" class="item-list"></div>
-                </div>
-                <div class="section" id="contact-section" style="display:none;">
-                    <div class="panel">
-                        <h2 class="section-title"><span>👤</span><span id="info-title">聯絡資料</span></h2>
-                        <form id="booking-form">
-                            <div class="form-group"><label class="form-label" for="customerName" id="name-label">姓名 *</label><input type="text" id="customerName" class="form-input" required></div>
-                            <div class="form-group"><label class="form-label" for="email" id="email-label">電子郵件 *</label><input type="email" id="email" class="form-input" required></div>
-                            <div class="form-group"><label class="form-label" for="phone" id="phone-label">電話號碼 (WhatsApp) *</label><input type="tel" id="phone" class="form-input" placeholder="例如：98765432" required></div>
-                            <div class="form-group"><label class="form-label" for="notes" id="notes-label">特殊要求（選填）</label><textarea id="notes" class="form-input" rows="3" placeholder="任何特殊設備或設置需求..."></textarea></div>
-                            <div class="panel" style="background:#fff;border:1px solid #dbe2ed;margin-bottom:18px;">
-                                <h3 style="color:#145da0;margin-bottom:12px;text-align:center;" id="payment-title">付款方式</h3>
-                                <div id="payment-info"></div>
-                            </div>
-                            <button type="submit" class="submit-btn" id="submit-btn" disabled><span id="submit-btn-text">確認預約申請</span></button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div id="classes-view" class="view-panel">
-                <div class="section">
-                    <div id="classes-success" class="success-message"></div>
-                    <div id="classes-error" class="error-message"></div>
-                    <h2 class="section-title"><span>🎶</span><span id="classes-title">課程 / 工作坊</span></h2>
-                    <div class="classes-filter">
-                        <div>
-                            <label class="form-label" for="classes-date-filter" id="classes-date-label">篩選日期</label>
-                            <input type="date" id="classes-date-filter" class="date-input">
-                        </div>
-                        <button type="button" class="btn btn-secondary" id="classes-clear-button">顯示全部</button>
-                    </div>
-                    <div id="classes-list" class="item-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script>
-        function resolveApiBaseUrl(storageKey) {
-            const DEFAULT_API_PATH = '/api';
-            const RENDER_API_ORIGIN = 'https://booking-ub69.onrender.com';
-            const fallbackOrigin = RENDER_API_ORIGIN;
-            const baseOrigin = (window.location.origin && window.location.origin !== 'null')
-                ? window.location.origin
-                : fallbackOrigin;
-
-            const normalizeBaseUrl = (value) => {
-                if (!value) return null;
-                try {
-                    const url = new URL(value, baseOrigin);
-                    const normalizedPath = url.pathname.replace(/\/+$/, '');
-                    return normalizedPath ? `${url.origin}${normalizedPath}` : url.origin;
-                } catch (error) {
-                    console.warn('Ignoring invalid API base URL:', value, error);
-                    return null;
-                }
-            };
-
-            const params = new URLSearchParams(window.location.search);
-            const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
-            if (queryOverride) {
-                const resolved = normalizeBaseUrl(queryOverride);
-                if (resolved) {
-                    try {
-                        localStorage.setItem(storageKey, resolved);
-                    } catch (error) {
-                        console.warn('Unable to persist API base URL override:', error);
-                    }
-                    return resolved;
-                }
-            }
-
-            try {
-                const stored = normalizeBaseUrl(localStorage.getItem(storageKey));
-                if (stored) {
-                    return stored;
-                }
-            } catch (error) {
-                console.warn('Unable to read stored API base URL override:', error);
-            }
-
-            const inlineConfig = normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl);
-            if (inlineConfig) return inlineConfig;
-
-            const metaTag = document.querySelector('meta[name="api-base-url"]');
-            const metaUrl = normalizeBaseUrl(metaTag?.content);
-            if (metaUrl) return metaUrl;
-
-            const appendApiPath = (origin) => `${origin.replace(/\/+$/, '')}${DEFAULT_API_PATH}`;
-            const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
-            const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
-
-            if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
-                return appendApiPath(normalizedCurrentOrigin);
-            }
-
-            const isLocalhost = normalizedCurrentOrigin
-                ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin)
-                : false;
-
-            if (isLocalhost && normalizedCurrentOrigin) {
-                return appendApiPath(normalizedCurrentOrigin);
-            }
-
-            return appendApiPath(normalizedRenderOrigin);
-        }
-
-        const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');
-        console.log('Using API_BASE_URL:', API_BASE_URL);
-        let SETTINGS = {};
-        let CATALOG = { workshops: [], roomRentals: [] };
-        let AVAILABILITY = { confirmedSlots: [], pendingSlots: [] };
-        let currentLanguage = 'zh';
-        let selectedDate = null;
-        let selection = { start: null, end: null };
-        let cartItems = [];
-        let itemCounter = 0;
-        let activeView = 'studio';
-        let classesFilterDate = null;
-        const activeErrors = {
-            studio: new Set(),
-            classes: new Set()
-        };
-
-        async function checkApiConnectivity() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/health`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                console.log('Connected to backend API');
-                setViewError('studio', 'api', false);
-                setViewError('classes', 'api', false);
-            } catch (error) {
-                console.error('Public API health check failed:', error);
-                setViewError('studio', 'api', true);
-                setViewError('classes', 'api', true);
-            }
-        }
-
-        function sanitizeText(value) {
-            if (value === null || value === undefined) return '';
-            return value.toString().replace(/[&<>"']/g, (char) => {
-                switch (char) {
-                    case '&':
-                        return '&amp;';
-                    case '<':
-                        return '&lt;';
-                    case '>':
-                        return '&gt;';
-                    case '"':
-                        return '&quot;';
-                    case '\'':
-                        return '&#39;';
-                    default:
-                        return char;
-                }
-            });
-        }
-
-        function sanitizeMultilineText(value) {
-            return sanitizeText(value).replace(/\n/g, '<br>');
-        }
-        function timesOverlap(startA, endA, startB, endB) {
-            return timeToMinutes(startA) < timeToMinutes(endB) && timeToMinutes(endA) > timeToMinutes(startB);
-        }
-        function hasRoomRentalConflict(date, startTime, endTime) {
-            return cartItems.some(item => item.type === 'room_rental' && item.date === date && timesOverlap(startTime, endTime, item.startTime, item.endTime));
-        }
-        function getCartUsageForCatalogItem(id) {
-            if (!id) return 0;
-            return cartItems
-                .filter(item => item.catalogItemId === id)
-                .reduce((sum, item) => sum + Number(item.peopleCount || 0), 0);
-        }
-        function clearMessages() {
-            ['success-message', 'error-message', 'classes-success', 'classes-error'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.style.display = 'none';
-                    el.textContent = '';
-                }
-            });
-        }
-        function switchView(view) {
-            if (activeView === view) return;
-            activeView = view;
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.view === view);
-            });
-            document.querySelectorAll('.view-panel').forEach(panel => {
-                panel.classList.toggle('active', panel.id === `${view}-view`);
-            });
-            clearMessages();
-            updateViewError('studio');
-            updateViewError('classes');
-            if (view === 'classes') {
-                renderClassesList();
-            } else {
-                renderCart();
-            }
-        }
-        const translations = {
-            zh: { 'main-title': '專業錄音室預約系統', 'sub-title': '專業錄音室 • 每日營業', 'instructions-title': '重要預約須知', 'date-title': '選擇日期', 'time-title': '選擇時段', 'info-title': '聯絡資料', 'classes-title': '課程 / 工作坊', 'classes-date-label': '篩選日期', 'classes-clear-button': '顯示全部', 'view-studio-text': '場地預約', 'view-classes-text': '課程 / 工作坊', 'rental-title': '場地租用選項', 'name-label': '姓名 *', 'email-label': '電子郵件 *', 'phone-label': '電話號碼 (WhatsApp) *', 'notes-label': '特殊要求（選填）', 'legend-confirmed': '已確認', 'legend-pending': '待確認', 'legend-available': '可預約', 'people-label': '參與人數 *', 'cart-title': '預約購物車', 'summary-items-label': '已選擇項目：', 'summary-people-label': '總人數：', 'total-label': '總金額：', 'add-session-text': '加入購物車', 'submit-btn-text': '確認預約申請', 'select-method': '選擇方式：', 'select-step1': '1. 點擊第一個時段（開始時間）', 'select-step2': '2. 再點擊最後一個時段（結束時間）', 'select-step3': '3. 系統會自動選取中間的所有時段', 'success-booking': '預約申請已成功提交！', 'error-booking': '預約失敗，請重試。', 'error-select-slot': '請選擇日期、時段及人數（最多 18 人）。', 'error-cart-empty': '請先加入至少一個預約項目。', 'error-capacity': '超過可用人數，請重新輸入。', 'error-overlap': '選擇的時段與現有項目重疊，請選擇其他時間。', 'error-api-offline': '後端 API 無法連線，請稍後再試或聯絡管理員。', 'error-load-settings': '無法載入設定資料，請稍後再試。', 'error-load-items': '無法載入課程與項目資料，請稍後再試。', 'error-load-availability': '無法載入該日期的時段資訊，請稍後再試。', 'payment-title': '付款方式', 'cart-empty': '尚未選擇任何預約項目。' },
-            en: { 'main-title': 'Professional Studio Booking', 'sub-title': 'Professional Recording Studio • Open Daily', 'instructions-title': 'Important Booking Instructions', 'date-title': 'Select Date', 'time-title': 'Select Time Slots', 'info-title': 'Contact Information', 'classes-title': 'Workshops / Classes', 'classes-date-label': 'Filter by date', 'classes-clear-button': 'Show all', 'view-studio-text': 'Studio Rental', 'view-classes-text': 'Classes / Workshops', 'rental-title': 'Room Rental Options', 'name-label': 'Full Name *', 'email-label': 'Email Address *', 'phone-label': 'Phone Number (WhatsApp) *', 'notes-label': 'Special Requirements (Optional)', 'legend-confirmed': 'Confirmed', 'legend-pending': 'Pending', 'legend-available': 'Available', 'people-label': 'Number of Participants *', 'cart-title': 'Booking Cart', 'summary-items-label': 'Items Selected:', 'summary-people-label': 'Total People:', 'total-label': 'Total Amount:', 'add-session-text': 'Add to Cart', 'submit-btn-text': 'CONFIRM BOOKING REQUEST', 'select-method': 'How to select:', 'select-step1': '1. Click first slot (start time)', 'select-step2': '2. Click last slot (end time)', 'select-step3': '3. System will auto-select all slots in between', 'success-booking': 'Booking request submitted successfully!', 'error-booking': 'Booking failed. Please try again.', 'error-select-slot': 'Select a date, time range, and participants (maximum 18).', 'error-cart-empty': 'Add at least one booking item before submitting.', 'error-capacity': 'Participant count exceeds availability. Please adjust.', 'error-overlap': 'Selected time overlaps with another item. Please choose a different slot.', 'error-api-offline': 'Unable to reach the booking API. Please try again later or contact support.', 'error-load-settings': 'Unable to load studio settings. Please try again later.', 'error-load-items': 'Unable to load catalog items. Please try again later.', 'error-load-availability': 'Unable to load availability for the selected date. Please try again later.', 'payment-title': 'Payment Methods', 'cart-empty': 'No booking items in the cart yet.' }
-        };
-        document.addEventListener('DOMContentLoaded', async () => {
-            await checkApiConnectivity();
-            await loadSettings();
-            await loadCatalogItems();
-            setInitialDateBounds();
-            document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
-            const studioBtn = document.getElementById('view-studio-btn');
-            const classesBtn = document.getElementById('view-classes-btn');
-            if (studioBtn) studioBtn.addEventListener('click', () => switchView('studio'));
-            if (classesBtn) classesBtn.addEventListener('click', () => switchView('classes'));
-            const classesFilterInput = document.getElementById('classes-date-filter');
-            if (classesFilterInput) {
-                classesFilterInput.addEventListener('change', (event) => {
-                    classesFilterDate = event.target.value || null;
-                    renderClassesList();
-                });
-            }
-            const classesClearButton = document.getElementById('classes-clear-button');
-            if (classesClearButton) {
-                classesClearButton.addEventListener('click', () => {
-                    classesFilterDate = null;
-                    if (classesFilterInput) classesFilterInput.value = '';
-                    renderClassesList();
-                });
-            }
-            updateUIWithSettings();
-            renderCart();
-        });
-        function setLanguage(lang) {
-            currentLanguage = lang;
-            document.getElementById('zh-btn').classList.toggle('active', lang === 'zh');
-            document.getElementById('en-btn').classList.toggle('active', lang === 'en');
-            const strings = translations[lang];
-            Object.keys(strings).forEach(key => { const el = document.getElementById(key); if (el) el.textContent = strings[key]; });
-            if (lang === 'zh') { document.getElementById('phone').placeholder = '例如：98765432'; document.getElementById('notes').placeholder = '任何特殊設備或設置需求...'; } else { document.getElementById('phone').placeholder = 'e.g., 98765432'; document.getElementById('notes').placeholder = 'Any special equipment or setup needs...'; }
-            updateInstructions();
-            renderCatalogLists();
-            renderCart();
-            updateHeroSubtitle();
-            updateViewError('studio');
-            updateViewError('classes');
-        }
-        async function loadSettings() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/settings`);
-                if (!response.ok) {
-                    const errorPayload = await response.json().catch(() => ({}));
-                    console.error('Failed to load settings:', response.status, errorPayload);
-                    setViewError('studio', 'settings', true);
-                    return false;
-                }
-                SETTINGS = await response.json();
-                setViewError('studio', 'settings', false);
-                return true;
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                setViewError('studio', 'settings', true);
-                return false;
-            }
-        }
-
-        async function loadCatalogItems() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/items`);
-                if (!response.ok) {
-                    const errorPayload = await response.json().catch(() => ({}));
-                    console.error('Failed to load catalog items:', response.status, errorPayload);
-                    setViewError('studio', 'catalog', true);
-                    setViewError('classes', 'catalog', true);
-                    CATALOG.workshops = [];
-                    CATALOG.roomRentals = [];
-                    renderCatalogLists();
-                    return false;
-                }
-                const data = await response.json();
-                CATALOG.workshops = Array.isArray(data.workshops) ? data.workshops : [];
-                CATALOG.roomRentals = Array.isArray(data.roomRentals) ? data.roomRentals : [];
-                renderCatalogLists();
-                setViewError('studio', 'catalog', false);
-                setViewError('classes', 'catalog', false);
-                return true;
-            } catch (error) {
-                console.error('Error loading items:', error);
-                setViewError('studio', 'catalog', true);
-                setViewError('classes', 'catalog', true);
-                CATALOG.workshops = [];
-                CATALOG.roomRentals = [];
-                renderCatalogLists();
-                return false;
-            }
-        }
-        function updateUIWithSettings() { updateHeroSubtitle(); updateInstructions(); updatePaymentInfo(); setLanguage(currentLanguage); }
-        function updateHeroSubtitle() {
-            const zhDescription = SETTINGS.businessDescriptionZh || '專業錄音室';
-            const enDescription = SETTINGS.businessDescription || 'Professional Recording Studio';
-            const hours = SETTINGS.operatingHours || {};
-            const zhDays = hours.daysLabelZh || '每日營業';
-            const enDays = hours.daysLabelEn || 'Open Daily';
-            const start = hours.startTime || '07:00';
-            const end = hours.endTime || '22:00';
-            const zhSubtitle = `${zhDescription} • ${zhDays} ${start} - ${end}`;
-            const enSubtitle = `${enDescription} • ${enDays} ${start} - ${end}`;
-            document.getElementById('sub-title').textContent = currentLanguage === 'zh' ? zhSubtitle : enSubtitle;
-            document.getElementById('main-title').textContent = currentLanguage === 'zh' ? (SETTINGS.businessNameZh || '專業錄音室預約系統') : (SETTINGS.businessName || 'Professional Studio Booking');
-        }
-        function updateInstructions() {
-            const instructions = SETTINGS.bookingInstructions || {};
-            if (currentLanguage === 'zh') {
-                document.getElementById('instructions-title').textContent = instructions.titleZh || translations.zh['instructions-title'];
-                document.getElementById('instruction-1').textContent = instructions.instruction1Zh || '';
-                document.getElementById('instruction-2').textContent = instructions.instruction2Zh || '';
-                document.getElementById('instruction-3').textContent = instructions.instruction3Zh || '';
-                document.getElementById('instruction-4').textContent = instructions.instruction4Zh || '';
-                document.getElementById('instruction-5').textContent = instructions.instruction5Zh || '';
-                document.getElementById('instruction-6').textContent = instructions.instruction6Zh || '';
-            } else {
-                document.getElementById('instructions-title').textContent = instructions.titleEn || translations.en['instructions-title'];
-                document.getElementById('instruction-1').textContent = instructions.instruction1En || '';
-                document.getElementById('instruction-2').textContent = instructions.instruction2En || '';
-                document.getElementById('instruction-3').textContent = instructions.instruction3En || '';
-                document.getElementById('instruction-4').textContent = instructions.instruction4En || '';
-                document.getElementById('instruction-5').textContent = instructions.instruction5En || '';
-                document.getElementById('instruction-6').textContent = instructions.instruction6En || '';
-            }
-        }
-        function updatePaymentInfo() {
-            const paymentInfoDiv = document.getElementById('payment-info');
-            const paymentMethods = SETTINGS.paymentMethods || {};
-            let html = '';
-            if (paymentMethods.bankTransfer?.enabled) {
-                html += `<div style="margin-bottom:16px;"><h4 style="color:#145da0;">🏦 ${currentLanguage === 'zh' ? '銀行轉帳' : 'Bank Transfer'}</h4><div>${paymentMethods.bankTransfer.bankName || ''}</div><div style="font-family:'Courier New',monospace;font-weight:600;margin:8px 0;">${paymentMethods.bankTransfer.accountNumber || ''}</div><div style="color:#516273;font-size:0.9em;">${currentLanguage === 'zh' ? '戶名：' : 'Account Name: '}${paymentMethods.bankTransfer.accountName || ''}</div></div>`;
-            }
-            if (paymentMethods.payme?.enabled) {
-                html += `<div style="margin-bottom:16px;"><h4 style="color:#145da0;">📱 PayMe</h4><div style="font-family:'Courier New',monospace;font-weight:600;">${paymentMethods.payme.phoneNumber || ''}</div><div style="color:#516273;font-size:0.9em;">${currentLanguage === 'zh' ? '請在付款備註中加入您的姓名' : 'Please include your name in payment reference'}</div></div>`;
-            }
-            const contactInfo = SETTINGS.contactInfo || {};
-            const whatsappLink = contactInfo.whatsapp ? `https://wa.me/${contactInfo.whatsapp.replace(/\D/g,'')}` : '#';
-            html += `<div style="background:#fff3cd;padding:14px;border-radius:10px;"><strong style="color:#b07902;">${currentLanguage === 'zh' ? '付款後：' : 'After Payment:'}</strong><div style="color:#b07902;margin-top:8px;">${currentLanguage === 'zh' ? '請將付款截圖傳送至：' : 'Send payment screenshot to:'}<br>📱 WhatsApp: <a href="${whatsappLink}" target="_blank">${contactInfo.whatsapp || ''}</a><br>✉️ Email: <a href="mailto:${contactInfo.email || ''}">${contactInfo.email || ''}</a></div></div>`;
-            paymentInfoDiv.innerHTML = html;
-        }
-        function setInitialDateBounds() {
-            const today = new Date();
-            const minHours = Number(SETTINGS.bookingRules?.minAdvanceBooking || 0);
-            const minDate = new Date(today.getTime() + minHours * 60 * 60 * 1000);
-            document.getElementById('date-input').min = minDate.toISOString().split('T')[0];
-            const maxDays = Number(SETTINGS.bookingRules?.maxAdvanceBooking || 30);
-            const maxDate = new Date(today);
-            maxDate.setDate(maxDate.getDate() + maxDays);
-            document.getElementById('date-input').max = maxDate.toISOString().split('T')[0];
-        }
-        async function handleDateChange(date) {
-            if (!date) {
-                selectedDate = null;
-                selection = { start: null, end: null };
-                document.getElementById('time-section').style.display = 'none';
-                document.getElementById('add-session-btn').disabled = true;
-                return;
-            }
-            selectedDate = date;
-            selection = { start: null, end: null };
-            await loadAvailability(date);
-            renderTimeSlots();
-            document.getElementById('time-section').style.display = 'block';
-            updateSelectionSummary();
-        }
-        async function loadAvailability(date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/availability?date=${date}`);
-                if (!response.ok) {
-                    const errorPayload = await response.json().catch(() => ({}));
-                    console.error('Failed to load availability:', response.status, errorPayload);
-                    AVAILABILITY = { confirmedSlots: [], pendingSlots: [] };
-                    setViewError('studio', 'availability', true);
-                    return false;
-                }
-                AVAILABILITY = await response.json();
-                setViewError('studio', 'availability', false);
-                return true;
-            } catch (error) {
-                console.error('Error fetching availability:', error);
-                AVAILABILITY = { confirmedSlots: [], pendingSlots: [] };
-                setViewError('studio', 'availability', true);
-                return false;
-            }
-        }
-        function renderTimeSlots() {
-            const container = document.getElementById('time-slots');
-            container.innerHTML = '';
-            if (!selectedDate) {
-                container.innerHTML = `<div style="text-align:center;color:#516273;">${currentLanguage === 'zh' ? '請先選擇日期。' : 'Select a date first.'}</div>`;
-                return;
-            }
-            const operating = SETTINGS.operatingHours || {};
-            const startTime = operating.startTime || '07:00';
-            const endTime = operating.endTime || '22:00';
-            const interval = Number(SETTINGS.bookingRules?.slotInterval || 30);
-            const slots = [];
-            let cursor = timeToMinutes(startTime);
-            const end = timeToMinutes(endTime);
-            while (cursor < end) { slots.push(minutesToTime(cursor)); cursor += interval; }
-            slots.forEach((slot, idx) => {
-                const el = document.createElement('div');
-                el.className = 'time-slot';
-                el.dataset.slot = slot;
-                el.textContent = slot;
-                if (AVAILABILITY.confirmedSlots?.includes(slot)) { el.classList.add('unavailable'); }
-                else if (AVAILABILITY.pendingSlots?.includes(slot)) { el.classList.add('pending'); }
-                else { el.addEventListener('click', () => handleSlotClick(slot)); }
-                if (selection.start === slot || selection.end === slot) { el.classList.add('selected'); }
-                else if (selection.start && selection.end) {
-                    const slotMin = timeToMinutes(slot);
-                    const startMin = timeToMinutes(selection.start);
-                    const endMin = timeToMinutes(selection.end);
-                    if (slotMin > startMin && slotMin < endMin) el.classList.add('in-range');
-                }
-                container.appendChild(el);
-                if (idx === slots.length - 1) {
-                    const endEl = document.createElement('div');
-                    endEl.className = 'time-slot';
-                    endEl.dataset.slot = endTime;
-                    endEl.textContent = endTime;
-                    if (AVAILABILITY.confirmedSlots?.includes(endTime)) { endEl.classList.add('unavailable'); }
-                    else if (AVAILABILITY.pendingSlots?.includes(endTime)) { endEl.classList.add('pending'); }
-                    else { endEl.addEventListener('click', () => handleSlotClick(endTime)); }
-                    if (selection.start === endTime || selection.end === endTime) { endEl.classList.add('selected'); }
-                    container.appendChild(endEl);
-                }
-            });
-        }
-        function handleSlotClick(slot) {
-            if (!selection.start) { selection.start = slot; selection.end = null; }
-            else if (!selection.end) {
-                if (timeToMinutes(slot) <= timeToMinutes(selection.start)) { showMessage('error', translations[currentLanguage]['error-select-slot']); return; }
-                selection.end = slot;
-            } else { selection = { start: slot, end: null }; }
-            renderTimeSlots();
-            updateSelectionSummary();
-        }
-        function updateSelectionSummary() {
-            const button = document.getElementById('add-session-btn');
-            button.disabled = !(selection.start && selection.end);
-        }
-        function calculateRoomPrice(duration, peopleCount, periodType) {
-            const pricing = SETTINGS.pricing || {};
-            const rate = resolveHourlyRate(pricing, peopleCount, periodType);
-            return Math.round(rate * (duration / 60) * 100) / 100;
-        }
-        function resolveHourlyRate(pricing, peopleCount, periodType) {
-            if (peopleCount > 18) throw new Error('Maximum capacity per booking item is 18 people');
-            if (peopleCount <= 10) return Number(periodType === 'peak' ? pricing.peakUpTo10 : pricing.normalUpTo10 || 0);
-            return Number(periodType === 'peak' ? pricing.peakUpTo18 : pricing.normalUpTo18 || 0);
-        }
-        function determinePeriodType(date, startTime, endTime) {
-            const schedule = SETTINGS.pricing?.peakSchedule;
-            if (!schedule || !Array.isArray(schedule.days)) return 'normal';
-            const dayTokens = schedule.days.map(d => d.toString().toLowerCase());
-            const parsedDate = new Date(`${date}T00:00:00`);
-            const dayToken = ['sun','mon','tue','wed','thu','fri','sat'][parsedDate.getDay()];
-            if (!dayTokens.includes(dayToken)) return 'normal';
-            const startMin = timeToMinutes(startTime);
-            const endMin = timeToMinutes(endTime);
-            const peakStart = timeToMinutes(schedule.startTime || '18:00');
-            const peakEnd = timeToMinutes(schedule.endTime || '23:00');
-            return startMin < peakEnd && endMin > peakStart ? 'peak' : 'normal';
-        }
-        function addSelectedSessionToCart() {
-            if (!selectedDate || !selection.start || !selection.end) { showMessage('error', translations[currentLanguage]['error-select-slot'], 'studio'); return; }
-            const peopleCount = parseInt(document.getElementById('people-count').value, 10);
-            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-select-slot'], 'studio'); return; }
-            if (hasRoomRentalConflict(selectedDate, selection.start, selection.end)) { showMessage('error', translations[currentLanguage]['error-overlap'], 'studio'); return; }
-            const duration = timeToMinutes(selection.end) - timeToMinutes(selection.start);
-            const periodType = determinePeriodType(selectedDate, selection.start, selection.end);
-            const price = calculateRoomPrice(duration, peopleCount, periodType);
-            cartItems.push({ id: `cart-${++itemCounter}`, type: 'room_rental', catalogItemId: null, date: selectedDate, startTime: selection.start, endTime: selection.end, duration, peopleCount, price, periodType, titleZh: `場地租用 ${formatDateLabel(selectedDate)} ${selection.start}-${selection.end}`, titleEn: `Room rental ${formatDateLabel(selectedDate)} ${selection.start}-${selection.end}` });
-            selection = { start: null, end: null };
-            renderTimeSlots();
-            renderCart();
-            renderCatalogLists();
-            document.getElementById('contact-section').style.display = 'block';
-            showMessage('success', `${currentLanguage === 'zh' ? '已加入購物車' : 'Added to cart'}`, 'studio');
-        }
-        function renderCart() {
-            const cart = document.getElementById('cart');
-            cart.innerHTML = '';
-            if (cartItems.length === 0) {
-                const empty = document.createElement('div');
-                empty.style.color = '#516273';
-                empty.textContent = translations[currentLanguage]['cart-empty'];
-                cart.appendChild(empty);
-            } else {
-                cartItems.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'cart-item';
-                    const title = currentLanguage === 'zh' ? (item.titleZh || item.titleEn) : (item.titleEn || item.titleZh);
-                    card.innerHTML = `<div class="cart-item-title">${title}</div><div class="cart-item-meta"><div>${currentLanguage === 'zh' ? '人數：' : 'Participants:'} ${item.peopleCount}</div><div>${currentLanguage === 'zh' ? '時間：' : 'Time:'} ${item.startTime} - ${item.endTime}</div><div>HK$${item.price.toFixed(2)}</div></div>`;
-                    const remove = document.createElement('button');
-                    remove.className = 'remove-btn';
-                    remove.textContent = currentLanguage === 'zh' ? '刪除' : 'Remove';
-                    remove.addEventListener('click', () => removeCartItem(item.id));
-                    card.appendChild(remove);
-                    cart.appendChild(card);
-                });
-            }
-            const totalPeople = cartItems.reduce((sum, item) => sum + item.peopleCount, 0);
-            const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
-            document.getElementById('summary-items').textContent = cartItems.length;
-            document.getElementById('summary-people').textContent = totalPeople;
-            document.getElementById('total-amount').textContent = totalPrice.toFixed(2);
-            document.getElementById('submit-btn').disabled = cartItems.length === 0;
-        }
-        function removeCartItem(id) {
-            cartItems = cartItems.filter(item => item.id !== id);
-            renderCart();
-            renderCatalogLists();
-            if (cartItems.length === 0) document.getElementById('contact-section').style.display = 'none';
-        }
-        function renderCatalogList(containerId, items, type) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            container.innerHTML = '';
-            if (!Array.isArray(items) || items.length === 0) {
-                const empty = document.createElement('div');
-                empty.style.color = '#516273';
-                empty.textContent = currentLanguage === 'zh' ? '暫無資料' : 'No items available at the moment.';
-                container.appendChild(empty);
-                return;
-            }
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'catalog-card';
-                const start = new Date(item.startDateTime);
-                const end = new Date(item.endDateTime);
-                const dateLabel = formatDateLabel(parseIsoDate(item.startDateTime).date);
-                const timeRange = `${formatTime(start)} - ${formatTime(end)}`;
-                const baseCapacity = item.availableCapacity ?? item.capacity;
-                const reservedInCart = getCartUsageForCatalogItem(item.id);
-                const available = Math.max((Number(baseCapacity) || 0) - reservedInCart, 0);
-                const capacityLabel = currentLanguage === 'zh' ? '剩餘名額' : 'Seats left';
-                const priceLabel = type === 'workshop_class'
-                    ? `${currentLanguage === 'zh' ? '每位 HK$' : 'HK$'}${Number(item.price || 0).toFixed(2)}`
-                    : `${currentLanguage === 'zh' ? '價格依人數與時段計算' : 'Pricing based on group & period'}`;
-                const description = item.description ? `<div>${sanitizeMultilineText(item.description)}</div>` : '';
-                const instructor = item.instructorName
-                    ? `<div>${currentLanguage === 'zh' ? '導師：' : 'Instructor:'} ${sanitizeText(item.instructorName)}</div>`
-                    : '';
-                card.innerHTML = `<h3>${sanitizeText(item.name)}</h3><div class="catalog-meta"><div>${sanitizeText(dateLabel)}</div><div>${sanitizeText(timeRange)}</div><div>${sanitizeText(priceLabel)}</div><div class="capacity-indicator">${sanitizeText(capacityLabel)}: ${available}</div>${instructor}${description}</div>`;
-                const actions = document.createElement('div');
-                actions.className = 'catalog-actions';
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.min = available > 0 ? '1' : '0';
-                input.max = Math.min(18, available);
-                input.value = Math.min(Math.max(available, 0), 4) || 1;
-                input.disabled = available <= 0;
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.textContent = currentLanguage === 'zh' ? '加入購物車' : 'Add to cart';
-                button.disabled = available <= 0;
-                button.addEventListener('click', () => addCatalogItemToCart(item, type, parseInt(input.value, 10)));
-                actions.appendChild(input);
-                actions.appendChild(button);
-                card.appendChild(actions);
-                container.appendChild(card);
-            });
-        }
-
-        function renderClassesList() {
-            const container = document.getElementById('classes-list');
-            if (!container) return;
-            container.innerHTML = '';
-
-            const classes = Array.isArray(CATALOG.workshops) ? [...CATALOG.workshops] : [];
-            if (classes.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'classes-empty';
-                empty.textContent = currentLanguage === 'zh' ? '目前沒有可報名的課程。' : 'No upcoming classes are available right now.';
-                container.appendChild(empty);
-                return;
-            }
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const isFilteringByDate = Boolean(classesFilterDate);
-            const filtered = classes
-                .filter(item => {
-                    if (!item?.startDateTime) return false;
-                    const start = new Date(item.startDateTime);
-                    const { date } = parseIsoDate(item.startDateTime);
-                    if (isFilteringByDate) {
-                        return date === classesFilterDate;
-                    }
-                    return start >= today;
-                })
-                .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
-
-            if (filtered.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'classes-empty';
-                empty.textContent = isFilteringByDate
-                    ? (currentLanguage === 'zh' ? '所選日期沒有課程安排。' : 'No classes scheduled for the selected date.')
-                    : (currentLanguage === 'zh' ? '目前沒有可報名的課程。' : 'No upcoming classes are available right now.');
-                container.appendChild(empty);
-                return;
-            }
-
-            filtered.forEach(item => {
-                const startDate = new Date(item.startDateTime);
-                const endDate = new Date(item.endDateTime);
-                const startInfo = parseIsoDate(item.startDateTime);
-                const dateLabel = formatDateLabel(startInfo.date);
-                const timeLabel = `${formatTime(startDate)} - ${formatTime(endDate)}`;
-                const priceValue = Number(item.price ?? 0);
-                const priceLabel = priceValue > 0
-                    ? `${currentLanguage === 'zh' ? '每位 HK$' : 'HK$'}${priceValue.toFixed(2)}`
-                    : currentLanguage === 'zh' ? '請聯絡我們了解價格' : 'Contact us for pricing';
-                const baseCapacity = Number(item.capacity ?? item.availableCapacity ?? 0);
-                const reservedInCart = getCartUsageForCatalogItem(item.id);
-                const available = Math.max((Number(item.availableCapacity ?? baseCapacity) || 0) - reservedInCart, 0);
-                const totalCapacity = baseCapacity > 0 ? baseCapacity : null;
-                const capacityLabel = totalCapacity !== null
-                    ? `${available} / ${totalCapacity}`
-                    : `${available}`;
-                const capacityText = `${currentLanguage === 'zh' ? '剩餘名額' : 'Seats available'}: ${capacityLabel}`;
-
-                const card = document.createElement('div');
-                card.className = 'classes-card';
-                if (available <= 0) {
-                    card.classList.add('full');
-                }
-
-                card.innerHTML = `
-                    <h3>${sanitizeText(item.name)}</h3>
-                    <div class="classes-meta">
-                        <div>${sanitizeText(dateLabel)}</div>
-                        <div>${sanitizeText(timeLabel)}</div>
-                        <div>${sanitizeText(priceLabel)}</div>
-                        ${item.instructorName ? `<div>${currentLanguage === 'zh' ? '導師：' : 'Instructor:'} ${sanitizeText(item.instructorName)}</div>` : ''}
-                        ${item.description ? `<div>${sanitizeMultilineText(item.description)}</div>` : ''}
-                        <div class="capacity-indicator">${sanitizeText(capacityText)}</div>
-                    </div>
-                `;
-
-                const actions = document.createElement('div');
-                actions.className = 'classes-actions';
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.min = '1';
-                input.max = Math.min(18, available);
-                input.value = available > 0 ? 1 : 0;
-                input.disabled = available <= 0;
-
-                const button = document.createElement('button');
-                button.className = 'add-session-btn';
-                button.type = 'button';
-                button.style.width = 'auto';
-                button.textContent = available > 0 ? (currentLanguage === 'zh' ? '加入課程' : 'Join class') : (currentLanguage === 'zh' ? '已額滿' : 'Fully booked');
-                button.disabled = available <= 0;
-                button.addEventListener('click', () => {
-                    const count = parseInt(input.value, 10);
-                    addCatalogItemToCart(item, 'workshop_class', Number.isFinite(count) ? count : 1);
-                });
-
-                actions.appendChild(input);
-                actions.appendChild(button);
-                card.appendChild(actions);
-                container.appendChild(card);
-            });
-        }
-        function addCatalogItemToCart(item, type, peopleCount) {
-            const messageScope = type === 'workshop_class' ? 'classes' : 'studio';
-            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-capacity'], messageScope); return; }
-            const baseCapacity = item.availableCapacity ?? item.capacity;
-            const reservedInCart = getCartUsageForCatalogItem(item.id);
-            const remainingCapacity = Math.max((baseCapacity ?? 0) - reservedInCart, 0);
-            if (peopleCount > remainingCapacity) { showMessage('error', translations[currentLanguage]['error-capacity'], messageScope); return; }
-            const startInfo = parseIsoDate(item.startDateTime);
-            const endInfo = parseIsoDate(item.endDateTime);
-            const duration = timeToMinutes(endInfo.time) - timeToMinutes(startInfo.time);
-            const periodType = type === 'room_rental' ? determinePeriodType(startInfo.date, startInfo.time, endInfo.time) : 'catalog';
-            if (type === 'room_rental' && hasRoomRentalConflict(startInfo.date, startInfo.time, endInfo.time)) { showMessage('error', translations[currentLanguage]['error-overlap'], messageScope); return; }
-            const price = type === 'room_rental' ? calculateRoomPrice(duration, peopleCount, periodType) : Math.round(Number(item.price || 0) * peopleCount * 100) / 100;
-            cartItems.push({ id: `catalog-${++itemCounter}`, type, catalogItemId: item.id, date: startInfo.date, startTime: startInfo.time, endTime: endInfo.time, duration, peopleCount, price, periodType, titleZh: `${item.name}｜${formatDateLabel(startInfo.date)} ${startInfo.time}-${endInfo.time}`, titleEn: `${item.name} | ${formatDateLabel(startInfo.date)} ${startInfo.time}-${endInfo.time}` });
-            renderCart();
-            renderCatalogLists();
-            document.getElementById('contact-section').style.display = 'block';
-            showMessage('success', `${item.name} ${currentLanguage === 'zh' ? '已加入購物車' : 'added to cart'}`, messageScope);
-        }
-        function parseIsoDate(isoString) { const date = new Date(isoString); const year = date.getFullYear(); const month = `${date.getMonth() + 1}`.padStart(2,'0'); const day = `${date.getDate()}`.padStart(2,'0'); const hour = `${date.getHours()}`.padStart(2,'0'); const minute = `${date.getMinutes()}`.padStart(2,'0'); return { date: `${year}-${month}-${day}`, time: `${hour}:${minute}` }; }
-        function timeToMinutes(time) { const [hour, minute] = time.split(':').map(Number); return hour * 60 + minute; }
-        function minutesToTime(minutes) { const h = Math.floor(minutes / 60); const m = minutes % 60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
-        function minutesToTimeString(minutes) { return minutesToTime(minutes); }
-        function minutesBetween(start, end) { return timeToMinutes(end) - timeToMinutes(start); }
-        function formatDateLabel(dateString) { const date = new Date(`${dateString}T00:00:00`); if (currentLanguage === 'zh') { const weekdays = ['週日','週一','週二','週三','週四','週五','週六']; return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (${weekdays[date.getDay()]})`; } const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; return date.toLocaleDateString('en-US', options); }
-        function formatTime(dateObj) { const hours = dateObj.getHours(); const minutes = `${dateObj.getMinutes()}`.padStart(2,'0'); if (currentLanguage === 'zh') { const period = hours >= 12 ? '下午' : '上午'; const displayHour = hours % 12 === 0 ? 12 : hours % 12; return `${period} ${displayHour}:${minutes}`; } const period = hours >= 12 ? 'PM' : 'AM'; const displayHour = hours % 12 === 0 ? 12 : hours % 12; return `${displayHour}:${minutes} ${period}`; }
-        async function handleBookingSubmit(e) {
-            e.preventDefault();
-            if (cartItems.length === 0) { showMessage('error', translations[currentLanguage]['error-cart-empty'], 'studio'); return; }
-            const customerName = document.getElementById('customerName').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const notes = document.getElementById('notes').value.trim();
-            const payload = {
-                customerName,
-                email,
-                phone,
-                notes,
-                bookingItems: cartItems.map(item => ({ catalogItemId: item.catalogItemId, type: item.type, date: item.date, startTime: item.startTime, endTime: item.endTime, peopleCount: item.peopleCount }))
-            };
-            const submitBtn = document.getElementById('submit-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = currentLanguage === 'zh' ? '處理中...' : 'Processing...';
-            try {
-                const response = await fetch(`${API_BASE_URL}/bookings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const result = await response.json().catch(() => ({}));
-                if (response.ok) {
-                    showMessage('success', translations[currentLanguage]['success-booking'], 'studio');
-                    openWhatsappConfirmation(result.booking || {}, customerName);
-                    cartItems = [];
-                    renderCart();
-                    renderCatalogLists();
-                    document.getElementById('booking-form').reset();
-                    document.getElementById('contact-section').style.display = 'none';
-                    selectedDate = null;
-                    selection = { start: null, end: null };
-                    document.getElementById('date-input').value = '';
-                    document.getElementById('time-section').style.display = 'none';
-                } else {
-                    console.error('Booking submission failed:', response.status, result);
-                    showMessage('error', result.error || translations[currentLanguage]['error-booking'], 'studio');
-                }
-            } catch (error) {
-                console.error('Booking error:', error);
-                showMessage('error', translations[currentLanguage]['error-booking'], 'studio');
-            } finally {
-                submitBtn.disabled = cartItems.length === 0;
-                submitBtn.textContent = translations[currentLanguage]['submit-btn-text'];
-            }
-        }
-        function openWhatsappConfirmation(booking, name) {
-            const total = booking.totalPrice || cartItems.reduce((sum, item) => sum + item.price, 0);
-            const whatsappNumber = SETTINGS.contactInfo?.whatsapp?.replace(/\D/g,'') || '85298725268';
-            const firstItem = booking.items?.[0];
-            const dateLabel = firstItem ? formatDateLabel(firstItem.date) : '';
-            const timeLabel = firstItem ? `${firstItem.startTime} - ${firstItem.endTime}` : '';
-            const message = currentLanguage === 'zh' ? `您好，我剛完成預約申請：
-姓名：${name}
-日期：${dateLabel}
-時段：${timeLabel}
-總金額：HK$${total}` : `Hi, I've just made a booking request:
-Name: ${name}
-Date: ${dateLabel}
-Time: ${timeLabel}
-Total: HK$${total}`;
-            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
-        }
-        function setViewError(view, key, hasError) {
-            const store = activeErrors[view];
-            if (!store) return;
-            if (hasError) {
-                store.add(key);
-            } else {
-                store.delete(key);
-            }
-            updateViewError(view);
-        }
-
-        function updateViewError(view) {
-            const store = activeErrors[view];
-            if (!store) return;
-            const messages = Array.from(store)
-                .map(resolveErrorMessage)
-                .filter(Boolean);
-            const message = messages.join('\n');
-            showMessage('error', message, view, { clearOpposite: false });
-        }
-
-        function resolveErrorMessage(key) {
-            switch (key) {
-                case 'settings':
-                    return translations[currentLanguage]['error-load-settings'];
-                case 'catalog':
-                    return translations[currentLanguage]['error-load-items'];
-                case 'availability':
-                    return translations[currentLanguage]['error-load-availability'];
-                case 'api':
-                    return translations[currentLanguage]['error-api-offline'];
-                default:
-                    return '';
-            }
-        }
-
-        function showMessage(type, message, view = activeView, options = {}) {
-            const { clearOpposite = true } = options;
-            const scope = view === 'classes' ? {
-                success: 'classes-success',
-                error: 'classes-error',
-                clearSuccess: 'success-message',
-                clearError: 'error-message'
-            } : {
-                success: 'success-message',
-                error: 'error-message',
-                clearSuccess: 'classes-success',
-                clearError: 'classes-error'
-            };
-
-            const targetId = type === 'success' ? scope.success : scope.error;
-            const otherId = type === 'success' ? scope.error : scope.success;
-
-            const target = document.getElementById(targetId);
-            const other = document.getElementById(otherId);
-            const oppositeSuccess = document.getElementById(scope.clearSuccess);
-            const oppositeError = document.getElementById(scope.clearError);
-
-            if (!target) {
-                return;
-            }
-
-            if (other) {
-                other.style.display = 'none';
-                other.textContent = '';
-            }
-
-            if (clearOpposite) {
-                if (oppositeSuccess) {
-                    oppositeSuccess.style.display = 'none';
-                    oppositeSuccess.textContent = '';
-                }
-
-                if (oppositeError) {
-                    oppositeError.style.display = 'none';
-                    oppositeError.textContent = '';
-                }
-            }
-
-            if (!message) {
-                target.style.display = 'none';
-                target.textContent = '';
-                return;
-            }
-
-            target.textContent = Array.isArray(message) ? message.filter(Boolean).join('\n') : message;
-            target.style.display = 'block';
-
-            if (view === 'classes') {
-                if (activeView === 'classes') {
-                    document.getElementById('classes-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            } else if (view === 'studio') {
-                if (activeView === 'studio') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }
-
-            if (type === 'success') {
-                setTimeout(() => {
-                    target.style.display = 'none';
-                    if (activeErrors[view] && activeErrors[view].size > 0) {
-                        updateViewError(view);
-                    }
-                }, 8000);
-            }
-        }
-
-        function renderCatalogLists() {
-            renderClassesList();
-            renderCatalogList('rental-list', CATALOG.roomRentals, 'room_rental');
-        }
-        function minutesBetweenSelection(start, end) { return timeToMinutes(end) - timeToMinutes(start); }
-        setLanguage('zh');
-    </script>
+    </main>
+    <footer>Powered by the Studio Booking backend API · API_BASE_URL 會自動偵測部署環境</footer>
 </body>
 </html>
