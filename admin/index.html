@@ -59,6 +59,14 @@
         .stat-card { background: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%); color: #fff; padding: 18px; border-radius: 14px; box-shadow: 0 12px 30px rgba(79,172,254,0.35); }
         .stat-card h4 { font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
         .stat-card p { font-size: 1.8em; font-weight: 700; }
+        .overview-grid { display: grid; gap: 18px; margin-top: 18px; }
+        @media (min-width: 900px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        .overview-list { display: flex; flex-direction: column; gap: 12px; }
+        .overview-card { background: #fff; border: 1px solid #dce3ef; border-radius: 14px; padding: 16px; box-shadow: 0 8px 18px rgba(0,0,0,0.05); }
+        .overview-card h4 { color: #0b4f6c; margin-bottom: 6px; }
+        .overview-meta { color: #52606d; font-size: 0.9em; line-height: 1.6; }
+        .overview-attendees { margin-top: 10px; padding-left: 16px; color: #52606d; font-size: 0.88em; }
+        .overview-empty { padding: 14px; border: 1px dashed #d6dde6; border-radius: 12px; color: #52606d; background: #f8faff; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -66,6 +74,7 @@
         <div class="login-box">
             <h2>管理員登入</h2>
             <form id="loginForm">
+                <input type="email" id="emailInput" class="login-input" placeholder="請輸入電郵" required value="admin@example.com">
                 <input type="password" id="passwordInput" class="login-input" placeholder="請輸入密碼" required>
                 <button type="submit" class="login-btn">登入</button>
             </form>
@@ -76,6 +85,7 @@
         <div class="admin-header">
             <h1 style="color:#0b4f6c; font-size:2.2em;">Studio Booking 管理面板</h1>
             <p style="color:#52606d;">快速管理預約、設定、課程與場地資訊。</p>
+            <p id="adminIdentity" style="color:#52606d; font-size:0.95em; margin-top:6px; display:none;"></p>
             <button class="logout-btn" onclick="logout()">登出</button>
             <div class="stat-grid">
                 <div class="stat-card" id="stat-total"><h4>總預約數</h4><p>0</p></div>
@@ -85,6 +95,7 @@
         </div>
         <div class="tabs">
             <button class="tab-btn active" data-tab="bookingsTab">預約列表</button>
+            <button class="tab-btn" data-tab="overviewTab">預約概覽</button>
             <button class="tab-btn" data-tab="settingsTab">設定</button>
             <button class="tab-btn" data-tab="instructionsTab">預約須知</button>
             <button class="tab-btn" data-tab="itemsTab">課程 / 場地項目</button>
@@ -108,6 +119,31 @@
                         </thead>
                         <tbody id="bookingsTable"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+        <div id="overviewTab" class="tab-content">
+            <div class="section-card">
+                <h3>預約概覽</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>選擇日期</label>
+                        <input type="date" id="overviewDate">
+                    </div>
+                    <div class="input-group" style="display:flex;align-items:flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="refreshOverview()">重新整理</button>
+                    </div>
+                </div>
+                <div id="overviewMessage" class="message"></div>
+                <div class="overview-grid">
+                    <div class="overview-column">
+                        <h4 style="color:#145da0;">場地預約</h4>
+                        <div id="overviewStudioList" class="overview-list"></div>
+                    </div>
+                    <div class="overview-column">
+                        <h4 style="color:#145da0;">課程預約</h4>
+                        <div id="overviewClassList" class="overview-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -205,10 +241,156 @@
             return `${DEFAULT_ORIGIN}${DEFAULT_API_PATH}`.replace(/\/+$/, '');
         })();
 
-        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查密碼。';
+        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查電郵及密碼。';
         let refreshIntervalId = null;
         let currentSettings = {};
         let currentItems = [];
+
+        function updateAdminIdentity(email) {
+            const el = document.getElementById('adminIdentity');
+            if (!el) return;
+            if (email) {
+                el.textContent = `登入帳號：${email}`;
+                el.style.display = 'block';
+            } else {
+                el.textContent = '';
+                el.style.display = 'none';
+            }
+        }
+
+        const HTML_ESCAPES = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return value.toString().replace(/[&<>"']/g, (match) => HTML_ESCAPES[match] || match);
+        }
+
+        function setOverviewDateToToday() {
+            const input = document.getElementById('overviewDate');
+            if (!input || input.value) return;
+            input.value = new Date().toISOString().split('T')[0];
+        }
+
+        function formatOverviewDateTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) return '';
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${hh}:${mm}`;
+        }
+
+        function formatOverviewTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) return '';
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+
+        async function loadBookingOverview(date) {
+            const targetDate = date || document.getElementById('overviewDate')?.value;
+            if (!targetDate) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/bookings/overview?date=${targetDate}`, { headers: authHeaders() });
+                if (response.status === 401) return logout();
+                const result = await response.json();
+                if (response.ok) {
+                    renderBookingOverview(result);
+                } else {
+                    showOverviewMessage('error', result.error || '無法載入概覽。');
+                }
+            } catch (error) {
+                console.error('Error loading booking overview:', error);
+                showOverviewMessage('error', '無法載入概覽，請稍後再試。');
+            }
+        }
+
+        function renderBookingOverview(data) {
+            const studioList = document.getElementById('overviewStudioList');
+            const classList = document.getElementById('overviewClassList');
+            const messageEl = document.getElementById('overviewMessage');
+            if (messageEl) { messageEl.style.display = 'none'; }
+            if (!studioList || !classList) return;
+            studioList.innerHTML = '';
+            classList.innerHTML = '';
+
+            const studioSessions = Array.isArray(data.studioSessions) ? data.studioSessions : [];
+            if (studioSessions.length === 0) {
+                studioList.innerHTML = '<div class="overview-empty">當日暫無場地預約。</div>';
+            } else {
+                studioSessions.forEach(session => {
+                    const card = document.createElement('div');
+                    card.className = 'overview-card';
+                    const timeLabel = `${session.startTime || ''} - ${session.endTime || ''}`.trim();
+                    const notesRow = session.notes ? `<div>備註：${escapeHtml(session.notes)}</div>` : '';
+                    card.innerHTML = `
+                        <h4>${escapeHtml(timeLabel)}</h4>
+                        <div class="overview-meta">
+                            <div>預約編號：${escapeHtml(session.bookingId)}</div>
+                            <div>${escapeHtml(session.customerName || '—')}｜${escapeHtml(String(session.peopleCount || 0))} 人</div>
+                            <div>狀態：${escapeHtml(session.status || '')}</div>
+                            <div>${escapeHtml(session.email || '')}<br>${escapeHtml(session.phone || '')}</div>
+                            ${notesRow}
+                        </div>
+                    `;
+                    studioList.appendChild(card);
+                });
+            }
+
+            const classSessions = Array.isArray(data.classSessions) ? data.classSessions : [];
+            if (classSessions.length === 0) {
+                classList.innerHTML = '<div class="overview-empty">當日暫無課程預約。</div>';
+            } else {
+                classSessions.forEach(cls => {
+                    const card = document.createElement('div');
+                    card.className = 'overview-card';
+                    const startLabel = formatOverviewDateTime(cls.startDateTime);
+                    const endLabel = formatOverviewTime(cls.endDateTime);
+                    const scheduleLabel = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+                    const descriptionRow = cls.description ? `<div style="margin-top:6px;">${escapeHtml(cls.description)}</div>` : '';
+                    const attendees = Array.isArray(cls.attendees) ? cls.attendees : [];
+                    const attendeesRows = attendees.map(att => {
+                        return `<div>• ${escapeHtml(att.customerName || '—')}｜${escapeHtml(String(att.peopleCount || 0))} 人｜${escapeHtml(att.status || '')}</div>`;
+                    }).join('');
+                    const attendeesHtml = attendees.length === 0
+                        ? '<div class="overview-empty" style="margin-top:10px;">尚未有參加者。</div>'
+                        : `<div class="overview-attendees">${attendeesRows}</div>`;
+                    card.innerHTML = `
+                        <h4>${escapeHtml(cls.name)}</h4>
+                        <div class="overview-meta">
+                            <div>${escapeHtml(scheduleLabel)}</div>
+                            ${cls.instructorName ? `<div>導師：${escapeHtml(cls.instructorName)}</div>` : ''}
+                        </div>
+                        <div class="overview-meta" style="margin-top:6px;">
+                            <div>報名：${escapeHtml(String(cls.totalParticipants || 0))} / ${escapeHtml(String(cls.capacity || 0))}（剩餘 ${escapeHtml(String(cls.seatsRemaining || 0))}）</div>
+                            ${descriptionRow}
+                        </div>
+                        ${attendeesHtml}
+                    `;
+                    classList.appendChild(card);
+                });
+            }
+        }
+
+        function refreshOverview() {
+            const date = document.getElementById('overviewDate')?.value;
+            loadBookingOverview(date);
+        }
+
+        function showOverviewMessage(type, message) {
+            showMessage('overviewMessage', type, message);
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             const token = sessionStorage.getItem('adminToken');
@@ -219,6 +401,11 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
             document.getElementById('itemForm').addEventListener('submit', submitItemForm);
+            setOverviewDateToToday();
+            const overviewDateInput = document.getElementById('overviewDate');
+            if (overviewDateInput) {
+                overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
+            }
         });
 
         function authHeaders() {
@@ -228,13 +415,20 @@
 
         async function handleLogin(e) {
             e.preventDefault();
+            const email = document.getElementById('emailInput').value.trim();
             const password = document.getElementById('passwordInput').value;
+            if (!email) {
+                showLoginError('請輸入電郵。');
+                return;
+            }
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
                 const result = await response.json();
                 if (response.ok && result.success) {
                     sessionStorage.setItem('adminToken', result.token);
                     if (result.expiresAt) sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
+                    const normalizedEmail = (result.admin?.email || email).toLowerCase();
+                    sessionStorage.setItem('adminEmail', normalizedEmail);
                     showAdminPanel();
                 } else {
                     showLoginError(result.error || LOGIN_ERROR_DEFAULT);
@@ -255,21 +449,36 @@
         function showAdminPanel() {
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('adminContainer').style.display = 'block';
+            updateAdminIdentity(sessionStorage.getItem('adminEmail'));
+            setOverviewDateToToday();
+            loadBookingOverview(document.getElementById('overviewDate')?.value);
             loadStats();
             loadBookings();
             loadSettings();
             loadInstructions();
             loadItems();
             if (refreshIntervalId) clearInterval(refreshIntervalId);
-            refreshIntervalId = setInterval(() => { loadStats(); loadBookings(); }, 30000);
+            refreshIntervalId = setInterval(() => {
+                loadStats();
+                loadBookings();
+                loadBookingOverview(document.getElementById('overviewDate')?.value);
+            }, 30000);
         }
 
         function logout() {
             sessionStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminTokenExpiry');
+            sessionStorage.removeItem('adminEmail');
             if (refreshIntervalId) clearInterval(refreshIntervalId);
             document.getElementById('adminContainer').style.display = 'none';
             document.getElementById('loginContainer').style.display = 'flex';
+            const studioList = document.getElementById('overviewStudioList');
+            const classList = document.getElementById('overviewClassList');
+            const overviewMsg = document.getElementById('overviewMessage');
+            if (studioList) studioList.innerHTML = '';
+            if (classList) classList.innerHTML = '';
+            if (overviewMsg) { overviewMsg.style.display = 'none'; overviewMsg.textContent = ''; }
+            updateAdminIdentity('');
         }
 
         async function loadStats() {
@@ -598,7 +807,12 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(event.target.dataset.tab).classList.add('active');
+            const targetId = event.target.dataset.tab;
+            document.getElementById(targetId).classList.add('active');
+            if (targetId === 'overviewTab') {
+                setOverviewDateToToday();
+                loadBookingOverview(document.getElementById('overviewDate')?.value);
+            }
         }
     </script>
 </body>

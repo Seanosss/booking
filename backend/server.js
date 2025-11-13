@@ -17,13 +17,19 @@ const {
     getRoomConflicts,
     getCatalogItemById,
     getCatalogItems,
+    getCatalogItemsByIds,
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
     getCatalogItemCapacityUsage,
+    getAdminUserByEmail,
+    getAdminUserById,
+    updateAdminPassword,
+    recordAdminLogin,
+    DEFAULT_ADMIN_EMAIL,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
-const { hashPassword } = require('./utils/hash');
+const { hashPassword, verifyPassword, needsHashMigration } = require('./utils/hash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,14 +60,27 @@ function cleanupExpiredTokens() {
     }
 }
 
-function issueAdminToken() {
+function issueAdminToken(adminUser) {
     const token = crypto.randomBytes(32).toString('hex');
     const issuedAt = Date.now();
     const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
 
-    activeAdminTokens.set(token, { issuedAt, expiresAt });
+    activeAdminTokens.set(token, {
+        issuedAt,
+        expiresAt,
+        adminId: adminUser.id,
+        email: adminUser.email
+    });
 
-    return { token, issuedAt, expiresAt };
+    return {
+        token,
+        issuedAt,
+        expiresAt,
+        admin: {
+            id: adminUser.id,
+            email: adminUser.email
+        }
+    };
 }
 
 function authenticateAdmin(req, res, next) {
@@ -87,7 +106,14 @@ function authenticateAdmin(req, res, next) {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
+    if (!tokenMetadata.adminId || !tokenMetadata.email) {
+        activeAdminTokens.delete(token);
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
     req.admin = {
+        id: tokenMetadata.adminId,
+        email: tokenMetadata.email,
         token,
         issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
         expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
@@ -254,31 +280,52 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
     try {
-        const { password } = req.body;
+        const { email, password } = req.body;
 
-        if (!password) {
-            return res.status(400).json({ error: 'Password required' });
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        const settings = await loadSettings();
-        const hashedPassword = hashPassword(password);
+        const normalizedEmail = email.toString().trim().toLowerCase();
+        const adminUser = await getAdminUserByEmail(normalizedEmail);
 
-        if (hashedPassword === settings.adminPassword) {
-            const { token, expiresAt } = issueAdminToken();
-
-            res.json({
-                success: true,
-                token: token,
-                tokenType: 'Bearer',
-                expiresAt: new Date(expiresAt).toISOString(),
-                message: 'Login successful'
-            });
-        } else {
-            res.status(401).json({
-                success: false,
-                error: 'Invalid password'
-            });
+        if (!adminUser) {
+            console.warn('Admin login failed: user not found', { email: normalizedEmail });
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
+
+        const passwordMatches = verifyPassword(password, adminUser.passwordHash);
+        if (!passwordMatches) {
+            console.warn('Admin login failed: incorrect password', { email: normalizedEmail, adminId: adminUser.id });
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
+        }
+
+        let syncedAdminUser = adminUser;
+        if (needsHashMigration(adminUser.passwordHash)) {
+            try {
+                const newHash = hashPassword(password);
+                syncedAdminUser = await updateAdminPassword(adminUser.id, newHash) || adminUser;
+                const settings = await loadSettings();
+                settings.adminPasswordHash = newHash;
+                await saveSettings(settings);
+                console.log('Upgraded admin password hash to PBKDF2 for user', { email: normalizedEmail });
+            } catch (migrationError) {
+                console.error('Failed to upgrade admin password hash', migrationError);
+            }
+        }
+
+        await recordAdminLogin(adminUser.id);
+
+        const { token, expiresAt } = issueAdminToken(syncedAdminUser);
+
+        res.json({
+            success: true,
+            token,
+            tokenType: 'Bearer',
+            expiresAt: new Date(expiresAt).toISOString(),
+            admin: { email: syncedAdminUser.email },
+            message: 'Login successful'
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
@@ -289,18 +336,30 @@ app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
 
-        if (!oldPassword || !newPassword) {
-            return res.status(400).json({ error: 'Both old and new passwords required' });
+        const currentPassword = oldPassword || req.body.currentPassword;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Both current and new passwords are required' });
         }
 
-        const settings = await loadSettings();
-        const hashedOldPassword = hashPassword(oldPassword);
+        const adminUser = await getAdminUserById(req.admin?.id);
+        if (!adminUser) {
+            return res.status(404).json({ error: 'Admin account not found' });
+        }
 
-        if (hashedOldPassword !== settings.adminPassword) {
+        if (!verifyPassword(currentPassword, adminUser.passwordHash)) {
+            console.warn('Admin password change rejected: incorrect current password', {
+                adminId: req.admin?.id,
+                email: req.admin?.email
+            });
             return res.status(401).json({ error: 'Current password incorrect' });
         }
 
-        settings.adminPassword = hashPassword(newPassword);
+        const newHash = hashPassword(newPassword);
+        await updateAdminPassword(adminUser.id, newHash);
+
+        const settings = await loadSettings();
+        settings.adminPasswordHash = newHash;
         const saved = await saveSettings(settings);
 
         if (saved) {
@@ -322,7 +381,7 @@ app.get('/api/settings', async (req, res) => {
     try {
         const settings = await loadSettings();
         const publicSettings = { ...settings };
-        delete publicSettings.adminPassword;
+        delete publicSettings.adminPasswordHash;
         res.json(publicSettings);
     } catch (error) {
         console.error('Error getting settings:', error);
@@ -333,6 +392,21 @@ app.get('/api/settings', async (req, res) => {
 app.put('/api/settings', authenticateAdmin, async (req, res) => {
     try {
         const currentSettings = await loadSettings();
+        if (req.body.operatingHours) {
+            const { startTime, endTime } = req.body.operatingHours;
+            const start = startTime ? parseTimeToMinutes(startTime) : null;
+            const end = endTime ? parseTimeToMinutes(endTime) : null;
+            if (startTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(startTime)) {
+                return res.status(400).json({ error: 'Invalid opening time format' });
+            }
+            if (endTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(endTime)) {
+                return res.status(400).json({ error: 'Invalid closing time format' });
+            }
+            if (start !== null && end !== null && start >= end) {
+                return res.status(400).json({ error: 'Opening time must be before closing time' });
+            }
+        }
+
         const mergedPricing = {
             ...currentSettings.pricing,
             ...(req.body.pricing || {})
@@ -342,14 +416,14 @@ app.put('/api/settings', authenticateAdmin, async (req, res) => {
             ...currentSettings,
             ...req.body,
             pricing: mergedPricing,
-            adminPassword: currentSettings.adminPassword,
+            adminPasswordHash: currentSettings.adminPasswordHash,
             updatedAt: new Date().toISOString()
         };
 
         const saved = await saveSettings(updatedSettings);
         if (saved) {
             const publicSettings = { ...updatedSettings };
-            delete publicSettings.adminPassword;
+            delete publicSettings.adminPasswordHash;
             res.json({
                 success: true,
                 settings: publicSettings,
@@ -505,9 +579,16 @@ app.get('/api/availability', async (req, res) => {
             return res.status(400).json({ error: 'Date parameter required' });
         }
 
+        const settings = await loadSettings();
         const items = await getBookingItemsByDate(date);
         const confirmedSlots = [];
         const pendingSlots = [];
+
+        const operatingHours = settings.operatingHours || {};
+        const openingHours = {
+            startTime: operatingHours.startTime || '07:00',
+            endTime: operatingHours.endTime || '22:00'
+        };
 
         items.forEach(item => {
             if (item.itemType !== 'room_rental') {
@@ -525,7 +606,8 @@ app.get('/api/availability', async (req, res) => {
         res.json({
             date,
             confirmedSlots,
-            pendingSlots
+            pendingSlots,
+            openingHours
         });
     } catch (error) {
         console.error('Error getting availability:', error);
@@ -550,6 +632,37 @@ app.get('/api/items', async (req, res) => {
     }
 });
 
+app.get('/api/classes', async (req, res) => {
+    try {
+        const { date } = req.query;
+        const filters = { includePast: false, type: 'workshop_class' };
+        if (date) {
+            filters.onDate = date;
+        }
+        const classes = await getCatalogItems(filters);
+        const enriched = await buildCatalogItemResponse(classes);
+        res.json(enriched);
+    } catch (error) {
+        console.error('Error getting classes:', error);
+        res.status(500).json({ error: 'Failed to retrieve classes' });
+    }
+});
+
+app.get('/api/classes/:id', async (req, res) => {
+    try {
+        const item = await getCatalogItemById(req.params.id);
+        if (!item || item.type !== 'workshop_class') {
+            return res.status(404).json({ error: 'Class not found' });
+        }
+
+        const enriched = await buildCatalogItemResponse([item]);
+        res.json(enriched[0]);
+    } catch (error) {
+        console.error('Error getting class details:', error);
+        res.status(500).json({ error: 'Failed to retrieve class' });
+    }
+});
+
 app.get('/api/admin/items', authenticateAdmin, async (req, res) => {
     try {
         const items = await getCatalogItems({ includePast: true });
@@ -558,6 +671,99 @@ app.get('/api/admin/items', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error listing catalog items:', error);
         res.status(500).json({ error: 'Failed to retrieve items' });
+    }
+});
+
+app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ error: 'Date parameter required' });
+        }
+
+        const bookings = await getBookings({ date });
+        const studioSessions = [];
+        const classSessionsMap = new Map();
+
+        bookings.forEach(booking => {
+            (booking.items || []).forEach(item => {
+                if (item.date !== date) {
+                    return;
+                }
+
+                if (item.itemType === 'room_rental') {
+                    studioSessions.push({
+                        bookingId: booking.id,
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        peopleCount: item.peopleCount,
+                        status: booking.status,
+                        customerName: booking.customerName,
+                        email: booking.email,
+                        phone: booking.phone,
+                        notes: booking.adminNotes || null
+                    });
+                } else if (item.catalogItemId) {
+                    const entry = classSessionsMap.get(item.catalogItemId) || {
+                        attendees: [],
+                        totalParticipants: 0
+                    };
+
+                    entry.attendees.push({
+                        bookingId: booking.id,
+                        customerName: booking.customerName,
+                        email: booking.email,
+                        phone: booking.phone,
+                        peopleCount: item.peopleCount,
+                        status: booking.status,
+                        notes: booking.adminNotes || null
+                    });
+                    entry.totalParticipants += item.peopleCount;
+                    classSessionsMap.set(item.catalogItemId, entry);
+                }
+            });
+        });
+
+        studioSessions.sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+
+        const classIds = Array.from(classSessionsMap.keys());
+        let classDetailsMap = new Map();
+        if (classIds.length > 0) {
+            const classDetails = await getCatalogItemsByIds(classIds);
+            classDetailsMap = new Map(classDetails.map(cls => [cls.id, cls]));
+        }
+
+        const classSessions = classIds.map(id => {
+            const session = classSessionsMap.get(id);
+            const detail = classDetailsMap.get(id) || {};
+            const startTimestamp = detail.startDateTime ? new Date(detail.startDateTime).getTime() : 0;
+            const seatsRemaining = Math.max((detail.capacity || 0) - session.totalParticipants, 0);
+
+            const attendees = session.attendees.sort((a, b) => a.customerName.localeCompare(b.customerName));
+
+            return {
+                classId: id,
+                name: detail.name || 'Unnamed Class',
+                description: detail.description || '',
+                instructorName: detail.instructorName || null,
+                startDateTime: detail.startDateTime || null,
+                endDateTime: detail.endDateTime || null,
+                capacity: detail.capacity || 0,
+                totalParticipants: session.totalParticipants,
+                seatsRemaining,
+                attendees,
+                _sortKey: startTimestamp
+            };
+        }).sort((a, b) => a._sortKey - b._sortKey).map(({ _sortKey, ...rest }) => rest);
+
+        res.json({
+            date,
+            studioSessions,
+            classSessions
+        });
+    } catch (error) {
+        console.error('Error building booking overview:', error);
+        res.status(500).json({ error: 'Failed to retrieve booking overview' });
     }
 });
 
@@ -572,6 +778,10 @@ function validateCatalogItemPayload(payload) {
     if (!payload.name) {
         errors.push('Name is required.');
     }
+
+    const description = typeof payload.description === 'string'
+        ? payload.description.trim()
+        : (payload.description ? String(payload.description).trim() : '');
 
     const start = payload.startDateTime || payload.start_datetime;
     const end = payload.endDateTime || payload.end_datetime;
@@ -623,6 +833,7 @@ function validateCatalogItemPayload(payload) {
         data: {
             type,
             name: payload.name,
+            description,
             startDateTime: `${startInfo.date}T${startInfo.time}:00`,
             endDateTime: `${endInfo.date}T${endInfo.time}:00`,
             duration,
@@ -768,6 +979,20 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                 : 'catalog';
 
             if (itemType === 'room_rental') {
+                const operatingHours = settings.operatingHours || {};
+                const openingStart = operatingHours.startTime || '07:00';
+                const openingEnd = operatingHours.endTime || '22:00';
+                const openingStartMinutes = parseTimeToMinutes(openingStart);
+                const openingEndMinutes = parseTimeToMinutes(openingEnd);
+                const itemStartMinutes = parseTimeToMinutes(startTime);
+                const itemEndMinutes = parseTimeToMinutes(endTime);
+
+                if (itemStartMinutes < openingStartMinutes || itemEndMinutes > openingEndMinutes) {
+                    return res.status(400).json({
+                        error: `${itemLabel}: selected time must fall within studio hours (${openingStart}-${openingEnd}).`
+                    });
+                }
+
                 if (hasInPayloadRoomConflict(normalizedItems, date, startTime, endTime)) {
                     return res.status(400).json({
                         error: `${itemLabel}: selected time overlaps with another session in your booking.`
@@ -842,6 +1067,7 @@ async function startServer() {
             console.log('====================================');
             console.log(`📍 Port: ${PORT}`);
             console.log(`🌐 API: http://localhost:${PORT}/api`);
+            console.log(`👤 Default Admin Email: ${DEFAULT_ADMIN_EMAIL}`);
             console.log(`🔐 Default Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
             console.log('⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!');
             console.log('====================================');
