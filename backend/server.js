@@ -9,9 +9,69 @@ const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'bookings.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
+const ADMIN_TOKEN_TTL_MS = (() => {
+    const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
+    return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0
+        ? ttlFromEnv
+        : 1000 * 60 * 60; // 1 hour default
+})();
+
+const activeAdminTokens = new Map();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+function cleanupExpiredTokens() {
+    const now = Date.now();
+    for (const [token, metadata] of activeAdminTokens.entries()) {
+        if (metadata.expiresAt <= now) {
+            activeAdminTokens.delete(token);
+        }
+    }
+}
+
+function issueAdminToken() {
+    const token = crypto.randomBytes(32).toString('hex');
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
+
+    activeAdminTokens.set(token, { issuedAt, expiresAt });
+
+    return { token, issuedAt, expiresAt };
+}
+
+function authenticateAdmin(req, res, next) {
+    cleanupExpiredTokens();
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+        return res.status(401).json({ error: 'Authorization header required' });
+    }
+
+    const [scheme, token] = authHeader.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+        return res.status(401).json({ error: 'Invalid authorization header format' });
+    }
+
+    const tokenMetadata = activeAdminTokens.get(token);
+    if (!tokenMetadata) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    if (tokenMetadata.expiresAt <= Date.now()) {
+        activeAdminTokens.delete(token);
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.admin = {
+        token,
+        issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
+        expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
+    };
+
+    next();
+}
 
 // Default settings with password and bilingual instructions
 const defaultSettings = {
@@ -213,12 +273,13 @@ app.post('/api/admin/login', async (req, res) => {
         const hashedPassword = hashPassword(password);
         
         if (hashedPassword === settings.adminPassword) {
-            // Generate session token
-            const token = crypto.randomBytes(32).toString('hex');
-            
+            const { token, expiresAt } = issueAdminToken();
+
             res.json({
                 success: true,
                 token: token,
+                tokenType: 'Bearer',
+                expiresAt: new Date(expiresAt).toISOString(),
                 message: 'Login successful'
             });
         } else {
@@ -234,7 +295,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Change admin password
-app.post('/api/admin/change-password', async (req, res) => {
+app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
         
@@ -253,6 +314,7 @@ app.post('/api/admin/change-password', async (req, res) => {
         const saved = await saveSettings(settings);
         
         if (saved) {
+            activeAdminTokens.clear();
             res.json({
                 success: true,
                 message: 'Password changed successfully'
@@ -281,7 +343,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // Update settings (requires admin access)
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', authenticateAdmin, async (req, res) => {
     try {
         const currentSettings = await loadSettings();
         const updatedSettings = {
@@ -310,7 +372,7 @@ app.put('/api/settings', async (req, res) => {
 });
 
 // Get all bookings
-app.get('/api/bookings', async (req, res) => {
+app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     try {
         let bookings = await loadBookings();
         
@@ -395,7 +457,7 @@ app.post('/api/bookings', async (req, res) => {
 });
 
 // Update booking status
-app.patch('/api/bookings/:id/status', async (req, res) => {
+app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes } = req.body;
@@ -477,7 +539,7 @@ app.get('/api/bookings/:id', async (req, res) => {
 });
 
 // Delete booking
-app.delete('/api/bookings/:id', async (req, res) => {
+app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const bookings = await loadBookings();
@@ -502,7 +564,7 @@ app.delete('/api/bookings/:id', async (req, res) => {
 });
 
 // Get statistics
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const bookings = await loadBookings();
         const today = new Date().toISOString().split('T')[0];

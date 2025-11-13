@@ -90,6 +90,13 @@ The server will start at: `http://localhost:3000`
 1. Open `admin/index.html` in your browser
 2. You'll see all bookings with management options
 
+### 🔐 Admin Authentication Tokens
+
+- Log in via `POST /api/admin/login` with the admin password to receive a bearer token and expiry timestamp.
+- Include the token in the `Authorization` header (`Authorization: Bearer <token>`) for all admin-only requests such as updating settings, changing passwords, viewing bookings, or updating booking statuses.
+- Tokens expire after 1 hour by default. Override this by setting the `ADMIN_TOKEN_TTL_MS` environment variable (value in milliseconds) before starting the backend server.
+- The bundled admin panel (`admin/index.html`) stores the token in `sessionStorage` and automatically attaches it to protected API requests after login.
+
 ---
 
 ## 🌐 Embedding in Wix

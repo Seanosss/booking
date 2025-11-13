@@ -706,16 +706,66 @@
     <script>
         // Configuration
         const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
+        const LOGIN_ERROR_DEFAULT = 'Invalid password. Please try again.';
         let isLoggedIn = false;
         let allBookings = [];
         let currentSettings = {};
+        let refreshIntervalId = null;
+
+        function fetchWithAuth(url, options = {}) {
+            const token = sessionStorage.getItem('adminToken');
+            const headers = {
+                ...(options.headers || {})
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            return fetch(url, { ...options, headers });
+        }
+
+        function handleUnauthorized(response) {
+            if (response.status === 401) {
+                logout();
+                showLoginError('Session expired. Please login again.');
+                return true;
+            }
+            return false;
+        }
+
+        function showLoginError(message = LOGIN_ERROR_DEFAULT) {
+            const loginErrorEl = document.getElementById('loginError');
+            if (!loginErrorEl) return;
+
+            loginErrorEl.textContent = message;
+            loginErrorEl.style.display = 'block';
+
+            setTimeout(() => {
+                loginErrorEl.style.display = 'none';
+                loginErrorEl.textContent = LOGIN_ERROR_DEFAULT;
+            }, 3000);
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             // Check if already logged in (you could use sessionStorage/localStorage)
             const token = sessionStorage.getItem('adminToken');
+            const expiry = sessionStorage.getItem('adminTokenExpiry');
+
+            const loginErrorEl = document.getElementById('loginError');
+            if (loginErrorEl) {
+                loginErrorEl.textContent = LOGIN_ERROR_DEFAULT;
+                loginErrorEl.style.display = 'none';
+            }
+
             if (token) {
-                showAdminPanel();
+                if (expiry && new Date(expiry) <= new Date()) {
+                    sessionStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminTokenExpiry');
+                } else {
+                    showAdminPanel();
+                }
             }
 
             // Bind login form
@@ -740,16 +790,18 @@
 
                 if (response.ok && result.success) {
                     sessionStorage.setItem('adminToken', result.token);
+                    if (result.expiresAt) {
+                        sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
+                    } else {
+                        sessionStorage.removeItem('adminTokenExpiry');
+                    }
                     showAdminPanel();
                 } else {
-                    document.getElementById('loginError').style.display = 'block';
-                    setTimeout(() => {
-                        document.getElementById('loginError').style.display = 'none';
-                    }, 3000);
+                    showLoginError(result.error || LOGIN_ERROR_DEFAULT);
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                document.getElementById('loginError').style.display = 'block';
+                showLoginError('Unable to login. Please try again.');
             }
         }
 
@@ -758,15 +810,24 @@
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('adminContainer').classList.add('active');
             isLoggedIn = true;
-            
+
+            const loginErrorEl = document.getElementById('loginError');
+            if (loginErrorEl) {
+                loginErrorEl.style.display = 'none';
+                loginErrorEl.textContent = LOGIN_ERROR_DEFAULT;
+            }
+
             // Load initial data
             loadBookings();
             loadStats();
             loadSettings();
             loadInstructions();
-            
+
             // Set up auto-refresh
-            setInterval(() => {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+            }
+            refreshIntervalId = setInterval(() => {
                 loadBookings();
                 loadStats();
             }, 30000);
@@ -775,6 +836,11 @@
         // Logout function
         function logout() {
             sessionStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminTokenExpiry');
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+                refreshIntervalId = null;
+            }
             document.getElementById('loginContainer').style.display = 'flex';
             document.getElementById('adminContainer').classList.remove('active');
             isLoggedIn = false;
@@ -797,8 +863,12 @@
 
         // Load bookings
         async function loadBookings() {
+            if (!sessionStorage.getItem('adminToken')) return;
+
             try {
-                const response = await fetch(`${API_BASE_URL}/bookings`);
+                const response = await fetchWithAuth(`${API_BASE_URL}/bookings`);
+                if (handleUnauthorized(response)) return;
+
                 if (response.ok) {
                     allBookings = await response.json();
                     displayBookings(allBookings);
@@ -810,8 +880,12 @@
 
         // Load statistics
         async function loadStats() {
+            if (!sessionStorage.getItem('adminToken')) return;
+
             try {
-                const response = await fetch(`${API_BASE_URL}/stats`);
+                const response = await fetchWithAuth(`${API_BASE_URL}/stats`);
+                if (handleUnauthorized(response)) return;
+
                 if (response.ok) {
                     const stats = await response.json();
                     document.getElementById('pending-count').textContent = stats.pending || 0;
@@ -891,13 +965,15 @@
                     }
                 };
 
-                const response = await fetch(`${API_BASE_URL}/settings`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/settings`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(updatedSettings)
                 });
+
+                if (handleUnauthorized(response)) return;
 
                 if (response.ok) {
                     showMessage('success', 'Settings saved successfully!');
@@ -935,13 +1011,15 @@
                     bookingInstructions
                 };
 
-                const response = await fetch(`${API_BASE_URL}/settings`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/settings`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(updatedSettings)
                 });
+
+                if (handleUnauthorized(response)) return;
 
                 if (response.ok) {
                     showMessage('success', 'Instructions saved successfully!');
@@ -969,13 +1047,15 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/admin/change-password`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ oldPassword, newPassword })
                 });
+
+                if (handleUnauthorized(response)) return;
 
                 if (response.ok) {
                     showMessage('success', 'Password changed successfully! Please login again.');
@@ -1050,14 +1130,16 @@
             if (!confirm(confirmMsg)) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+                const response = await fetchWithAuth(`${API_BASE_URL}/bookings/${bookingId}/status`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ status: newStatus })
                 });
-                
+
+                if (handleUnauthorized(response)) return;
+
                 if (response.ok) {
                     showMessage('success', `Booking ${newStatus} successfully!`);
                     loadBookings();
