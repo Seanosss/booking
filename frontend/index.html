@@ -1118,10 +1118,8 @@
                 phone: phone,
                 date: selectedDate,
                 startTime: startTime,
-                duration: totalDuration,
-                totalPrice: totalPrice,
-                notes: notes,
-                status: SETTINGS.bookingRules?.autoConfirm ? 'confirmed' : 'pending'
+                selectedSlots: [...selectedSlots],
+                notes: notes
             };
             
             // Disable submit button
@@ -1141,32 +1139,49 @@
                 const result = await response.json();
                 
                 if (response.ok) {
+                    const confirmedBooking = result.booking || {};
+                    const bookingStartTime = confirmedBooking.startTime || startTime;
+                    const bookingDuration = confirmedBooking.duration || totalDuration;
+                    const bookingDate = confirmedBooking.date || selectedDate;
+                    const bookingTotalPrice = confirmedBooking.totalPrice ?? totalPrice;
+                    const bookingEndTime = addMinutesToTime(bookingStartTime, bookingDuration);
+
                     // Show success message
                     showMessage('success', translations[currentLanguage]['success-booking']);
-                    
+
                     // Reset form
                     document.getElementById('booking-form').reset();
                     selectedDate = null;
                     clearTimeSelection();
-                    
+
                     // Hide sections
                     document.getElementById('time-section').style.display = 'none';
                     document.getElementById('info-section').style.display = 'none';
-                    
+
                     // Clear date
                     document.getElementById('date-input').value = '';
-                    
+
                     // Open WhatsApp with pre-filled message
                     const whatsappNumber = SETTINGS.contactInfo?.whatsapp?.replace(/\D/g, '') || '85298725268';
                     const whatsappMessage = encodeURIComponent(
-                        currentLanguage === 'zh' 
-                            ? `您好，我剛完成預約申請：\n姓名：${customerName}\n日期：${formatDate(bookingData.date)}\n時段：${formatTime(startTime)} - ${formatTime(endTime)} (${totalDuration} 分鐘)\n總金額：HK$${totalPrice}\n我會盡快傳送付款證明。`
-                            : `Hi, I've just made a booking request:\nName: ${customerName}\nDate: ${formatDate(bookingData.date)}\nTime: ${formatTime(startTime)} - ${formatTime(endTime)} (${totalDuration} mins)\nTotal: HK$${totalPrice}\nI will send payment proof shortly.`
+                        currentLanguage === 'zh'
+                            ? `您好，我剛完成預約申請：\n姓名：${customerName}\n日期：${formatDate(bookingDate)}\n時段：${formatTime(bookingStartTime)} - ${formatTime(bookingEndTime)} (${bookingDuration} 分鐘)\n總金額：HK$${bookingTotalPrice}\n我會盡快傳送付款證明。`
+                            : `Hi, I've just made a booking request:\nName: ${customerName}\nDate: ${formatDate(bookingDate)}\nTime: ${formatTime(bookingStartTime)} - ${formatTime(bookingEndTime)} (${bookingDuration} mins)\nTotal: HK$${bookingTotalPrice}\nI will send payment proof shortly.`
                     );
                     window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank');
-                    
+
                 } else {
-                    showMessage('error', result.error || translations[currentLanguage]['error-booking']);
+                    const errorMessages = [];
+
+                    if (result.error) {
+                        errorMessages.push(result.error);
+                    }
+
+                    if (Array.isArray(result.details) && result.details.length > 0) {
+                        errorMessages.push(...result.details);
+                    }
+
+                    showMessage('error', errorMessages.length > 0 ? errorMessages : translations[currentLanguage]['error-booking']);
                 }
                 
             } catch (error) {
@@ -1197,7 +1212,7 @@
 
         function formatTime(timeString) {
             const [hour, minute] = timeString.split(':').map(Number);
-            
+
             if (currentLanguage === 'zh') {
                 const period = hour >= 12 ? '下午' : '上午';
                 const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
@@ -1209,17 +1224,53 @@
             }
         }
 
+        function addMinutesToTime(timeString, minutesToAdd) {
+            const [hour, minute] = timeString.split(':').map(Number);
+            const totalMinutes = hour * 60 + minute + minutesToAdd;
+            const endHour = Math.floor(totalMinutes / 60);
+            const endMinute = totalMinutes % 60;
+            return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+        }
+
         function showMessage(type, message) {
-            const messageEl = type === 'success' 
+            const messageEl = type === 'success'
                 ? document.getElementById('success-message')
                 : document.getElementById('error-message');
-            
-            messageEl.textContent = message;
+
+            messageEl.innerHTML = '';
+
+            const messagesArray = Array.isArray(message) ? message.filter(Boolean) : [message].filter(Boolean);
+
+            if (messagesArray.length === 0) {
+                return;
+            }
+
+            if (messagesArray.length === 1) {
+                messageEl.textContent = messagesArray[0];
+            } else {
+                const [primary, ...rest] = messagesArray;
+                const primaryEl = document.createElement('div');
+                primaryEl.textContent = primary;
+                messageEl.appendChild(primaryEl);
+
+                const list = document.createElement('ul');
+                rest.forEach(item => {
+                    if (!item) return;
+                    const li = document.createElement('li');
+                    li.textContent = item;
+                    list.appendChild(li);
+                });
+
+                if (list.children.length > 0) {
+                    messageEl.appendChild(list);
+                }
+            }
+
             messageEl.style.display = 'block';
-            
+
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            
+
             // Auto hide after 10 seconds
             setTimeout(() => {
                 messageEl.style.display = 'none';
