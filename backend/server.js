@@ -22,14 +22,8 @@ const {
     updateCatalogItem,
     deleteCatalogItem,
     getCatalogItemCapacityUsage,
-    getAdminUserByEmail,
-    getAdminUserById,
-    updateAdminPassword,
-    recordAdminLogin,
-    DEFAULT_ADMIN_EMAIL,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
-const { hashPassword, verifyPassword, needsHashMigration } = require('./utils/hash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,26 +54,20 @@ function cleanupExpiredTokens() {
     }
 }
 
-function issueAdminToken(adminUser) {
+function issueAdminToken() {
     const token = crypto.randomBytes(32).toString('hex');
     const issuedAt = Date.now();
     const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
 
     activeAdminTokens.set(token, {
         issuedAt,
-        expiresAt,
-        adminId: adminUser.id,
-        email: adminUser.email
+        expiresAt
     });
 
     return {
         token,
         issuedAt,
-        expiresAt,
-        admin: {
-            id: adminUser.id,
-            email: adminUser.email
-        }
+        expiresAt
     };
 }
 
@@ -106,14 +94,7 @@ function authenticateAdmin(req, res, next) {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    if (!tokenMetadata.adminId || !tokenMetadata.email) {
-        activeAdminTokens.delete(token);
-        return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-
     req.admin = {
-        id: tokenMetadata.adminId,
-        email: tokenMetadata.email,
         token,
         issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
         expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
@@ -280,50 +261,27 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { password } = req.body || {};
 
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
+        if (typeof password !== 'string' || password.length === 0) {
+            return res.status(400).json({ error: 'Password is required' });
         }
 
-        const normalizedEmail = email.toString().trim().toLowerCase();
-        const adminUser = await getAdminUserByEmail(normalizedEmail);
+        const settings = await loadSettings();
+        const storedPassword = settings.adminPassword || DEFAULT_ADMIN_PASSWORD;
 
-        if (!adminUser) {
-            console.warn('Admin login failed: user not found', { email: normalizedEmail });
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
+        if (password !== storedPassword) {
+            console.warn('Admin login failed: incorrect shared password');
+            return res.status(401).json({ success: false, error: 'Invalid password' });
         }
 
-        const passwordMatches = verifyPassword(password, adminUser.passwordHash);
-        if (!passwordMatches) {
-            console.warn('Admin login failed: incorrect password', { email: normalizedEmail, adminId: adminUser.id });
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
-        }
-
-        let syncedAdminUser = adminUser;
-        if (needsHashMigration(adminUser.passwordHash)) {
-            try {
-                const newHash = hashPassword(password);
-                syncedAdminUser = await updateAdminPassword(adminUser.id, newHash) || adminUser;
-                const settings = await loadSettings();
-                settings.adminPasswordHash = newHash;
-                await saveSettings(settings);
-                console.log('Upgraded admin password hash to PBKDF2 for user', { email: normalizedEmail });
-            } catch (migrationError) {
-                console.error('Failed to upgrade admin password hash', migrationError);
-            }
-        }
-
-        await recordAdminLogin(adminUser.id);
-
-        const { token, expiresAt } = issueAdminToken(syncedAdminUser);
+        const { token, expiresAt } = issueAdminToken();
 
         res.json({
             success: true,
             token,
             tokenType: 'Bearer',
             expiresAt: new Date(expiresAt).toISOString(),
-            admin: { email: syncedAdminUser.email },
             message: 'Login successful'
         });
     } catch (error) {
@@ -334,32 +292,24 @@ app.post('/api/admin/login', async (req, res) => {
 
 app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
-        const { oldPassword, newPassword } = req.body;
+        const { oldPassword, currentPassword, newPassword } = req.body || {};
+        const providedCurrent = typeof currentPassword === 'string' && currentPassword.length > 0
+            ? currentPassword
+            : (typeof oldPassword === 'string' ? oldPassword : '');
 
-        const currentPassword = oldPassword || req.body.currentPassword;
-
-        if (!currentPassword || !newPassword) {
+        if (!providedCurrent || typeof newPassword !== 'string' || newPassword.length === 0) {
             return res.status(400).json({ error: 'Both current and new passwords are required' });
         }
 
-        const adminUser = await getAdminUserById(req.admin?.id);
-        if (!adminUser) {
-            return res.status(404).json({ error: 'Admin account not found' });
-        }
+        const settings = await loadSettings();
+        const storedPassword = settings.adminPassword || DEFAULT_ADMIN_PASSWORD;
 
-        if (!verifyPassword(currentPassword, adminUser.passwordHash)) {
-            console.warn('Admin password change rejected: incorrect current password', {
-                adminId: req.admin?.id,
-                email: req.admin?.email
-            });
+        if (providedCurrent !== storedPassword) {
+            console.warn('Admin password change rejected: incorrect current password');
             return res.status(401).json({ error: 'Current password incorrect' });
         }
 
-        const newHash = hashPassword(newPassword);
-        await updateAdminPassword(adminUser.id, newHash);
-
-        const settings = await loadSettings();
-        settings.adminPasswordHash = newHash;
+        settings.adminPassword = newPassword;
         const saved = await saveSettings(settings);
 
         if (saved) {
@@ -381,7 +331,7 @@ app.get('/api/settings', async (req, res) => {
     try {
         const settings = await loadSettings();
         const publicSettings = { ...settings };
-        delete publicSettings.adminPasswordHash;
+        delete publicSettings.adminPassword;
         res.json(publicSettings);
     } catch (error) {
         console.error('Error getting settings:', error);
@@ -416,14 +366,14 @@ app.put('/api/settings', authenticateAdmin, async (req, res) => {
             ...currentSettings,
             ...req.body,
             pricing: mergedPricing,
-            adminPasswordHash: currentSettings.adminPasswordHash,
+            adminPassword: currentSettings.adminPassword,
             updatedAt: new Date().toISOString()
         };
 
         const saved = await saveSettings(updatedSettings);
         if (saved) {
             const publicSettings = { ...updatedSettings };
-            delete publicSettings.adminPasswordHash;
+            delete publicSettings.adminPassword;
             res.json({
                 success: true,
                 settings: publicSettings,
@@ -1067,8 +1017,7 @@ async function startServer() {
             console.log('====================================');
             console.log(`📍 Port: ${PORT}`);
             console.log(`🌐 API: http://localhost:${PORT}/api`);
-            console.log(`👤 Default Admin Email: ${DEFAULT_ADMIN_EMAIL}`);
-            console.log(`🔐 Default Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
+            console.log(`🔐 Shared Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
             console.log('⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!');
             console.log('====================================');
         });

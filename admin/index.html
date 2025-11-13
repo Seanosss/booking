@@ -74,8 +74,7 @@
         <div class="login-box">
             <h2>管理員登入</h2>
             <form id="loginForm">
-                <input type="email" id="emailInput" class="login-input" placeholder="請輸入電郵" required value="admin@example.com">
-                <input type="password" id="passwordInput" class="login-input" placeholder="請輸入密碼" required>
+                <input type="password" id="passwordInput" class="login-input" placeholder="請輸入管理密碼" required value="">
                 <button type="submit" class="login-btn">登入</button>
             </form>
             <div id="loginError" class="login-error"></div>
@@ -149,6 +148,27 @@
         </div>
         <div id="settingsTab" class="tab-content">
             <div id="settingsMessage" class="message"></div>
+            <div class="section-card">
+                <h3>管理密碼</h3>
+                <div id="passwordMessage" class="message"></div>
+                <form id="passwordForm" class="form-grid">
+                    <div class="input-group">
+                        <label>目前密碼</label>
+                        <input type="password" id="currentAdminPassword" required>
+                    </div>
+                    <div class="input-group">
+                        <label>新密碼</label>
+                        <input type="password" id="newAdminPassword" required>
+                    </div>
+                    <div class="input-group">
+                        <label>確認新密碼</label>
+                        <input type="password" id="confirmAdminPassword" required>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">更新密碼</button>
+                    </div>
+                </form>
+            </div>
             <div class="section-card">
                 <h3>基本資料</h3>
                 <div class="form-grid two-columns">
@@ -241,16 +261,16 @@
             return `${DEFAULT_ORIGIN}${DEFAULT_API_PATH}`.replace(/\/+$/, '');
         })();
 
-        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查電郵及密碼。';
+        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
         let refreshIntervalId = null;
         let currentSettings = {};
         let currentItems = [];
 
-        function updateAdminIdentity(email) {
+        function updateAdminIdentity(isLoggedIn) {
             const el = document.getElementById('adminIdentity');
             if (!el) return;
-            if (email) {
-                el.textContent = `登入帳號：${email}`;
+            if (isLoggedIn) {
+                el.textContent = '已使用共享管理密碼登入';
                 el.style.display = 'block';
             } else {
                 el.textContent = '';
@@ -401,6 +421,10 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
             document.getElementById('itemForm').addEventListener('submit', submitItemForm);
+            const passwordForm = document.getElementById('passwordForm');
+            if (passwordForm) {
+                passwordForm.addEventListener('submit', handlePasswordChange);
+            }
             setOverviewDateToToday();
             const overviewDateInput = document.getElementById('overviewDate');
             if (overviewDateInput) {
@@ -415,20 +439,17 @@
 
         async function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('emailInput').value.trim();
             const password = document.getElementById('passwordInput').value;
-            if (!email) {
-                showLoginError('請輸入電郵。');
+            if (!password) {
+                showLoginError('請輸入管理密碼。');
                 return;
             }
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
                 const result = await response.json();
                 if (response.ok && result.success) {
                     sessionStorage.setItem('adminToken', result.token);
                     if (result.expiresAt) sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
-                    const normalizedEmail = (result.admin?.email || email).toLowerCase();
-                    sessionStorage.setItem('adminEmail', normalizedEmail);
                     showAdminPanel();
                 } else {
                     showLoginError(result.error || LOGIN_ERROR_DEFAULT);
@@ -449,7 +470,11 @@
         function showAdminPanel() {
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('adminContainer').style.display = 'block';
-            updateAdminIdentity(sessionStorage.getItem('adminEmail'));
+            updateAdminIdentity(true);
+            const passwordMsg = document.getElementById('passwordMessage');
+            if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
+            const passwordForm = document.getElementById('passwordForm');
+            if (passwordForm) passwordForm.reset();
             setOverviewDateToToday();
             loadBookingOverview(document.getElementById('overviewDate')?.value);
             loadStats();
@@ -468,7 +493,6 @@
         function logout() {
             sessionStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminTokenExpiry');
-            sessionStorage.removeItem('adminEmail');
             if (refreshIntervalId) clearInterval(refreshIntervalId);
             document.getElementById('adminContainer').style.display = 'none';
             document.getElementById('loginContainer').style.display = 'flex';
@@ -478,7 +502,13 @@
             if (studioList) studioList.innerHTML = '';
             if (classList) classList.innerHTML = '';
             if (overviewMsg) { overviewMsg.style.display = 'none'; overviewMsg.textContent = ''; }
-            updateAdminIdentity('');
+            const passwordForm = document.getElementById('passwordForm');
+            if (passwordForm) passwordForm.reset();
+            const passwordMsg = document.getElementById('passwordMessage');
+            if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
+            const loginPasswordInput = document.getElementById('passwordInput');
+            if (loginPasswordInput) loginPasswordInput.value = '';
+            updateAdminIdentity(false);
         }
 
         async function loadStats() {
@@ -627,6 +657,53 @@
             } catch (error) {
                 console.error('Error saving settings:', error);
                 showMessage('settingsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function handlePasswordChange(event) {
+            event.preventDefault();
+            const current = document.getElementById('currentAdminPassword').value;
+            const nextPassword = document.getElementById('newAdminPassword').value;
+            const confirmPassword = document.getElementById('confirmAdminPassword').value;
+
+            if (!current || !nextPassword || !confirmPassword) {
+                showMessage('passwordMessage', 'error', '請填寫所有欄位');
+                return;
+            }
+
+            if (nextPassword !== confirmPassword) {
+                showMessage('passwordMessage', 'error', '新密碼與確認密碼不一致');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ currentPassword: current, newPassword: nextPassword })
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (response.status === 401) {
+                    showMessage('passwordMessage', 'error', result.error || '驗證失敗，請重新登入');
+                    setTimeout(() => logout(), 1500);
+                    return;
+                }
+
+                if (response.ok && result.success) {
+                    showMessage('passwordMessage', 'success', '密碼已更新，請重新登入');
+                    event.target.reset();
+                    setTimeout(() => {
+                        logout();
+                        const loginPasswordInput = document.getElementById('passwordInput');
+                        if (loginPasswordInput) loginPasswordInput.value = '';
+                    }, 1500);
+                } else {
+                    showMessage('passwordMessage', 'error', result.error || '更新失敗，請稍後再試');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showMessage('passwordMessage', 'error', '更新失敗，請稍後再試');
             }
         }
 

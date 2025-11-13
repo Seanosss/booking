@@ -1,10 +1,8 @@
 require('dotenv').config();
 const { Pool } = require('pg');
-const { hashPassword, needsHashMigration } = require('../utils/hash');
 const crypto = require('crypto');
 
-const DEFAULT_ADMIN_EMAIL = (process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com').toLowerCase();
-const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || 'changeme123';
+const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';
 
 const DEFAULT_OPERATING_HOURS = {
     startTime: '07:00',
@@ -73,10 +71,9 @@ const defaultSettings = {
         instruction6Zh: '您的預約將在 30 分鐘內確認',
         instruction6En: 'Your booking will be confirmed within 30 minutes'
     },
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    adminPassword: DEFAULT_ADMIN_PASSWORD
 };
-
-const DEFAULT_ADMIN_PASSWORD_HASH = hashPassword(DEFAULT_ADMIN_PASSWORD);
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -148,7 +145,7 @@ function mapSettingsRow(row) {
         contactInfo: row.contact_info,
         bookingRules: row.booking_rules,
         bookingInstructions: row.booking_instructions,
-        adminPasswordHash: row.admin_password,
+        adminPassword: row.admin_password,
         updatedAt: row.updated_at ? row.updated_at.toISOString() : new Date().toISOString()
     };
 }
@@ -220,21 +217,6 @@ function mapCatalogItemRow(row) {
     };
 }
 
-function mapAdminUserRow(row) {
-    if (!row) {
-        return null;
-    }
-
-    return {
-        id: row.id,
-        email: row.email,
-        passwordHash: row.password_hash,
-        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-        lastLoginAt: row.last_login_at ? new Date(row.last_login_at).toISOString() : null
-    };
-}
-
 function generateBookingId() {
     const timestamp = Date.now().toString(36);
     const random = crypto.randomBytes(6).toString('hex');
@@ -266,22 +248,6 @@ async function initializeDatabase() {
             admin_password TEXT NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS admin_users (
-            id SERIAL PRIMARY KEY,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            last_login_at TIMESTAMPTZ
-        )
-    `);
-
-    await pool.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email_lower
-        ON admin_users ((LOWER(email)))
     `);
 
     await pool.query(`
@@ -386,91 +352,10 @@ async function initializeDatabase() {
             defaultSettings.contactInfo,
             defaultSettings.bookingRules,
             defaultSettings.bookingInstructions,
-            DEFAULT_ADMIN_PASSWORD_HASH
+            DEFAULT_ADMIN_PASSWORD
         ]);
         console.log('Initialized settings with default admin password. Please change it as soon as possible.');
     }
-
-    await ensureDefaultAdminUser();
-}
-
-async function ensureDefaultAdminUser() {
-    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM admin_users');
-    if (rows[0].count > 0) {
-        return;
-    }
-
-    let passwordHash = DEFAULT_ADMIN_PASSWORD_HASH;
-    const settingsResult = await pool.query('SELECT admin_password FROM settings ORDER BY id LIMIT 1');
-    if (settingsResult.rows.length > 0 && settingsResult.rows[0].admin_password) {
-        passwordHash = settingsResult.rows[0].admin_password;
-    }
-
-    if (needsHashMigration(passwordHash)) {
-        console.warn('Legacy admin password hash detected. It will be upgraded on next successful admin login.');
-    }
-
-    await pool.query(`
-        INSERT INTO admin_users (email, password_hash)
-        VALUES ($1, $2)
-    `, [DEFAULT_ADMIN_EMAIL, passwordHash]);
-
-    console.log(`Default admin account created (${DEFAULT_ADMIN_EMAIL}). Please update the password immediately.`);
-}
-
-async function getAdminUserByEmail(email) {
-    if (!email) {
-        return null;
-    }
-
-    const result = await pool.query(
-        'SELECT * FROM admin_users WHERE LOWER(email) = LOWER($1) LIMIT 1',
-        [email]
-    );
-
-    if (result.rows.length === 0) {
-        return null;
-    }
-
-    return mapAdminUserRow(result.rows[0]);
-}
-
-async function getAdminUserById(id) {
-    if (!id) {
-        return null;
-    }
-
-    const result = await pool.query('SELECT * FROM admin_users WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-        return null;
-    }
-
-    return mapAdminUserRow(result.rows[0]);
-}
-
-async function updateAdminPassword(adminId, passwordHash) {
-    const result = await pool.query(`
-        UPDATE admin_users
-        SET password_hash = $2,
-            updated_at = NOW()
-        WHERE id = $1
-        RETURNING *
-    `, [adminId, passwordHash]);
-
-    if (result.rows.length === 0) {
-        return null;
-    }
-
-    return mapAdminUserRow(result.rows[0]);
-}
-
-async function recordAdminLogin(adminId) {
-    await pool.query(`
-        UPDATE admin_users
-        SET last_login_at = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-    `, [adminId]);
 }
 
 async function loadSettings() {
@@ -480,7 +365,7 @@ async function loadSettings() {
             ...defaultSettings,
             operatingHours: mergeOperatingHours(defaultSettings.operatingHours),
             pricing: mergePricing(defaultSettings.pricing),
-            adminPasswordHash: DEFAULT_ADMIN_PASSWORD_HASH
+            adminPassword: DEFAULT_ADMIN_PASSWORD
         };
     }
     return mapSettingsRow(result.rows[0]);
@@ -494,7 +379,14 @@ async function saveSettings(settings) {
 
     const id = result.rows[0].id;
     const operatingHours = mergeOperatingHours(settings.operatingHours || {});
-    const adminPasswordHash = settings.adminPasswordHash || DEFAULT_ADMIN_PASSWORD_HASH;
+    let adminPassword = typeof settings.adminPassword === 'string' && settings.adminPassword.length > 0
+        ? settings.adminPassword
+        : null;
+
+    if (!adminPassword) {
+        const existing = await pool.query('SELECT admin_password FROM settings WHERE id = $1', [id]);
+        adminPassword = existing.rows[0]?.admin_password || DEFAULT_ADMIN_PASSWORD;
+    }
 
     await pool.query(`
         UPDATE settings
@@ -523,7 +415,7 @@ async function saveSettings(settings) {
         settings.contactInfo,
         settings.bookingRules,
         settings.bookingInstructions,
-        adminPasswordHash,
+        adminPassword,
         id
     ]);
 
@@ -946,9 +838,7 @@ module.exports = {
     getPool,
     query,
     defaultSettings,
-    DEFAULT_ADMIN_EMAIL,
     DEFAULT_ADMIN_PASSWORD,
-    DEFAULT_ADMIN_PASSWORD_HASH,
     initializeDatabase,
     loadSettings,
     saveSettings,
@@ -966,9 +856,5 @@ module.exports = {
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
-    getCatalogItemCapacityUsage,
-    getAdminUserByEmail,
-    getAdminUserById,
-    updateAdminPassword,
-    recordAdminLogin
+    getCatalogItemCapacityUsage
 };
