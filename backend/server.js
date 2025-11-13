@@ -6,13 +6,20 @@ const {
     initializeDatabase,
     loadSettings,
     saveSettings,
-    areSlotsAvailable,
-    getBookings,
     createBooking,
+    getBookings,
     getBookingById,
     updateBookingStatus,
     deleteBooking,
     getStats,
+    getBookingItemsByDate,
+    getRoomConflicts,
+    getCatalogItemById,
+    getCatalogItems,
+    createCatalogItem,
+    updateCatalogItem,
+    deleteCatalogItem,
+    getCatalogItemCapacityUsage,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 const { hashPassword } = require('./utils/hash');
@@ -28,8 +35,8 @@ const ADMIN_TOKEN_TTL_MS = (() => {
 })();
 
 const activeAdminTokens = new Map();
+const bookingCreationLimiter = (req, res, next) => next();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -84,185 +91,9 @@ function authenticateAdmin(req, res, next) {
     next();
 }
 
-// Default settings with password and bilingual instructions
-const defaultSettings = {
-    businessName: "Premium Studio Booking",
-    businessNameZh: "專業錄音室預約系統",
-    businessDescription: "Professional Recording Studio",
-    businessDescriptionZh: "專業錄音室",
-    operatingHours: {
-        startTime: "07:00",
-        endTime: "22:00"
-    },
-    pricing: {
-        thirtyMinutes: 140,
-        oneHour: 280,
-        sundayAirconFee: 80
-    },
-    paymentMethods: {
-        bankTransfer: {
-            enabled: true,
-            bankName: "HSBC Hong Kong",
-            accountNumber: "123-456789-001",
-            accountName: "Connect Point Studio Ltd"
-        },
-        payme: {
-            enabled: true,
-            phoneNumber: "+852 9872 5268",
-            displayName: "Connect Point Studio"
-        }
-    },
-    contactInfo: {
-        whatsapp: "85298725268",
-        email: "connectpoint@atsumaru.com",
-        phone: "+852 9872 5268"
-    },
-    bookingRules: {
-        minAdvanceBooking: 0,
-        maxAdvanceBooking: 30,
-        slotInterval: 30,
-        autoConfirm: false,
-        requirePaymentProof: true
-    },
-    bookingInstructions: {
-        titleZh: "重要預約須知",
-        titleEn: "Important Booking Instructions",
-        instruction1Zh: "選擇您想要的日期",
-        instruction1En: "Select your preferred date",
-        instruction2Zh: "點擊開始時段，再點擊結束時段（可選擇多個連續時段）",
-        instruction2En: "Click start time, then click end time (can select multiple consecutive slots)",
-        instruction3Zh: "填寫您的聯絡資料",
-        instruction3En: "Fill in your contact information",
-        instruction4Zh: "透過銀行轉帳或 PayMe 付款",
-        instruction4En: "Make payment via Bank Transfer or PayMe",
-        instruction5Zh: "將付款證明傳送至 WhatsApp: 98725268",
-        instruction5En: "Send payment proof to WhatsApp: 98725268",
-        instruction6Zh: "您的預約將在 30 分鐘內確認",
-        instruction6En: "Your booking will be confirmed within 30 minutes"
-    },
-    adminPassword: "admin123", // Default password - CHANGE THIS!
-    updatedAt: new Date().toISOString()
-};
-
-// Hash password
-function hashPassword(password) {
-    return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-// Initialize files
-async function initFiles() {
-    // Initialize bookings file
-    try {
-        await fs.access(DATA_FILE);
-    } catch (error) {
-        await fs.writeFile(DATA_FILE, '[]');
-        console.log('Created bookings.json file');
-    }
-    
-    // Initialize settings file
-    try {
-        await fs.access(SETTINGS_FILE);
-    } catch (error) {
-        // Hash the default password before saving
-        defaultSettings.adminPassword = hashPassword(defaultSettings.adminPassword);
-        await fs.writeFile(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-        console.log('Created settings.json with default password: admin123');
-    }
-}
-
-// Load settings
-async function loadSettings() {
-    try {
-        const data = await fs.readFile(SETTINGS_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading settings:', error);
-        return defaultSettings;
-    }
-}
-
-// Save settings
-async function saveSettings(settings) {
-    try {
-        settings.updatedAt = new Date().toISOString();
-        await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
-        return true;
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        return false;
-    }
-}
-
-// Load bookings
-async function loadBookings() {
-    try {
-        const data = await fs.readFile(DATA_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading bookings:', error);
-        return [];
-    }
-}
-
-// Save bookings
-async function saveBookings(bookings) {
-    try {
-        await fs.writeFile(DATA_FILE, JSON.stringify(bookings, null, 2));
-    } catch (error) {
-        console.error('Error saving bookings:', error);
-    }
-}
-
-// Generate unique booking ID
-function generateBookingId() {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
-    return `BK-${timestamp}-${random}`.toUpperCase();
-}
-
-// Generate slots for a booking duration
-function generateSlotsForDuration(startTime, durationMinutes, slotInterval = DEFAULT_SLOT_INTERVAL) {
-    const slots = [];
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    let currentMinutes = startHour * 60 + startMinute;
-    const endMinutes = currentMinutes + durationMinutes;
-
-    while (currentMinutes < endMinutes) {
-        const hour = Math.floor(currentMinutes / 60);
-        const minute = currentMinutes % 60;
-        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeSlot);
-        currentMinutes += slotInterval;
-    }
-
-    return slots;
-}
-
-// Check if slots are available
-async function areSlotsAvailable(date, startTime, duration, excludeBookingId = null, slotInterval = DEFAULT_SLOT_INTERVAL) {
-    const bookings = await loadBookings();
-    const requestedSlots = generateSlotsForDuration(startTime, duration, slotInterval);
-
-    const confirmedBookings = bookings.filter(b =>
-        b.date === date &&
-        b.status === 'confirmed' &&
-        b.id !== excludeBookingId
-    );
-
-    for (const booking of confirmedBookings) {
-        const bookedSlots = generateSlotsForDuration(booking.startTime, booking.duration, slotInterval);
-        const hasConflict = requestedSlots.some(slot => bookedSlots.includes(slot));
-        if (hasConflict) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function timeStringToMinutes(timeString) {
+function parseTimeToMinutes(timeString) {
     const [hour, minute] = timeString.split(':').map(Number);
-    return hour * 60 + minute;
+    return (hour * 60) + minute;
 }
 
 function minutesToTimeString(totalMinutes) {
@@ -271,52 +102,162 @@ function minutesToTimeString(totalMinutes) {
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 }
 
-function calculateTotalPrice(settings, durationMinutes, date) {
-    const slotInterval = Number(settings.bookingRules?.slotInterval) || DEFAULT_SLOT_INTERVAL;
-    const pricePerHalfHour = Number(settings.pricing?.thirtyMinutes) || 0;
-    const pricePerInterval = pricePerHalfHour * (slotInterval / 30);
-    const intervals = durationMinutes / slotInterval;
-    let totalPrice = pricePerInterval * intervals;
+function minutesBetween(startTime, endTime) {
+    return parseTimeToMinutes(endTime) - parseTimeToMinutes(startTime);
+}
 
-    if (!Number.isFinite(totalPrice)) {
-        totalPrice = 0;
+function normalizeIsoToDateTimeStrings(isoString) {
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) {
+        return null;
     }
 
-    const bookingDate = new Date(`${date}T00:00:00`);
-    const isSunday = !Number.isNaN(bookingDate.getTime()) && bookingDate.getDay() === 0;
-    const sundayFee = Number(settings.pricing?.sundayAirconFee) || 0;
+    const pad = (value) => value.toString().padStart(2, '0');
+    const localYear = date.getFullYear();
+    const localMonth = pad(date.getMonth() + 1);
+    const localDay = pad(date.getDate());
+    const localHour = pad(date.getHours());
+    const localMinute = pad(date.getMinutes());
 
-    if (isSunday && sundayFee > 0) {
-        const hours = Math.ceil(durationMinutes / 60);
-        totalPrice += sundayFee * hours;
+    return {
+        date: `${localYear}-${localMonth}-${localDay}`,
+        time: `${localHour}:${localMinute}`
+    };
+}
+
+function resolvePeakSchedule(settings) {
+    const schedule = settings.pricing?.peakSchedule;
+    if (!schedule) {
+        return null;
     }
 
-    return Math.round(totalPrice * 100) / 100;
+    const days = Array.isArray(schedule.days)
+        ? schedule.days.map(day => day.toString().toLowerCase())
+        : [];
+
+    return {
+        days,
+        startTime: schedule.startTime || '18:00',
+        endTime: schedule.endTime || '23:00'
+    };
+}
+
+function determinePeriodType(date, startTime, endTime, settings) {
+    const schedule = resolvePeakSchedule(settings);
+    if (!schedule || schedule.days.length === 0) {
+        return 'normal';
+    }
+
+    const parsedDate = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(parsedDate.getTime())) {
+        return 'normal';
+    }
+
+    const dayIndex = parsedDate.getDay();
+    const dayToken = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayIndex];
+    if (!schedule.days.includes(dayToken)) {
+        return 'normal';
+    }
+
+    const startMinutes = parseTimeToMinutes(startTime);
+    const endMinutes = parseTimeToMinutes(endTime);
+    const peakStart = parseTimeToMinutes(schedule.startTime);
+    const peakEnd = parseTimeToMinutes(schedule.endTime);
+
+    const overlapsPeak = startMinutes < peakEnd && endMinutes > peakStart;
+    return overlapsPeak ? 'peak' : 'normal';
+}
+
+function resolveHourlyRate(pricing, peopleCount, periodType) {
+    if (peopleCount > 18) {
+        throw new Error('Maximum capacity per booking item is 18 people');
+    }
+
+    if (peopleCount <= 10) {
+        return periodType === 'peak'
+            ? Number(pricing.peakUpTo10)
+            : Number(pricing.normalUpTo10);
+    }
+
+    return periodType === 'peak'
+        ? Number(pricing.peakUpTo18)
+        : Number(pricing.normalUpTo18);
+}
+
+function calculateRoomRentalPrice({ duration, peopleCount, periodType }, settings) {
+    const pricing = settings.pricing || {};
+    const rate = resolveHourlyRate(pricing, peopleCount, periodType);
+    const hours = duration / 60;
+    const total = rate * hours;
+    return Math.round(total * 100) / 100;
+}
+
+function hasInPayloadRoomConflict(items, date, startTime, endTime) {
+    const targetStart = parseTimeToMinutes(startTime);
+    const targetEnd = parseTimeToMinutes(endTime);
+    return items.some(existing => {
+        if (existing.itemType !== 'room_rental') {
+            return false;
+        }
+
+        if (existing.date !== date) {
+            return false;
+        }
+
+        const existingStart = parseTimeToMinutes(existing.startTime);
+        const existingEnd = parseTimeToMinutes(existing.endTime);
+
+        return existingStart < targetEnd && existingEnd > targetStart;
+    });
+}
+
+function generateSlotsForRange(startTime, endTime, intervalMinutes = 30) {
+    const slots = [];
+    let cursor = parseTimeToMinutes(startTime);
+    const end = parseTimeToMinutes(endTime);
+
+    while (cursor < end) {
+        slots.push(minutesToTimeString(cursor));
+        cursor += intervalMinutes;
+    }
+
+    return slots;
+}
+
+async function buildCatalogItemResponse(items) {
+    const enriched = [];
+    for (const item of items) {
+        const usage = await getCatalogItemCapacityUsage(item.id);
+        enriched.push({
+            ...item,
+            availableCapacity: Math.max(item.capacity - usage, 0),
+            usedCapacity: usage
+        });
+    }
+    return enriched;
 }
 
 // ===== ROUTES =====
 
-// Health check
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         timestamp: new Date().toISOString(),
         timezone: 'Asia/Hong_Kong'
     });
 });
 
-// Admin login
 app.post('/api/admin/login', async (req, res) => {
     try {
         const { password } = req.body;
-        
+
         if (!password) {
             return res.status(400).json({ error: 'Password required' });
         }
-        
+
         const settings = await loadSettings();
         const hashedPassword = hashPassword(password);
-        
+
         if (hashedPassword === settings.adminPassword) {
             const { token, expiresAt } = issueAdminToken();
 
@@ -328,9 +269,9 @@ app.post('/api/admin/login', async (req, res) => {
                 message: 'Login successful'
             });
         } else {
-            res.status(401).json({ 
+            res.status(401).json({
                 success: false,
-                error: 'Invalid password' 
+                error: 'Invalid password'
             });
         }
     } catch (error) {
@@ -339,25 +280,24 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// Change admin password
 app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
-        
+
         if (!oldPassword || !newPassword) {
             return res.status(400).json({ error: 'Both old and new passwords required' });
         }
-        
+
         const settings = await loadSettings();
         const hashedOldPassword = hashPassword(oldPassword);
-        
+
         if (hashedOldPassword !== settings.adminPassword) {
             return res.status(401).json({ error: 'Current password incorrect' });
         }
-        
+
         settings.adminPassword = hashPassword(newPassword);
         const saved = await saveSettings(settings);
-        
+
         if (saved) {
             activeAdminTokens.clear();
             res.json({
@@ -373,11 +313,9 @@ app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Get settings (public version without password)
 app.get('/api/settings', async (req, res) => {
     try {
         const settings = await loadSettings();
-        // Remove password before sending
         const publicSettings = { ...settings };
         delete publicSettings.adminPassword;
         res.json(publicSettings);
@@ -387,17 +325,22 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-// Update settings (requires admin access)
 app.put('/api/settings', authenticateAdmin, async (req, res) => {
     try {
         const currentSettings = await loadSettings();
+        const mergedPricing = {
+            ...currentSettings.pricing,
+            ...(req.body.pricing || {})
+        };
+
         const updatedSettings = {
             ...currentSettings,
             ...req.body,
-            adminPassword: currentSettings.adminPassword, // Keep existing password
+            pricing: mergedPricing,
+            adminPassword: currentSettings.adminPassword,
             updatedAt: new Date().toISOString()
         };
-        
+
         const saved = await saveSettings(updatedSettings);
         if (saved) {
             const publicSettings = { ...updatedSettings };
@@ -416,7 +359,6 @@ app.put('/api/settings', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Get all bookings
 app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     try {
         const bookings = await getBookings({
@@ -431,80 +373,33 @@ app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Create new booking
-app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
+app.get('/api/bookings/:id', async (req, res) => {
     try {
-        const { customerName, email, phone, date, startTime, duration, totalPrice, notes } = req.body;
+        const booking = await getBookingById(req.params.id);
 
-        if (!customerName || !email || !phone || !date || !startTime || !duration || totalPrice === undefined) {
-            return res.status(400).json({
-                error: 'Missing required fields',
-                required: ['customerName', 'email', 'phone', 'date', 'startTime', 'duration', 'totalPrice']
-            });
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found' });
         }
 
-        const parsedDuration = parseInt(duration, 10);
-        const numericTotalPrice = Number(totalPrice);
-
-        if (Number.isNaN(parsedDuration) || parsedDuration <= 0) {
-            return res.status(400).json({ error: 'Duration must be a positive number of minutes' });
-        }
-
-        if (Number.isNaN(numericTotalPrice)) {
-            return res.status(400).json({ error: 'Total price must be a valid number' });
-        }
-
-        const available = await areSlotsAvailable(date, startTime, parsedDuration);
-        if (!available) {
-            return res.status(400).json({
-                error: 'This time slot has already been confirmed. Please select another time.'
-            });
-        }
-
-        const settings = await loadSettings();
-        const status = settings.bookingRules.autoConfirm ? 'confirmed' : 'pending';
-
-        const newBooking = await createBooking({
-            customerName,
-            email,
-            phone,
-            date,
-            startTime,
-            duration: parsedDuration,
-            totalPrice: numericTotalPrice,
-            notes: notes || '',
-            status
-        });
-
-        const message = status === 'confirmed'
-            ? 'Booking confirmed successfully!'
-            : 'Booking created successfully. Please send payment confirmation.';
-
-        res.status(201).json({
-            success: true,
-            booking: newBooking,
-            message: message
-        });
-
+        res.json(booking);
     } catch (error) {
-        console.error('Error creating booking:', error);
-        res.status(500).json({ error: 'Failed to create booking' });
+        console.error('Error getting booking:', error);
+        res.status(500).json({ error: 'Failed to retrieve booking' });
     }
 });
 
-// Update booking status
 app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes } = req.body;
-        
+
         const validStatuses = ['pending', 'confirmed', 'cancelled'];
         if (!status || !validStatuses.includes(status)) {
-            return res.status(400).json({ 
-                error: 'Invalid status. Must be: pending, confirmed, or cancelled' 
+            return res.status(400).json({
+                error: 'Invalid status. Must be: pending, confirmed, or cancelled'
             });
         }
-        
+
         const booking = await getBookingById(id);
 
         if (!booking) {
@@ -513,18 +408,39 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
 
         if (status === 'confirmed' && booking.status !== 'confirmed') {
             const settings = await loadSettings();
-            const slotInterval = Number(settings.bookingRules?.slotInterval) || DEFAULT_SLOT_INTERVAL;
-            const available = await areSlotsAvailable(
-                booking.date,
-                booking.startTime,
-                booking.duration,
-                booking.id
-            );
+            for (const item of booking.items) {
+                if (item.itemType === 'room_rental') {
+                    const conflicts = await getRoomConflicts(item.date, item.startTime, item.endTime, booking.id);
+                    if (conflicts.length > 0) {
+                        return res.status(400).json({
+                            error: 'Cannot confirm booking. Time slot is already taken.'
+                        });
+                    }
+                }
 
-            if (!available) {
-                return res.status(400).json({
-                    error: 'Cannot confirm booking. Time slot is already taken.'
-                });
+                if (item.catalogItemId) {
+                    const catalogItem = await getCatalogItemById(item.catalogItemId);
+                    if (!catalogItem) {
+                        return res.status(400).json({
+                            error: 'Linked catalog item no longer exists.'
+                        });
+                    }
+
+                    const usedCapacity = await getCatalogItemCapacityUsage(item.catalogItemId, booking.id);
+                    if (usedCapacity + item.peopleCount > catalogItem.capacity) {
+                        return res.status(400).json({
+                            error: `Cannot confirm booking. Capacity exceeded for ${catalogItem.name}.`
+                        });
+                    }
+                }
+
+                if (item.itemType === 'room_rental') {
+                    try {
+                        resolveHourlyRate(settings.pricing, item.peopleCount, item.periodType || 'normal');
+                    } catch (priceError) {
+                        return res.status(400).json({ error: priceError.message });
+                    }
+                }
             }
         }
 
@@ -539,35 +455,16 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
             booking: updatedBooking,
             message: `Booking ${status} successfully`
         });
-        
+
     } catch (error) {
         console.error('Error updating booking status:', error);
         res.status(500).json({ error: 'Failed to update booking status' });
     }
 });
 
-// Get booking by ID
-app.get('/api/bookings/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const booking = await getBookingById(id);
-
-        if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' });
-        }
-
-        res.json(booking);
-    } catch (error) {
-        console.error('Error getting booking:', error);
-        res.status(500).json({ error: 'Failed to retrieve booking' });
-    }
-});
-
-// Delete booking
 app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     try {
-        const { id } = req.params;
-        const deleted = await deleteBooking(id);
+        const deleted = await deleteBooking(req.params.id);
 
         if (!deleted) {
             return res.status(404).json({ error: 'Booking not found' });
@@ -577,14 +474,13 @@ app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
             success: true,
             message: 'Booking deleted successfully'
         });
-        
+
     } catch (error) {
         console.error('Error deleting booking:', error);
         res.status(500).json({ error: 'Failed to delete booking' });
     }
 });
 
-// Get statistics
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -597,20 +493,353 @@ app.get('/api/stats', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Start server
+app.get('/api/availability', async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ error: 'Date parameter required' });
+        }
+
+        const items = await getBookingItemsByDate(date);
+        const confirmedSlots = [];
+        const pendingSlots = [];
+
+        items.forEach(item => {
+            if (item.itemType !== 'room_rental') {
+                return;
+            }
+
+            const slots = generateSlotsForRange(item.startTime, item.endTime);
+            if (item.status === 'confirmed') {
+                confirmedSlots.push(...slots);
+            } else {
+                pendingSlots.push(...slots);
+            }
+        });
+
+        res.json({
+            date,
+            confirmedSlots,
+            pendingSlots
+        });
+    } catch (error) {
+        console.error('Error getting availability:', error);
+        res.status(500).json({ error: 'Failed to retrieve availability' });
+    }
+});
+
+app.get('/api/items', async (req, res) => {
+    try {
+        const items = await getCatalogItems();
+        const enriched = await buildCatalogItemResponse(items);
+        const workshops = enriched.filter(item => item.type === 'workshop_class');
+        const rentals = enriched.filter(item => item.type === 'room_rental');
+
+        res.json({
+            workshops,
+            roomRentals: rentals
+        });
+    } catch (error) {
+        console.error('Error getting catalog items:', error);
+        res.status(500).json({ error: 'Failed to retrieve items' });
+    }
+});
+
+app.get('/api/admin/items', authenticateAdmin, async (req, res) => {
+    try {
+        const items = await getCatalogItems({ includePast: true });
+        const enriched = await buildCatalogItemResponse(items);
+        res.json(enriched);
+    } catch (error) {
+        console.error('Error listing catalog items:', error);
+        res.status(500).json({ error: 'Failed to retrieve items' });
+    }
+});
+
+function validateCatalogItemPayload(payload) {
+    const errors = [];
+    const type = payload.type;
+
+    if (!['workshop_class', 'room_rental'].includes(type)) {
+        errors.push('Invalid item type.');
+    }
+
+    if (!payload.name) {
+        errors.push('Name is required.');
+    }
+
+    const start = payload.startDateTime || payload.start_datetime;
+    const end = payload.endDateTime || payload.end_datetime;
+    let startInfo = normalizeIsoToDateTimeStrings(start);
+    let endInfo = normalizeIsoToDateTimeStrings(end);
+
+    if (!startInfo) {
+        errors.push('Start date and time are required.');
+    }
+
+    if (!endInfo && payload.duration == null) {
+        errors.push('Provide either end date/time or duration in minutes.');
+    }
+
+    let duration = Number(payload.duration);
+    if (Number.isNaN(duration) || duration <= 0) {
+        if (startInfo && endInfo) {
+            duration = minutesBetween(startInfo.time, endInfo.time);
+        }
+    }
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+        errors.push('Duration must be a positive number of minutes.');
+    }
+
+    const price = Number(payload.price);
+    if (Number.isNaN(price) || price < 0) {
+        errors.push('Price must be a valid number.');
+    }
+
+    const capacity = parseInt(payload.capacity, 10);
+    if (!Number.isInteger(capacity) || capacity <= 0) {
+        errors.push('Capacity must be a positive integer.');
+    }
+
+    if (errors.length > 0) {
+        return { errors };
+    }
+
+    if (!endInfo && startInfo) {
+        const endMinutes = parseTimeToMinutes(startInfo.time) + duration;
+        endInfo = {
+            date: startInfo.date,
+            time: minutesToTimeString(endMinutes)
+        };
+    }
+
+    return {
+        data: {
+            type,
+            name: payload.name,
+            startDateTime: `${startInfo.date}T${startInfo.time}:00`,
+            endDateTime: `${endInfo.date}T${endInfo.time}:00`,
+            duration,
+            price,
+            instructorName: payload.instructorName || payload.instructor_name || null,
+            capacity
+        }
+    };
+}
+
+app.post('/api/admin/items', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateCatalogItemPayload(req.body);
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const item = await createCatalogItem(data);
+        const enriched = await buildCatalogItemResponse([item]);
+        res.status(201).json(enriched[0]);
+    } catch (error) {
+        console.error('Error creating catalog item:', error);
+        res.status(500).json({ error: 'Failed to create item' });
+    }
+});
+
+app.put('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { errors, data } = validateCatalogItemPayload(req.body);
+        if (errors) {
+            return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const updated = await updateCatalogItem(req.params.id, data);
+        if (!updated) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        const enriched = await buildCatalogItemResponse([updated]);
+        res.json(enriched[0]);
+    } catch (error) {
+        console.error('Error updating catalog item:', error);
+        res.status(500).json({ error: 'Failed to update item' });
+    }
+});
+
+app.delete('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const deleted = await deleteCatalogItem(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Item not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting catalog item:', error);
+        res.status(500).json({ error: 'Failed to delete item' });
+    }
+});
+
+app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
+    try {
+        const { customerName, email, phone, notes, bookingItems } = req.body;
+
+        if (!customerName || !email || !phone) {
+            return res.status(400).json({
+                error: 'Customer name, email, and phone are required.'
+            });
+        }
+
+        if (!Array.isArray(bookingItems) || bookingItems.length === 0) {
+            return res.status(400).json({ error: 'At least one booking item is required.' });
+        }
+
+        const settings = await loadSettings();
+        const normalizedItems = [];
+        const catalogUsage = new Map();
+
+        for (let index = 0; index < bookingItems.length; index += 1) {
+            const item = bookingItems[index];
+            const itemLabel = `Item #${index + 1}`;
+
+            const peopleCount = parseInt(item.peopleCount, 10);
+            if (!Number.isInteger(peopleCount) || peopleCount <= 0) {
+                return res.status(400).json({ error: `${itemLabel}: peopleCount must be a positive integer.` });
+            }
+
+            if (peopleCount > 18) {
+                return res.status(400).json({ error: `${itemLabel}: maximum of 18 people per session.` });
+            }
+
+            let catalogItem = null;
+            if (item.catalogItemId) {
+                catalogItem = await getCatalogItemById(item.catalogItemId);
+                if (!catalogItem) {
+                    return res.status(400).json({ error: `${itemLabel}: linked item not found.` });
+                }
+            }
+
+            const itemType = catalogItem ? catalogItem.type : (item.type || 'room_rental');
+            let date;
+            let startTime;
+            let endTime;
+            let duration;
+
+            if (catalogItem) {
+                const startInfo = normalizeIsoToDateTimeStrings(catalogItem.startDateTime);
+                const endInfo = normalizeIsoToDateTimeStrings(catalogItem.endDateTime);
+                if (!startInfo || !endInfo) {
+                    return res.status(400).json({ error: `${itemLabel}: invalid catalog item schedule.` });
+                }
+
+                date = startInfo.date;
+                startTime = startInfo.time;
+                endTime = endInfo.time;
+                duration = catalogItem.duration;
+
+                const usedCapacity = await getCatalogItemCapacityUsage(catalogItem.id);
+                const alreadySelected = catalogUsage.get(catalogItem.id) || 0;
+                if (usedCapacity + alreadySelected + peopleCount > catalogItem.capacity) {
+                    const remaining = Math.max(catalogItem.capacity - usedCapacity - alreadySelected, 0);
+                    return res.status(400).json({
+                        error: `${catalogItem.name} has only ${remaining} seats remaining.`
+                    });
+                }
+                catalogUsage.set(catalogItem.id, alreadySelected + peopleCount);
+            } else {
+                date = item.date;
+                startTime = item.startTime;
+                endTime = item.endTime;
+                if (!date || !startTime || !endTime) {
+                    return res.status(400).json({ error: `${itemLabel}: date, startTime, and endTime are required.` });
+                }
+                duration = minutesBetween(startTime, endTime);
+            }
+
+            if (duration <= 0) {
+                return res.status(400).json({ error: `${itemLabel}: end time must be after start time.` });
+            }
+
+            const periodType = itemType === 'room_rental'
+                ? determinePeriodType(date, startTime, endTime, settings)
+                : 'catalog';
+
+            if (itemType === 'room_rental') {
+                if (hasInPayloadRoomConflict(normalizedItems, date, startTime, endTime)) {
+                    return res.status(400).json({
+                        error: `${itemLabel}: selected time overlaps with another session in your booking.`
+                    });
+                }
+
+                const conflicts = await getRoomConflicts(date, startTime, endTime);
+                if (conflicts.length > 0) {
+                    return res.status(400).json({
+                        error: `${itemLabel}: selected time overlaps with an existing booking.`
+                    });
+                }
+            }
+
+            let price;
+            if (itemType === 'room_rental') {
+                price = calculateRoomRentalPrice({ duration, peopleCount, periodType }, settings);
+            } else {
+                const catalogPrice = catalogItem ? catalogItem.price : Number(item.price);
+                if (Number.isNaN(catalogPrice) || catalogPrice < 0) {
+                    return res.status(400).json({ error: `${itemLabel}: invalid catalog price.` });
+                }
+                price = Math.round(catalogPrice * peopleCount * 100) / 100;
+            }
+
+            normalizedItems.push({
+                catalogItemId: catalogItem ? catalogItem.id : null,
+                itemType,
+                date,
+                startTime,
+                endTime,
+                duration,
+                peopleCount,
+                price,
+                periodType
+            });
+        }
+
+        const status = settings.bookingRules?.autoConfirm ? 'confirmed' : 'pending';
+        const bookingPayload = {
+            customerName,
+            email,
+            phone,
+            notes: notes || '',
+            status,
+            items: normalizedItems
+        };
+
+        const booking = await createBooking(bookingPayload);
+        const message = status === 'confirmed'
+            ? 'Booking confirmed successfully!'
+            : 'Booking created successfully. Please send payment confirmation.';
+
+        res.status(201).json({
+            success: true,
+            booking,
+            message
+        });
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        res.status(500).json({ error: 'Failed to create booking' });
+    }
+});
+
 async function startServer() {
     try {
         await initializeDatabase();
 
         app.listen(PORT, () => {
-            console.log(`====================================`);
-            console.log(`🚀 Booking Server Running`);
-            console.log(`====================================`);
+            console.log('====================================');
+            console.log('🚀 Booking Server Running');
+            console.log('====================================');
             console.log(`📍 Port: ${PORT}`);
             console.log(`🌐 API: http://localhost:${PORT}/api`);
             console.log(`🔐 Default Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
-            console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
-            console.log(`====================================`);
+            console.log('⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!');
+            console.log('====================================');
         });
     } catch (error) {
         console.error('Failed to start server:', error);

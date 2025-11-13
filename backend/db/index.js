@@ -5,6 +5,12 @@ const crypto = require('crypto');
 
 const DEFAULT_ADMIN_PASSWORD = 'admin123';
 
+const DEFAULT_PEAK_SCHEDULE = {
+    days: ['fri', 'sat', 'sun'],
+    startTime: '18:00',
+    endTime: '23:00'
+};
+
 const defaultSettings = {
     businessName: 'Premium Studio Booking',
     businessNameZh: '專業錄音室預約系統',
@@ -12,12 +18,16 @@ const defaultSettings = {
     businessDescriptionZh: '專業錄音室',
     operatingHours: {
         startTime: '07:00',
-        endTime: '22:00'
+        endTime: '22:00',
+        daysLabelZh: '每日營業',
+        daysLabelEn: 'Open Daily'
     },
     pricing: {
-        thirtyMinutes: 140,
-        oneHour: 280,
-        sundayAirconFee: 80
+        normalUpTo10: 250,
+        normalUpTo18: 320,
+        peakUpTo10: 280,
+        peakUpTo18: 350,
+        peakSchedule: DEFAULT_PEAK_SCHEDULE
     },
     paymentMethods: {
         bankTransfer: {
@@ -73,12 +83,29 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
     connectionString,
     max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : undefined
+    ssl: process.env.DB_SSL === 'true'
+        ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+        : undefined
 });
 
 pool.on('error', (err) => {
     console.error('Unexpected database error:', err);
 });
+
+function mergePricing(pricing = {}) {
+    const mergedSchedule = {
+        ...DEFAULT_PEAK_SCHEDULE,
+        ...(pricing.peakSchedule || {})
+    };
+
+    return {
+        normalUpTo10: Number(pricing.normalUpTo10 ?? defaultSettings.pricing.normalUpTo10),
+        normalUpTo18: Number(pricing.normalUpTo18 ?? defaultSettings.pricing.normalUpTo18),
+        peakUpTo10: Number(pricing.peakUpTo10 ?? defaultSettings.pricing.peakUpTo10),
+        peakUpTo18: Number(pricing.peakUpTo18 ?? defaultSettings.pricing.peakUpTo18),
+        peakSchedule: mergedSchedule
+    };
+}
 
 function mapSettingsRow(row) {
     if (!row) {
@@ -90,8 +117,11 @@ function mapSettingsRow(row) {
         businessNameZh: row.business_name_zh,
         businessDescription: row.business_description,
         businessDescriptionZh: row.business_description_zh,
-        operatingHours: row.operating_hours,
-        pricing: row.pricing,
+        operatingHours: {
+            ...defaultSettings.operatingHours,
+            ...(row.operating_hours || {})
+        },
+        pricing: mergePricing(row.pricing || {}),
         paymentMethods: row.payment_methods,
         contactInfo: row.contact_info,
         bookingRules: row.booking_rules,
@@ -106,11 +136,12 @@ function normalizeTimeString(timeString) {
         return null;
     }
 
-    if (typeof timeString === 'string') {
-        return timeString.slice(0, 5);
+    if (typeof timeString === 'string' && timeString.length === 5) {
+        return timeString;
     }
 
-    return timeString.toString().slice(0, 5);
+    const str = timeString.toString();
+    return str.length >= 5 ? str.slice(0, 5) : str.padStart(5, '0');
 }
 
 function mapBookingRow(row) {
@@ -123,6 +154,7 @@ function mapBookingRow(row) {
         startTime: normalizeTimeString(row.start_time),
         duration: row.duration,
         totalPrice: row.total_price === null ? null : Number(row.total_price),
+        totalPeople: row.total_people === null ? null : Number(row.total_people),
         notes: row.notes || '',
         status: row.status,
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
@@ -131,6 +163,44 @@ function mapBookingRow(row) {
         cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).toISOString() : null,
         adminNotes: row.admin_notes || null
     };
+}
+
+function mapBookingItemRow(row) {
+    return {
+        id: row.id,
+        bookingId: row.booking_id,
+        catalogItemId: row.catalog_item_id,
+        itemType: row.item_type,
+        date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
+        startTime: normalizeTimeString(row.start_time),
+        endTime: normalizeTimeString(row.end_time),
+        duration: row.duration,
+        peopleCount: Number(row.people_count),
+        price: Number(row.price),
+        periodType: row.period_type
+    };
+}
+
+function mapCatalogItemRow(row) {
+    return {
+        id: row.id,
+        type: row.type,
+        name: row.name,
+        startDateTime: row.start_datetime ? new Date(row.start_datetime).toISOString() : null,
+        endDateTime: row.end_datetime ? new Date(row.end_datetime).toISOString() : null,
+        duration: row.duration,
+        price: row.price === null ? null : Number(row.price),
+        instructorName: row.instructor_name,
+        capacity: row.capacity,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    };
+}
+
+function generateBookingId() {
+    const timestamp = Date.now().toString(36);
+    const random = crypto.randomBytes(6).toString('hex');
+    return `BK-${timestamp}-${random}`.toUpperCase();
 }
 
 async function initializeDatabase() {
@@ -162,6 +232,7 @@ async function initializeDatabase() {
             start_time TIME NOT NULL,
             duration INTEGER NOT NULL,
             total_price NUMERIC(10, 2) NOT NULL,
+            total_people INTEGER NOT NULL DEFAULT 0,
             notes TEXT,
             status TEXT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -172,6 +243,53 @@ async function initializeDatabase() {
         )
     `);
 
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS catalog_items (
+            id SERIAL PRIMARY KEY,
+            type TEXT NOT NULL CHECK (type IN ('workshop_class', 'room_rental')),
+            name TEXT NOT NULL,
+            start_datetime TIMESTAMPTZ NOT NULL,
+            end_datetime TIMESTAMPTZ NOT NULL,
+            duration INTEGER NOT NULL,
+            price NUMERIC(10, 2) NOT NULL,
+            instructor_name TEXT,
+            capacity INTEGER NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS booking_items (
+            id SERIAL PRIMARY KEY,
+            booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+            catalog_item_id INTEGER REFERENCES catalog_items(id) ON DELETE SET NULL,
+            item_type TEXT NOT NULL,
+            date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            duration INTEGER NOT NULL,
+            people_count INTEGER NOT NULL,
+            price NUMERIC(10, 2) NOT NULL,
+            period_type TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_booking_items_date ON booking_items(date)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_booking_items_catalog ON booking_items(catalog_item_id)
+    `);
+
+    await pool.query(`
+        ALTER TABLE bookings
+        ALTER COLUMN total_people SET DEFAULT 0
+    `);
+
+    // Ensure at least one settings row exists
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM settings');
     if (rows[0].count === 0) {
         const hashedPassword = hashPassword(DEFAULT_ADMIN_PASSWORD);
@@ -225,6 +343,11 @@ async function saveSettings(settings) {
     }
 
     const id = result.rows[0].id;
+    const operatingHours = {
+        ...defaultSettings.operatingHours,
+        ...(settings.operatingHours || {})
+    };
+
     await pool.query(`
         UPDATE settings
         SET
@@ -246,8 +369,8 @@ async function saveSettings(settings) {
         settings.businessNameZh,
         settings.businessDescription,
         settings.businessDescriptionZh,
-        settings.operatingHours,
-        settings.pricing,
+        operatingHours,
+        mergePricing(settings.pricing),
         settings.paymentMethods,
         settings.contactInfo,
         settings.bookingRules,
@@ -259,99 +382,129 @@ async function saveSettings(settings) {
     return true;
 }
 
-function generateBookingId() {
-    const timestamp = Date.now().toString(36);
-    const random = crypto.randomBytes(6).toString('hex');
-    return `BK-${timestamp}-${random}`.toUpperCase();
-}
-
-function generateSlotsForDuration(startTime, durationMinutes) {
-    const slots = [];
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    let currentMinutes = startHour * 60 + startMinute;
-    const endMinutes = currentMinutes + durationMinutes;
-
-    while (currentMinutes < endMinutes) {
-        const hour = Math.floor(currentMinutes / 60);
-        const minute = currentMinutes % 60;
-        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeSlot);
-        currentMinutes += 30;
+async function getBookingItemsByBookingIds(bookingIds) {
+    if (!bookingIds || bookingIds.length === 0) {
+        return {};
     }
 
-    return slots;
-}
+    const result = await pool.query(`
+        SELECT * FROM booking_items
+        WHERE booking_id = ANY($1::text[])
+        ORDER BY date ASC, start_time ASC
+    `, [bookingIds]);
 
-async function areSlotsAvailable(date, startTime, duration, excludeBookingId = null) {
-    const params = [date];
-    let query = `SELECT * FROM bookings WHERE date = $1 AND status = 'confirmed'`;
-
-    if (excludeBookingId) {
-        params.push(excludeBookingId);
-        query += ` AND id <> $${params.length}`;
-    }
-
-    const result = await pool.query(query, params);
-    const requestedSlots = generateSlotsForDuration(normalizeTimeString(startTime), duration);
-
-    for (const row of result.rows) {
-        const bookingSlots = generateSlotsForDuration(normalizeTimeString(row.start_time), row.duration);
-        if (requestedSlots.some(slot => bookingSlots.includes(slot))) {
-            return false;
+    const grouped = {};
+    result.rows.forEach(row => {
+        const mapped = mapBookingItemRow(row);
+        if (!grouped[mapped.bookingId]) {
+            grouped[mapped.bookingId] = [];
         }
-    }
+        grouped[mapped.bookingId].push(mapped);
+    });
 
-    return true;
+    return grouped;
 }
 
 async function createBooking(bookingData) {
-    const id = generateBookingId();
-    const now = new Date();
-    const confirmedAt = bookingData.status === 'confirmed' ? now : null;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
 
-    const normalizedStartTime = bookingData.startTime.includes(':') && bookingData.startTime.length === 5
-        ? `${bookingData.startTime}:00`
-        : bookingData.startTime;
+        const id = generateBookingId();
+        const now = new Date();
+        const confirmedAt = bookingData.status === 'confirmed' ? now : null;
 
-    const result = await pool.query(`
-        INSERT INTO bookings (
+        const sortedItems = [...bookingData.items].sort((a, b) => {
+            const aDateTime = new Date(`${a.date}T${a.startTime}:00`);
+            const bDateTime = new Date(`${b.date}T${b.startTime}:00`);
+            return aDateTime - bDateTime;
+        });
+
+        const firstItem = sortedItems[0];
+        const totalDuration = bookingData.items.reduce((sum, item) => sum + item.duration, 0);
+        const totalPeople = bookingData.items.reduce((sum, item) => sum + item.peopleCount, 0);
+        const totalPrice = bookingData.items.reduce((sum, item) => sum + Number(item.price), 0);
+
+        const bookingResult = await client.query(`
+            INSERT INTO bookings (
+                id,
+                customer_name,
+                email,
+                phone,
+                date,
+                start_time,
+                duration,
+                total_price,
+                total_people,
+                notes,
+                status,
+                created_at,
+                updated_at,
+                confirmed_at,
+                cancelled_at,
+                admin_notes
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+            RETURNING *
+        `, [
             id,
-            customer_name,
-            email,
-            phone,
-            date,
-            start_time,
-            duration,
-            total_price,
-            notes,
-            status,
-            created_at,
-            updated_at,
-            confirmed_at,
-            cancelled_at,
-            admin_notes
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-        RETURNING *
-    `, [
-        id,
-        bookingData.customerName,
-        bookingData.email,
-        bookingData.phone,
-        bookingData.date,
-        normalizedStartTime,
-        bookingData.duration,
-        bookingData.totalPrice,
-        bookingData.notes || '',
-        bookingData.status,
-        now,
-        now,
-        confirmedAt,
-        null,
-        bookingData.adminNotes || null
-    ]);
+            bookingData.customerName,
+            bookingData.email,
+            bookingData.phone,
+            firstItem.date,
+            `${firstItem.startTime}:00`,
+            totalDuration,
+            totalPrice,
+            totalPeople,
+            bookingData.notes || '',
+            bookingData.status,
+            now,
+            now,
+            confirmedAt,
+            null,
+            bookingData.adminNotes || null
+        ]);
 
-    return mapBookingRow(result.rows[0]);
+        for (const item of bookingData.items) {
+            await client.query(`
+                INSERT INTO booking_items (
+                    booking_id,
+                    catalog_item_id,
+                    item_type,
+                    date,
+                    start_time,
+                    end_time,
+                    duration,
+                    people_count,
+                    price,
+                    period_type
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            `, [
+                id,
+                item.catalogItemId,
+                item.itemType,
+                item.date,
+                `${item.startTime}:00`,
+                `${item.endTime}:00`,
+                item.duration,
+                item.peopleCount,
+                item.price,
+                item.periodType
+            ]);
+        }
+
+        await client.query('COMMIT');
+
+        const booking = mapBookingRow(bookingResult.rows[0]);
+        booking.items = bookingData.items.map(item => ({ ...item }));
+        return booking;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 async function getBookings(filters = {}) {
@@ -371,7 +524,15 @@ async function getBookings(filters = {}) {
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const query = `SELECT * FROM bookings ${whereClause} ORDER BY date ASC, start_time ASC`;
     const result = await pool.query(query, params);
-    return result.rows.map(mapBookingRow);
+    const bookings = result.rows.map(mapBookingRow);
+
+    const bookingIds = bookings.map(b => b.id);
+    const itemsByBooking = await getBookingItemsByBookingIds(bookingIds);
+    bookings.forEach(booking => {
+        booking.items = itemsByBooking[booking.id] || [];
+    });
+
+    return bookings;
 }
 
 async function getBookingById(id) {
@@ -379,7 +540,10 @@ async function getBookingById(id) {
     if (result.rows.length === 0) {
         return null;
     }
-    return mapBookingRow(result.rows[0]);
+    const booking = mapBookingRow(result.rows[0]);
+    const itemsByBooking = await getBookingItemsByBookingIds([booking.id]);
+    booking.items = itemsByBooking[booking.id] || [];
+    return booking;
 }
 
 async function updateBookingStatus(id, status, adminNotes) {
@@ -407,7 +571,14 @@ async function updateBookingStatus(id, status, adminNotes) {
         RETURNING *
     `, params);
 
-    return result.rows.length > 0 ? mapBookingRow(result.rows[0]) : null;
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    const booking = mapBookingRow(result.rows[0]);
+    const itemsByBooking = await getBookingItemsByBookingIds([booking.id]);
+    booking.items = itemsByBooking[booking.id] || [];
+    return booking;
 }
 
 async function deleteBooking(id) {
@@ -440,6 +611,154 @@ async function getStats(today) {
     };
 }
 
+async function getBookingItemsByDate(date) {
+    const result = await pool.query(`
+        SELECT bi.*, b.status
+        FROM booking_items bi
+        JOIN bookings b ON b.id = bi.booking_id
+        WHERE bi.date = $1 AND b.status IN ('pending', 'confirmed')
+        ORDER BY bi.start_time ASC
+    `, [date]);
+    return result.rows.map(row => ({
+        ...mapBookingItemRow(row),
+        status: row.status
+    }));
+}
+
+async function getRoomConflicts(date, startTime, endTime, excludeBookingId = null) {
+    const params = [date, `${endTime}:00`, `${startTime}:00`];
+    let query = `
+        SELECT bi.*, b.status
+        FROM booking_items bi
+        JOIN bookings b ON b.id = bi.booking_id
+        WHERE bi.date = $1
+          AND bi.item_type = 'room_rental'
+          AND b.status IN ('pending', 'confirmed')
+          AND bi.start_time < $2
+          AND bi.end_time > $3
+    `;
+
+    if (excludeBookingId) {
+        params.push(excludeBookingId);
+        query += ` AND bi.booking_id <> $${params.length}`;
+    }
+
+    const result = await pool.query(query, params);
+    return result.rows.map(mapBookingItemRow);
+}
+
+async function getCatalogItemById(id) {
+    const result = await pool.query('SELECT * FROM catalog_items WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+        return null;
+    }
+    return mapCatalogItemRow(result.rows[0]);
+}
+
+async function getCatalogItems({ includePast = false } = {}) {
+    const params = [];
+    let where = '';
+
+    if (!includePast) {
+        params.push(new Date());
+        where = 'WHERE end_datetime >= $1';
+    }
+
+    const result = await pool.query(`
+        SELECT * FROM catalog_items
+        ${where}
+        ORDER BY start_datetime ASC
+    `, params);
+
+    return result.rows.map(mapCatalogItemRow);
+}
+
+async function createCatalogItem(item) {
+    const result = await pool.query(`
+        INSERT INTO catalog_items (
+            type,
+            name,
+            start_datetime,
+            end_datetime,
+            duration,
+            price,
+            instructor_name,
+            capacity
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        RETURNING *
+    `, [
+        item.type,
+        item.name,
+        item.startDateTime,
+        item.endDateTime,
+        item.duration,
+        item.price,
+        item.instructorName || null,
+        item.capacity
+    ]);
+
+    return mapCatalogItemRow(result.rows[0]);
+}
+
+async function updateCatalogItem(id, item) {
+    const result = await pool.query(`
+        UPDATE catalog_items
+        SET
+            type = $1,
+            name = $2,
+            start_datetime = $3,
+            end_datetime = $4,
+            duration = $5,
+            price = $6,
+            instructor_name = $7,
+            capacity = $8,
+            updated_at = NOW()
+        WHERE id = $9
+        RETURNING *
+    `, [
+        item.type,
+        item.name,
+        item.startDateTime,
+        item.endDateTime,
+        item.duration,
+        item.price,
+        item.instructorName || null,
+        item.capacity,
+        id
+    ]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapCatalogItemRow(result.rows[0]);
+}
+
+async function deleteCatalogItem(id) {
+    const result = await pool.query('DELETE FROM catalog_items WHERE id = $1', [id]);
+    return result.rowCount > 0;
+}
+
+async function getCatalogItemCapacityUsage(catalogItemId, excludeBookingId = null) {
+    const params = [catalogItemId];
+    let query = `
+        SELECT COALESCE(SUM(bi.people_count), 0) AS used_capacity
+        FROM booking_items bi
+        JOIN bookings b ON b.id = bi.booking_id
+        WHERE bi.catalog_item_id = $1
+          AND b.status IN ('pending', 'confirmed')
+    `;
+
+    if (excludeBookingId) {
+        params.push(excludeBookingId);
+        query += ` AND bi.booking_id <> $${params.length}`;
+    }
+
+    const result = await pool.query(query, params);
+    return Number(result.rows[0].used_capacity);
+}
+
 module.exports = {
     pool,
     defaultSettings,
@@ -447,11 +766,18 @@ module.exports = {
     initializeDatabase,
     loadSettings,
     saveSettings,
-    areSlotsAvailable,
     createBooking,
     getBookings,
     getBookingById,
     updateBookingStatus,
     deleteBooking,
-    getStats
+    getStats,
+    getBookingItemsByDate,
+    getRoomConflicts,
+    getCatalogItemById,
+    getCatalogItems,
+    createCatalogItem,
+    updateCatalogItem,
+    deleteCatalogItem,
+    getCatalogItemCapacityUsage
 };
