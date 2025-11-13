@@ -74,11 +74,14 @@ const defaultSettings = {
     updatedAt: new Date().toISOString()
 };
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/booking';
+const connectionString = process.env.DATABASE_URL;
 
-if (!process.env.DATABASE_URL) {
-    console.warn('DATABASE_URL not set. Falling back to local database on postgresql://localhost:5432/booking');
+if (!connectionString) {
+    console.error('DATABASE_URL environment variable is not set. Cannot establish database connection.');
+    throw new Error('DATABASE_URL environment variable is required.');
 }
+
+console.log('DATABASE_URL detected. Connecting to configured database.');
 
 const pool = new Pool({
     connectionString,
