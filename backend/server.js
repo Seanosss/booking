@@ -1,15 +1,24 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs').promises;
-const path = require('path');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
-const { z } = require('zod');
+const {
+    initializeDatabase,
+    loadSettings,
+    saveSettings,
+    areSlotsAvailable,
+    getBookings,
+    createBooking,
+    getBookingById,
+    updateBookingStatus,
+    deleteBooking,
+    getStats,
+    DEFAULT_ADMIN_PASSWORD
+} = require('./db');
+const { hashPassword } = require('./utils/hash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'bookings.json');
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
 const ADMIN_TOKEN_TTL_MS = (() => {
     const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
@@ -410,22 +419,11 @@ app.put('/api/settings', authenticateAdmin, async (req, res) => {
 // Get all bookings
 app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     try {
-        let bookings = await loadBookings();
-
-        if (req.query.date) {
-            bookings = bookings.filter(b => b.date === req.query.date);
-        }
-        
-        if (req.query.status) {
-            bookings = bookings.filter(b => b.status === req.query.status);
-        }
-        
-        bookings.sort((a, b) => {
-            const dateA = new Date(a.date + 'T' + a.startTime);
-            const dateB = new Date(b.date + 'T' + b.startTime);
-            return dateA - dateB;
+        const bookings = await getBookings({
+            date: req.query.date,
+            status: req.query.status
         });
-        
+
         res.json(bookings);
     } catch (error) {
         console.error('Error getting bookings:', error);
@@ -436,134 +434,47 @@ app.get('/api/bookings', authenticateAdmin, async (req, res) => {
 // Create new booking
 app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
     try {
-        const parseResult = bookingSchema.safeParse(req.body);
+        const { customerName, email, phone, date, startTime, duration, totalPrice, notes } = req.body;
 
-        if (!parseResult.success) {
-            const details = parseResult.error.issues.map(issue => {
-                const field = issue.path.join('.') || 'form';
-                return `${field}: ${issue.message}`;
-            });
-
+        if (!customerName || !email || !phone || !date || !startTime || !duration || totalPrice === undefined) {
             return res.status(400).json({
-                error: 'Validation failed',
-                details
+                error: 'Missing required fields',
+                required: ['customerName', 'email', 'phone', 'date', 'startTime', 'duration', 'totalPrice']
             });
         }
 
-        const payload = parseResult.data;
-        const settings = await loadSettings();
-        const slotInterval = Number(settings.bookingRules?.slotInterval) || DEFAULT_SLOT_INTERVAL;
+        const parsedDuration = parseInt(duration, 10);
+        const numericTotalPrice = Number(totalPrice);
 
-        if (!Number.isFinite(slotInterval) || slotInterval <= 0) {
-            return res.status(500).json({
-                error: 'Configuration error',
-                details: ['Slot interval must be a positive number in settings.']
-            });
+        if (Number.isNaN(parsedDuration) || parsedDuration <= 0) {
+            return res.status(400).json({ error: 'Duration must be a positive number of minutes' });
         }
 
-        const operatingStartLabel = settings.operatingHours?.startTime || '07:00';
-        const operatingEndLabel = settings.operatingHours?.endTime || '22:00';
-        const operatingStart = timeStringToMinutes(operatingStartLabel);
-        const operatingEnd = timeStringToMinutes(operatingEndLabel);
-
-        const uniqueSlots = [...new Set(payload.selectedSlots)];
-        const validationErrors = [];
-
-        if (uniqueSlots.length !== payload.selectedSlots.length) {
-            validationErrors.push('Duplicate time slots detected. Please re-select your booking time.');
+        if (Number.isNaN(numericTotalPrice)) {
+            return res.status(400).json({ error: 'Total price must be a valid number' });
         }
 
-        const slotMinutes = uniqueSlots
-            .map(timeStringToMinutes)
-            .sort((a, b) => a - b);
-
-        if (slotMinutes.some(minutes => Number.isNaN(minutes))) {
-            validationErrors.push('One or more time slots are invalid.');
-        }
-
-        if (slotMinutes.some(minutes => minutes < operatingStart || minutes >= operatingEnd)) {
-            validationErrors.push(`Selected time must be within operating hours (${operatingStartLabel} - ${operatingEndLabel}).`);
-        }
-
-        for (let i = 1; i < slotMinutes.length; i++) {
-            if (slotMinutes[i] !== slotMinutes[i - 1] + slotInterval) {
-                validationErrors.push(`Time slots must follow the ${slotInterval}-minute interval without gaps.`);
-                break;
-            }
-        }
-
-        let effectiveStartTime = payload.startTime;
-        let duration = 0;
-
-        if (slotMinutes.length === 0) {
-            validationErrors.push('Please select at least one valid time slot.');
-        } else {
-            const effectiveStartMinutes = slotMinutes[0];
-            effectiveStartTime = minutesToTimeString(effectiveStartMinutes);
-            duration = slotMinutes.length * slotInterval;
-            const bookingEndMinutes = effectiveStartMinutes + duration;
-
-            if (duration % slotInterval !== 0) {
-                validationErrors.push('Selected time does not align with the configured slot interval.');
-            }
-
-            if (bookingEndMinutes > operatingEnd) {
-                validationErrors.push('Booking cannot extend beyond the end of operating hours.');
-            }
-
-            if (payload.startTime !== effectiveStartTime) {
-                validationErrors.push('Start time must match the first selected slot.');
-            }
-        }
-
-        if (validationErrors.length > 0) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: validationErrors
-            });
-        }
-
-        const totalPrice = calculateTotalPrice(settings, duration, payload.date);
-
-        if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: ['Calculated price must be greater than 0. Please contact the studio.']
-            });
-        }
-
-        const available = await areSlotsAvailable(payload.date, effectiveStartTime, duration, null, slotInterval);
+        const available = await areSlotsAvailable(date, startTime, parsedDuration);
         if (!available) {
             return res.status(400).json({
-                error: 'Validation failed',
-                details: ['This time slot has already been confirmed. Please select another time.']
+                error: 'This time slot has already been confirmed. Please select another time.'
             });
         }
 
+        const settings = await loadSettings();
         const status = settings.bookingRules.autoConfirm ? 'confirmed' : 'pending';
-        const notes = payload.notes || '';
 
-        const newBooking = {
-            id: generateBookingId(),
-            customerName: payload.customerName,
-            email: payload.email,
-            phone: payload.phone,
-            date: payload.date,
-            startTime: effectiveStartTime,
-            duration,
-            totalPrice,
-            selectedSlots: uniqueSlots.sort((a, b) => timeStringToMinutes(a) - timeStringToMinutes(b)),
-            notes,
-            status: status,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            confirmedAt: status === 'confirmed' ? new Date().toISOString() : null,
-            cancelledAt: null
-        };
-
-        const bookings = await loadBookings();
-        bookings.push(newBooking);
-        await saveBookings(bookings);
+        const newBooking = await createBooking({
+            customerName,
+            email,
+            phone,
+            date,
+            startTime,
+            duration: parsedDuration,
+            totalPrice: numericTotalPrice,
+            notes: notes || '',
+            status
+        });
 
         const message = status === 'confirmed'
             ? 'Booking confirmed successfully!'
@@ -594,15 +505,12 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
             });
         }
         
-        const bookings = await loadBookings();
-        const bookingIndex = bookings.findIndex(b => b.id === id);
-        
-        if (bookingIndex === -1) {
+        const booking = await getBookingById(id);
+
+        if (!booking) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
-        const booking = bookings[bookingIndex];
-        
+
         if (status === 'confirmed' && booking.status !== 'confirmed') {
             const settings = await loadSettings();
             const slotInterval = Number(settings.bookingRules?.slotInterval) || DEFAULT_SLOT_INTERVAL;
@@ -610,8 +518,7 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
                 booking.date,
                 booking.startTime,
                 booking.duration,
-                booking.id,
-                slotInterval
+                booking.id
             );
 
             if (!available) {
@@ -620,25 +527,16 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
                 });
             }
         }
-        
-        booking.status = status;
-        booking.updatedAt = new Date().toISOString();
-        
-        if (adminNotes) {
-            booking.adminNotes = adminNotes;
+
+        const updatedBooking = await updateBookingStatus(id, status, adminNotes);
+
+        if (!updatedBooking) {
+            return res.status(500).json({ error: 'Failed to update booking status' });
         }
-        
-        if (status === 'confirmed') {
-            booking.confirmedAt = new Date().toISOString();
-        } else if (status === 'cancelled') {
-            booking.cancelledAt = new Date().toISOString();
-        }
-        
-        await saveBookings(bookings);
-        
+
         res.json({
             success: true,
-            booking: booking,
+            booking: updatedBooking,
             message: `Booking ${status} successfully`
         });
         
@@ -652,13 +550,12 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
 app.get('/api/bookings/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const bookings = await loadBookings();
-        const booking = bookings.find(b => b.id === id);
-        
+        const booking = await getBookingById(id);
+
         if (!booking) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
+
         res.json(booking);
     } catch (error) {
         console.error('Error getting booking:', error);
@@ -670,19 +567,15 @@ app.get('/api/bookings/:id', async (req, res) => {
 app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const bookings = await loadBookings();
-        const bookingIndex = bookings.findIndex(b => b.id === id);
-        
-        if (bookingIndex === -1) {
+        const deleted = await deleteBooking(id);
+
+        if (!deleted) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
-        bookings.splice(bookingIndex, 1);
-        await saveBookings(bookings);
-        
-        res.json({ 
+
+        res.json({
             success: true,
-            message: 'Booking deleted successfully' 
+            message: 'Booking deleted successfully'
         });
         
     } catch (error) {
@@ -694,21 +587,9 @@ app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
 // Get statistics
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
-        const bookings = await loadBookings();
         const today = new Date().toISOString().split('T')[0];
-        
-        const stats = {
-            total: bookings.length,
-            pending: bookings.filter(b => b.status === 'pending').length,
-            confirmed: bookings.filter(b => b.status === 'confirmed').length,
-            cancelled: bookings.filter(b => b.status === 'cancelled').length,
-            todayBookings: bookings.filter(b => b.date === today).length,
-            upcomingBookings: bookings.filter(b => b.date >= today && b.status === 'confirmed').length,
-            totalRevenue: bookings
-                .filter(b => b.status === 'confirmed')
-                .reduce((sum, b) => sum + (b.totalPrice || 0), 0)
-        };
-        
+        const stats = await getStats(today);
+
         res.json(stats);
     } catch (error) {
         console.error('Error getting stats:', error);
@@ -718,18 +599,23 @@ app.get('/api/stats', authenticateAdmin, async (req, res) => {
 
 // Start server
 async function startServer() {
-    await initFiles();
-    
-    app.listen(PORT, () => {
-        console.log(`====================================`);
-        console.log(`🚀 Booking Server Running`);
-        console.log(`====================================`);
-        console.log(`📍 Port: ${PORT}`);
-        console.log(`🌐 API: http://localhost:${PORT}/api`);
-        console.log(`🔐 Default Admin Password: admin123`);
-        console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
-        console.log(`====================================`);
-    });
+    try {
+        await initializeDatabase();
+
+        app.listen(PORT, () => {
+            console.log(`====================================`);
+            console.log(`🚀 Booking Server Running`);
+            console.log(`====================================`);
+            console.log(`📍 Port: ${PORT}`);
+            console.log(`🌐 API: http://localhost:${PORT}/api`);
+            console.log(`🔐 Default Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
+            console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
+            console.log(`====================================`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 }
 
 startServer();
