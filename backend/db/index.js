@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const { hashPassword } = require('../utils/hash');
 const crypto = require('crypto');
 
-const DEFAULT_ADMIN_PASSWORD = 'admin123';
+const DEFAULT_ADMIN_PASSWORD = '12345678';
 
 const DEFAULT_PEAK_SCHEDULE = {
     days: ['fri', 'sat', 'sun'],
