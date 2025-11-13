@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課程套票 | Studio Booking</title>
+    <style>
+        :root {
+            --brand-primary: #0b4f6c;
+            --brand-secondary: #145da0;
+            --surface: #f8f9fb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1f2933;
+        }
+        header { padding: 48px 24px 30px; text-align: center; background: linear-gradient(135deg,#145da0,#0b4f6c); color:#fff; }
+        header h1 { margin: 0 0 12px; font-size: 2.3rem; }
+        header p { margin: 0; opacity: 0.92; }
+        main { max-width: 960px; margin: 0 auto; padding: 0 24px 60px; margin-top: -30px; }
+        nav { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 30px; }
+        nav a { padding: 10px 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.6); color:#fff; text-decoration:none; font-weight:600; }
+        section { background: #fff; border-radius: 24px; padding: 30px; box-shadow: 0 30px 50px rgba(15,55,98,0.14); border:1px solid rgba(20,93,160,0.08); }
+        .product-grid { display: grid; gap: 24px; }
+        @media(min-width: 768px){ .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+        .product-card {
+            border: 1px solid #dbe2ed;
+            border-radius: 18px;
+            padding: 22px;
+            background: linear-gradient(135deg, rgba(20,93,160,0.08), rgba(255,255,255,0.9));
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .product-card h2 { margin: 0; color: var(--brand-primary); }
+        .product-card p { margin: 0; color: #475569; line-height: 1.6; }
+        .product-meta { display: flex; flex-direction: column; gap: 6px; color: #334155; font-size: 0.95rem; }
+        .status { padding: 6px 12px; background: rgba(20,93,160,0.12); color: var(--brand-secondary); border-radius: 999px; font-weight:600; display:inline-block; }
+        .cta { margin-top: auto; font-weight:600; color: var(--brand-primary); }
+        .empty { text-align:center; color:#64748b; padding:24px; border:1px dashed #cbd5e1; border-radius:16px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>課程套票 / 月費</h1>
+        <p>適合常規學生的多堂方案，立即了解堂數與有效期</p>
+        <nav>
+            <a href="./classes.html">課堂專區</a>
+            <a href="./class-schedule.html">課堂時間表</a>
+            <a href="./trial.html">試堂方案</a>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <div id="products" class="product-grid"></div>
+        </section>
+    </main>
+    <script>
+        function resolveApiBaseUrl(storageKey) {
+            const DEFAULT_API_PATH = '/api';
+            const RENDER_API_ORIGIN = 'https://booking-ub69.onrender.com';
+            const fallbackOrigin = RENDER_API_ORIGIN;
+            const baseOrigin = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : fallbackOrigin;
+            const normalizeBaseUrl = (value) => {
+                if (!value) return null;
+                try {
+                    const url = new URL(value, baseOrigin);
+                    const normalizedPath = url.pathname.replace(/\/+$/, '');
+                    return normalizedPath ? `${url.origin}${normalizedPath}` : url.origin;
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+            const params = new URLSearchParams(window.location.search);
+            const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
+            if (queryOverride) {
+                const resolved = normalizeBaseUrl(queryOverride);
+                if (resolved) {
+                    try { localStorage.setItem(storageKey, resolved); } catch (error) {}
+                    return resolved;
+                }
+            }
+            try {
+                const stored = normalizeBaseUrl(localStorage.getItem(storageKey));
+                if (stored) return stored;
+            } catch (error) {}
+            const inlineConfig = normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl);
+            if (inlineConfig) return inlineConfig;
+            const metaTag = document.querySelector('meta[name="api-base-url"]');
+            const metaUrl = normalizeBaseUrl(metaTag?.content);
+            if (metaUrl) return metaUrl;
+            const appendApiPath = (origin) => `${origin.replace(/\/+$/, '')}${DEFAULT_API_PATH}`;
+            const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
+            const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
+            if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
+                return appendApiPath(normalizedCurrentOrigin);
+            }
+            const isLocalhost = normalizedCurrentOrigin ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin) : false;
+            if (isLocalhost && normalizedCurrentOrigin) {
+                return appendApiPath(normalizedCurrentOrigin);
+            }
+            return appendApiPath(normalizedRenderOrigin);
+        }
+        const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');
+        async function loadProducts() {
+            const container = document.getElementById('products');
+            container.innerHTML = '<p style="color:#475569;">載入中...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/class-products?type=package`);
+                if (!response.ok) throw new Error('無法取得課程套票資訊');
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    container.innerHTML = '<div class="empty">目前沒有套票資料，請稍後再試。</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.innerHTML = `
+                        <h2>${item.name}</h2>
+                        <p>${item.description || '沒有提供詳細介紹。'}</p>
+                        <div class="product-meta">
+                            <div>價格：HK$ ${Number(item.price || 0).toFixed(2)}</div>
+                            <div>包含堂數：${item.numberOfClasses}</div>
+                            <div>有效期：${item.validityPeriodDays ? `${item.validityPeriodDays} 天` : '依照課程安排'}</div>
+                        </div>
+                        <div class="cta">請聯絡客服完成購買</div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="empty">${error.message}</div>`;
+            }
+        }
+        loadProducts();
+    </script>
+</body>
+</html>

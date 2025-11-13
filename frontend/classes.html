@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課堂專區 | Studio Booking</title>
+    <style>
+        :root {
+            --brand-primary: #0b4f6c;
+            --brand-secondary: #145da0;
+            --accent: #f2c94c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(180deg, rgba(20,93,160,0.12) 0%, rgba(255,255,255,0.9) 100%);
+            color: #1f2933;
+        }
+        header {
+            padding: 56px 24px 36px;
+            text-align: center;
+        }
+        header h1 { font-size: 2.6rem; color: var(--brand-primary); margin-bottom: 10px; }
+        header p { color: #475569; }
+        main { max-width: 960px; margin: 0 auto; padding: 0 24px 60px; }
+        .card-grid { display: grid; gap: 24px; }
+        @media (min-width: 768px) {
+            .card-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        }
+        .card {
+            background: #fff;
+            border-radius: 22px;
+            padding: 28px;
+            border: 1px solid rgba(20,93,160,0.12);
+            box-shadow: 0 24px 42px rgba(14,58,102,0.12);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 32px 60px rgba(14,58,102,0.18);
+        }
+        .card h2 { font-size: 1.5rem; color: var(--brand-secondary); margin-bottom: 10px; }
+        .card p { color: #475569; line-height: 1.6; }
+        .card span { display: inline-flex; align-items: center; gap: 6px; color: var(--brand-primary); margin-top: 16px; font-weight: 600; }
+        nav { display: flex; justify-content: center; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+        nav a {
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 2px solid rgba(20,93,160,0.18);
+            color: var(--brand-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            background: rgba(255,255,255,0.8);
+        }
+        nav a:hover { border-color: var(--brand-secondary); }
+        footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>課堂與方案專區</h1>
+        <p>瀏覽課程時間表、購買課程套票，或體驗一次性的試堂方案</p>
+    </header>
+    <main>
+        <nav>
+            <a href="./index.html">← 返回首頁</a>
+            <a href="./rental.html">場地租用</a>
+        </nav>
+        <div class="card-grid">
+            <a class="card" href="./class-schedule.html">
+                <h2>課堂時間表</h2>
+                <p>以週為單位瀏覽每日課堂，立即查看剩餘名額與講師。支援即時預約並寄送聯絡資訊給工作人員。</p>
+                <span>開啟時間表 →</span>
+            </a>
+            <a class="card" href="./class-packages.html">
+                <h2>課程套票 / 月費</h2>
+                <p>選擇不同的課程組合或月費方案，了解包含堂數與有效期限，並直接加入購買清單。</p>
+                <span>探索套票 →</span>
+            </a>
+            <a class="card" href="./trial.html">
+                <h2>試堂體驗</h2>
+                <p>針對新生設計的一次或多次試堂方案，快速入手、低風險體驗我們的熱門課程。</p>
+                <span>查看試堂方案 →</span>
+            </a>
+        </div>
+    </main>
+    <footer>課堂資料與方案皆由後台設定 · 以 Render 上的 API_BASE_URL 取得即時內容</footer>
+</body>
+</html>
