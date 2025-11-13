@@ -59,6 +59,22 @@
         .catalog-actions { display: flex; gap: 10px; align-items: center; }
         .catalog-actions input { width: 90px; padding: 8px 10px; border: 2px solid #d6dde6; border-radius: 10px; }
         .catalog-actions button { flex: 1; padding: 10px 12px; border-radius: 10px; }
+        .view-toggle { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .view-btn { padding: 12px 28px; border-radius: 999px; border: 2px solid #145da0; background: transparent; color: #145da0; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .view-btn.active { background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; border-color: transparent; box-shadow: 0 12px 24px rgba(11,79,108,0.2); }
+        .view-panel { display: none; }
+        .view-panel.active { display: block; }
+        .classes-filter { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+        .classes-card { background: #fff; border-radius: 16px; border: 1px solid #dbe2ed; padding: 18px; box-shadow: 0 12px 24px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 12px; }
+        .classes-card.full { opacity: 0.7; }
+        .classes-card.full .classes-actions { opacity: 0.85; }
+        .classes-card h3 { color: #0b4f6c; font-size: 1.2em; }
+        .classes-meta { color: #516273; font-size: 0.95em; line-height: 1.6; }
+        .classes-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .classes-actions input { width: 100px; padding: 10px; border: 2px solid #d6dde6; border-radius: 10px; }
+        .classes-filter .btn { padding: 12px 20px; border-radius: 12px; border: none; background: #e4ebf5; color: #1f2933; font-weight: 600; cursor: pointer; transition: background 0.3s; }
+        .classes-filter .btn:hover { background: #d1dae9; }
+        .classes-empty { padding: 18px; border: 1px dashed #d6dde6; border-radius: 12px; color: #516273; background: #f8f9fb; font-size: 0.95em; text-align: center; }
         .submit-btn { width: 100%; padding: 18px; font-size: 1.08em; letter-spacing: 0.5px; margin-top: 18px; }
         .success-message, .error-message { padding: 15px 18px; border-radius: 12px; margin-bottom: 18px; font-weight: 600; display: none; }
         .success-message { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -77,74 +93,93 @@
             <p id="sub-title">專業錄音室 • 每日營業</p>
         </div>
         <div class="booking-content">
-            <div id="success-message" class="success-message"></div>
-            <div id="error-message" class="error-message"></div>
-            <div class="instructions">
-                <h4><span>⚠️</span><span id="instructions-title">重要預約須知</span></h4>
-                <ol id="instructions-list">
-                    <li id="instruction-1">選擇您想要的日期</li>
-                    <li id="instruction-2">點擊開始時段，再點擊結束時段（可選擇多個連續時段）</li>
-                    <li id="instruction-3">填寫您的聯絡資料</li>
-                    <li id="instruction-4">透過銀行轉帳或 PayMe 付款</li>
-                    <li id="instruction-5">將付款證明傳送至 WhatsApp: 98725268</li>
-                    <li id="instruction-6">您的預約將在 30 分鐘內確認</li>
-                </ol>
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="studio" id="view-studio-btn"><span id="view-studio-text">場地預約</span></button>
+                <button class="view-btn" data-view="classes" id="view-classes-btn"><span id="view-classes-text">課程 / 工作坊</span></button>
             </div>
-            <div class="section grid-two-columns">
-                <div class="panel">
-                    <h2 class="section-title"><span>📅</span><span id="date-title">選擇日期</span></h2>
-                    <input type="date" id="date-input" class="date-input" onchange="handleDateChange(this.value)">
-                    <div id="time-section" style="display:none;margin-top:20px;">
-                        <h2 class="section-title"><span>⏰</span><span id="time-title">選擇時段</span></h2>
-                        <div class="slot-instruction">
-                            <p><strong id="select-method">選擇方式：</strong></p>
-                            <p id="select-step1">1. 點擊第一個時段（開始時間）</p>
-                            <p id="select-step2">2. 再點擊最後一個時段（結束時間）</p>
-                            <p id="select-step3">3. 系統會自動選取中間的所有時段</p>
+            <div id="studio-view" class="view-panel active">
+                <div id="success-message" class="success-message"></div>
+                <div id="error-message" class="error-message"></div>
+                <div class="instructions">
+                    <h4><span>⚠️</span><span id="instructions-title">重要預約須知</span></h4>
+                    <ol id="instructions-list">
+                        <li id="instruction-1">選擇您想要的日期</li>
+                        <li id="instruction-2">點擊開始時段，再點擊結束時段（可選擇多個連續時段）</li>
+                        <li id="instruction-3">填寫您的聯絡資料</li>
+                        <li id="instruction-4">透過銀行轉帳或 PayMe 付款</li>
+                        <li id="instruction-5">將付款證明傳送至 WhatsApp: 98725268</li>
+                        <li id="instruction-6">您的預約將在 30 分鐘內確認</li>
+                    </ol>
+                </div>
+                <div class="section grid-two-columns">
+                    <div class="panel">
+                        <h2 class="section-title"><span>📅</span><span id="date-title">選擇日期</span></h2>
+                        <input type="date" id="date-input" class="date-input" onchange="handleDateChange(this.value)">
+                        <div id="time-section" style="display:none;margin-top:20px;">
+                            <h2 class="section-title"><span>⏰</span><span id="time-title">選擇時段</span></h2>
+                            <div class="slot-instruction">
+                                <p><strong id="select-method">選擇方式：</strong></p>
+                                <p id="select-step1">1. 點擊第一個時段（開始時間）</p>
+                                <p id="select-step2">2. 再點擊最後一個時段（結束時間）</p>
+                                <p id="select-step3">3. 系統會自動選取中間的所有時段</p>
+                            </div>
+                            <div id="time-slots" class="time-slots"></div>
+                            <div class="legend">
+                                <span><span class="legend-box" style="background:#f0f0f0;"></span><span id="legend-confirmed">已確認</span></span>
+                                <span><span class="legend-box" style="background:#fff3cd;border-color:#f2c94c;"></span><span id="legend-pending">待確認</span></span>
+                                <span><span class="legend-box" style="background:#fff;border-color:#145da0;"></span><span id="legend-available">可預約</span></span>
+                            </div>
+                            <div class="form-group" style="margin-top:20px;">
+                                <label class="form-label" for="people-count" id="people-label">參與人數 *</label>
+                                <input type="number" id="people-count" class="form-input" min="1" max="18" value="4">
+                            </div>
+                            <button class="add-session-btn" id="add-session-btn" onclick="addSelectedSessionToCart()" disabled><span id="add-session-text">加入購物車</span></button>
                         </div>
-                        <div id="time-slots" class="time-slots"></div>
-                        <div class="legend">
-                            <span><span class="legend-box" style="background:#f0f0f0;"></span><span id="legend-confirmed">已確認</span></span>
-                            <span><span class="legend-box" style="background:#fff3cd;border-color:#f2c94c;"></span><span id="legend-pending">待確認</span></span>
-                            <span><span class="legend-box" style="background:#fff;border-color:#145da0;"></span><span id="legend-available">可預約</span></span>
+                    </div>
+                    <div class="panel">
+                        <h2 class="section-title"><span>🛒</span><span id="cart-title">預約購物車</span></h2>
+                        <div id="cart" class="cart"></div>
+                        <div class="summary-card" style="margin-top:20px;">
+                            <div class="summary-row"><span id="summary-items-label">已選擇項目：</span><span id="summary-items">0</span></div>
+                            <div class="summary-row"><span id="summary-people-label">總人數：</span><span id="summary-people">0</span></div>
+                            <div class="summary-row total"><span id="total-label">總金額：</span><span>HK$<span id="total-amount">0</span></span></div>
                         </div>
-                        <div class="form-group" style="margin-top:20px;">
-                            <label class="form-label" for="people-count" id="people-label">參與人數 *</label>
-                            <input type="number" id="people-count" class="form-input" min="1" max="18" value="4">
-                        </div>
-                        <button class="add-session-btn" id="add-session-btn" onclick="addSelectedSessionToCart()" disabled><span id="add-session-text">加入購物車</span></button>
                     </div>
                 </div>
-                <div class="panel">
-                    <h2 class="section-title"><span>🛒</span><span id="cart-title">預約購物車</span></h2>
-                    <div id="cart" class="cart"></div>
-                    <div class="summary-card" style="margin-top:20px;">
-                        <div class="summary-row"><span id="summary-items-label">已選擇項目：</span><span id="summary-items">0</span></div>
-                        <div class="summary-row"><span id="summary-people-label">總人數：</span><span id="summary-people">0</span></div>
-                        <div class="summary-row total"><span id="total-label">總金額：</span><span>HK$<span id="total-amount">0</span></span></div>
+                <div class="section" id="rental-section">
+                    <h2 class="section-title" style="margin-top:32px;"><span>🏢</span><span id="rental-title">場地租用選項</span></h2>
+                    <div id="rental-list" class="item-list"></div>
+                </div>
+                <div class="section" id="contact-section" style="display:none;">
+                    <div class="panel">
+                        <h2 class="section-title"><span>👤</span><span id="info-title">聯絡資料</span></h2>
+                        <form id="booking-form">
+                            <div class="form-group"><label class="form-label" for="customerName" id="name-label">姓名 *</label><input type="text" id="customerName" class="form-input" required></div>
+                            <div class="form-group"><label class="form-label" for="email" id="email-label">電子郵件 *</label><input type="email" id="email" class="form-input" required></div>
+                            <div class="form-group"><label class="form-label" for="phone" id="phone-label">電話號碼 (WhatsApp) *</label><input type="tel" id="phone" class="form-input" placeholder="例如：98765432" required></div>
+                            <div class="form-group"><label class="form-label" for="notes" id="notes-label">特殊要求（選填）</label><textarea id="notes" class="form-input" rows="3" placeholder="任何特殊設備或設置需求..."></textarea></div>
+                            <div class="panel" style="background:#fff;border:1px solid #dbe2ed;margin-bottom:18px;">
+                                <h3 style="color:#145da0;margin-bottom:12px;text-align:center;" id="payment-title">付款方式</h3>
+                                <div id="payment-info"></div>
+                            </div>
+                            <button type="submit" class="submit-btn" id="submit-btn" disabled><span id="submit-btn-text">確認預約申請</span></button>
+                        </form>
                     </div>
                 </div>
             </div>
-            <div class="section" id="catalog-section">
-                <h2 class="section-title"><span>🎶</span><span id="workshop-title">課程 / 工作坊</span></h2>
-                <div id="workshop-list" class="item-list"></div>
-                <h2 class="section-title" style="margin-top:32px;"><span>🏢</span><span id="rental-title">場地租用選項</span></h2>
-                <div id="rental-list" class="item-list"></div>
-            </div>
-            <div class="section" id="contact-section" style="display:none;">
-                <div class="panel">
-                    <h2 class="section-title"><span>👤</span><span id="info-title">聯絡資料</span></h2>
-                    <form id="booking-form">
-                        <div class="form-group"><label class="form-label" for="customerName" id="name-label">姓名 *</label><input type="text" id="customerName" class="form-input" required></div>
-                        <div class="form-group"><label class="form-label" for="email" id="email-label">電子郵件 *</label><input type="email" id="email" class="form-input" required></div>
-                        <div class="form-group"><label class="form-label" for="phone" id="phone-label">電話號碼 (WhatsApp) *</label><input type="tel" id="phone" class="form-input" placeholder="例如：98765432" required></div>
-                        <div class="form-group"><label class="form-label" for="notes" id="notes-label">特殊要求（選填）</label><textarea id="notes" class="form-input" rows="3" placeholder="任何特殊設備或設置需求..."></textarea></div>
-                        <div class="panel" style="background:#fff;border:1px solid #dbe2ed;margin-bottom:18px;">
-                            <h3 style="color:#145da0;margin-bottom:12px;text-align:center;" id="payment-title">付款方式</h3>
-                            <div id="payment-info"></div>
+            <div id="classes-view" class="view-panel">
+                <div class="section">
+                    <div id="classes-success" class="success-message"></div>
+                    <div id="classes-error" class="error-message"></div>
+                    <h2 class="section-title"><span>🎶</span><span id="classes-title">課程 / 工作坊</span></h2>
+                    <div class="classes-filter">
+                        <div>
+                            <label class="form-label" for="classes-date-filter" id="classes-date-label">篩選日期</label>
+                            <input type="date" id="classes-date-filter" class="date-input">
                         </div>
-                        <button type="submit" class="submit-btn" id="submit-btn" disabled><span id="submit-btn-text">確認預約申請</span></button>
-                    </form>
+                        <button type="button" class="btn btn-secondary" id="classes-clear-button">顯示全部</button>
+                    </div>
+                    <div id="classes-list" class="item-list"></div>
                 </div>
             </div>
         </div>
@@ -182,6 +217,32 @@
         let selection = { start: null, end: null };
         let cartItems = [];
         let itemCounter = 0;
+        let activeView = 'studio';
+        let classesFilterDate = null;
+
+        function sanitizeText(value) {
+            if (value === null || value === undefined) return '';
+            return value.toString().replace(/[&<>"']/g, (char) => {
+                switch (char) {
+                    case '&':
+                        return '&amp;';
+                    case '<':
+                        return '&lt;';
+                    case '>':
+                        return '&gt;';
+                    case '"':
+                        return '&quot;';
+                    case '\'':
+                        return '&#39;';
+                    default:
+                        return char;
+                }
+            });
+        }
+
+        function sanitizeMultilineText(value) {
+            return sanitizeText(value).replace(/\n/g, '<br>');
+        }
         function timesOverlap(startA, endA, startB, endB) {
             return timeToMinutes(startA) < timeToMinutes(endB) && timeToMinutes(endA) > timeToMinutes(startB);
         }
@@ -194,15 +255,59 @@
                 .filter(item => item.catalogItemId === id)
                 .reduce((sum, item) => sum + Number(item.peopleCount || 0), 0);
         }
+        function clearMessages() {
+            ['success-message', 'error-message', 'classes-success', 'classes-error'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.display = 'none';
+                    el.textContent = '';
+                }
+            });
+        }
+        function switchView(view) {
+            if (activeView === view) return;
+            activeView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            document.querySelectorAll('.view-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === `${view}-view`);
+            });
+            clearMessages();
+            if (view === 'classes') {
+                renderClassesList();
+            } else {
+                renderCart();
+            }
+        }
         const translations = {
-            zh: { 'main-title': '專業錄音室預約系統', 'sub-title': '專業錄音室 • 每日營業', 'instructions-title': '重要預約須知', 'date-title': '選擇日期', 'time-title': '選擇時段', 'info-title': '聯絡資料', 'workshop-title': '課程 / 工作坊', 'rental-title': '場地租用選項', 'name-label': '姓名 *', 'email-label': '電子郵件 *', 'phone-label': '電話號碼 (WhatsApp) *', 'notes-label': '特殊要求（選填）', 'legend-confirmed': '已確認', 'legend-pending': '待確認', 'legend-available': '可預約', 'people-label': '參與人數 *', 'cart-title': '預約購物車', 'summary-items-label': '已選擇項目：', 'summary-people-label': '總人數：', 'total-label': '總金額：', 'add-session-text': '加入購物車', 'submit-btn-text': '確認預約申請', 'select-method': '選擇方式：', 'select-step1': '1. 點擊第一個時段（開始時間）', 'select-step2': '2. 再點擊最後一個時段（結束時間）', 'select-step3': '3. 系統會自動選取中間的所有時段', 'success-booking': '預約申請已成功提交！', 'error-booking': '預約失敗，請重試。', 'error-select-slot': '請選擇日期、時段及人數（最多 18 人）。', 'error-cart-empty': '請先加入至少一個預約項目。', 'error-capacity': '超過可用人數，請重新輸入。', 'error-overlap': '選擇的時段與現有項目重疊，請選擇其他時間。', 'payment-title': '付款方式', 'cart-empty': '尚未選擇任何預約項目。' },
-            en: { 'main-title': 'Professional Studio Booking', 'sub-title': 'Professional Recording Studio • Open Daily', 'instructions-title': 'Important Booking Instructions', 'date-title': 'Select Date', 'time-title': 'Select Time Slots', 'info-title': 'Contact Information', 'workshop-title': 'Workshops / Classes', 'rental-title': 'Room Rental Options', 'name-label': 'Full Name *', 'email-label': 'Email Address *', 'phone-label': 'Phone Number (WhatsApp) *', 'notes-label': 'Special Requirements (Optional)', 'legend-confirmed': 'Confirmed', 'legend-pending': 'Pending', 'legend-available': 'Available', 'people-label': 'Number of Participants *', 'cart-title': 'Booking Cart', 'summary-items-label': 'Items Selected:', 'summary-people-label': 'Total People:', 'total-label': 'Total Amount:', 'add-session-text': 'Add to Cart', 'submit-btn-text': 'CONFIRM BOOKING REQUEST', 'select-method': 'How to select:', 'select-step1': '1. Click first slot (start time)', 'select-step2': '2. Click last slot (end time)', 'select-step3': '3. System will auto-select all slots in between', 'success-booking': 'Booking request submitted successfully!', 'error-booking': 'Booking failed. Please try again.', 'error-select-slot': 'Select a date, time range, and participants (maximum 18).', 'error-cart-empty': 'Add at least one booking item before submitting.', 'error-capacity': 'Participant count exceeds availability. Please adjust.', 'error-overlap': 'Selected time overlaps with another item. Please choose a different slot.', 'payment-title': 'Payment Methods', 'cart-empty': 'No booking items in the cart yet.' }
+            zh: { 'main-title': '專業錄音室預約系統', 'sub-title': '專業錄音室 • 每日營業', 'instructions-title': '重要預約須知', 'date-title': '選擇日期', 'time-title': '選擇時段', 'info-title': '聯絡資料', 'classes-title': '課程 / 工作坊', 'classes-date-label': '篩選日期', 'classes-clear-button': '顯示全部', 'view-studio-text': '場地預約', 'view-classes-text': '課程 / 工作坊', 'rental-title': '場地租用選項', 'name-label': '姓名 *', 'email-label': '電子郵件 *', 'phone-label': '電話號碼 (WhatsApp) *', 'notes-label': '特殊要求（選填）', 'legend-confirmed': '已確認', 'legend-pending': '待確認', 'legend-available': '可預約', 'people-label': '參與人數 *', 'cart-title': '預約購物車', 'summary-items-label': '已選擇項目：', 'summary-people-label': '總人數：', 'total-label': '總金額：', 'add-session-text': '加入購物車', 'submit-btn-text': '確認預約申請', 'select-method': '選擇方式：', 'select-step1': '1. 點擊第一個時段（開始時間）', 'select-step2': '2. 再點擊最後一個時段（結束時間）', 'select-step3': '3. 系統會自動選取中間的所有時段', 'success-booking': '預約申請已成功提交！', 'error-booking': '預約失敗，請重試。', 'error-select-slot': '請選擇日期、時段及人數（最多 18 人）。', 'error-cart-empty': '請先加入至少一個預約項目。', 'error-capacity': '超過可用人數，請重新輸入。', 'error-overlap': '選擇的時段與現有項目重疊，請選擇其他時間。', 'payment-title': '付款方式', 'cart-empty': '尚未選擇任何預約項目。' },
+            en: { 'main-title': 'Professional Studio Booking', 'sub-title': 'Professional Recording Studio • Open Daily', 'instructions-title': 'Important Booking Instructions', 'date-title': 'Select Date', 'time-title': 'Select Time Slots', 'info-title': 'Contact Information', 'classes-title': 'Workshops / Classes', 'classes-date-label': 'Filter by date', 'classes-clear-button': 'Show all', 'view-studio-text': 'Studio Rental', 'view-classes-text': 'Classes / Workshops', 'rental-title': 'Room Rental Options', 'name-label': 'Full Name *', 'email-label': 'Email Address *', 'phone-label': 'Phone Number (WhatsApp) *', 'notes-label': 'Special Requirements (Optional)', 'legend-confirmed': 'Confirmed', 'legend-pending': 'Pending', 'legend-available': 'Available', 'people-label': 'Number of Participants *', 'cart-title': 'Booking Cart', 'summary-items-label': 'Items Selected:', 'summary-people-label': 'Total People:', 'total-label': 'Total Amount:', 'add-session-text': 'Add to Cart', 'submit-btn-text': 'CONFIRM BOOKING REQUEST', 'select-method': 'How to select:', 'select-step1': '1. Click first slot (start time)', 'select-step2': '2. Click last slot (end time)', 'select-step3': '3. System will auto-select all slots in between', 'success-booking': 'Booking request submitted successfully!', 'error-booking': 'Booking failed. Please try again.', 'error-select-slot': 'Select a date, time range, and participants (maximum 18).', 'error-cart-empty': 'Add at least one booking item before submitting.', 'error-capacity': 'Participant count exceeds availability. Please adjust.', 'error-overlap': 'Selected time overlaps with another item. Please choose a different slot.', 'payment-title': 'Payment Methods', 'cart-empty': 'No booking items in the cart yet.' }
         };
         document.addEventListener('DOMContentLoaded', async () => {
             await loadSettings();
             await loadCatalogItems();
             setInitialDateBounds();
             document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
+            const studioBtn = document.getElementById('view-studio-btn');
+            const classesBtn = document.getElementById('view-classes-btn');
+            if (studioBtn) studioBtn.addEventListener('click', () => switchView('studio'));
+            if (classesBtn) classesBtn.addEventListener('click', () => switchView('classes'));
+            const classesFilterInput = document.getElementById('classes-date-filter');
+            if (classesFilterInput) {
+                classesFilterInput.addEventListener('change', (event) => {
+                    classesFilterDate = event.target.value || null;
+                    renderClassesList();
+                });
+            }
+            const classesClearButton = document.getElementById('classes-clear-button');
+            if (classesClearButton) {
+                classesClearButton.addEventListener('click', () => {
+                    classesFilterDate = null;
+                    if (classesFilterInput) classesFilterInput.value = '';
+                    renderClassesList();
+                });
+            }
             updateUIWithSettings();
             renderCart();
         });
@@ -385,10 +490,10 @@
             return startMin < peakEnd && endMin > peakStart ? 'peak' : 'normal';
         }
         function addSelectedSessionToCart() {
-            if (!selectedDate || !selection.start || !selection.end) { showMessage('error', translations[currentLanguage]['error-select-slot']); return; }
+            if (!selectedDate || !selection.start || !selection.end) { showMessage('error', translations[currentLanguage]['error-select-slot'], 'studio'); return; }
             const peopleCount = parseInt(document.getElementById('people-count').value, 10);
-            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-select-slot']); return; }
-            if (hasRoomRentalConflict(selectedDate, selection.start, selection.end)) { showMessage('error', translations[currentLanguage]['error-overlap']); return; }
+            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-select-slot'], 'studio'); return; }
+            if (hasRoomRentalConflict(selectedDate, selection.start, selection.end)) { showMessage('error', translations[currentLanguage]['error-overlap'], 'studio'); return; }
             const duration = timeToMinutes(selection.end) - timeToMinutes(selection.start);
             const periodType = determinePeriodType(selectedDate, selection.start, selection.end);
             const price = calculateRoomPrice(duration, peopleCount, periodType);
@@ -398,7 +503,7 @@
             renderCart();
             renderCatalogLists();
             document.getElementById('contact-section').style.display = 'block';
-            showMessage('success', `${currentLanguage === 'zh' ? '已加入購物車' : 'Added to cart'}`);
+            showMessage('success', `${currentLanguage === 'zh' ? '已加入購物車' : 'Added to cart'}`, 'studio');
         }
         function renderCart() {
             const cart = document.getElementById('cart');
@@ -435,14 +540,11 @@
             renderCatalogLists();
             if (cartItems.length === 0) document.getElementById('contact-section').style.display = 'none';
         }
-        function renderCatalogLists() {
-            renderCatalogList('workshop-list', CATALOG.workshops, 'workshop_class');
-            renderCatalogList('rental-list', CATALOG.roomRentals, 'room_rental');
-        }
         function renderCatalogList(containerId, items, type) {
             const container = document.getElementById(containerId);
+            if (!container) return;
             container.innerHTML = '';
-            if (!items || items.length === 0) {
+            if (!Array.isArray(items) || items.length === 0) {
                 const empty = document.createElement('div');
                 empty.style.color = '#516273';
                 empty.textContent = currentLanguage === 'zh' ? '暫無資料' : 'No items available at the moment.';
@@ -454,23 +556,30 @@
                 card.className = 'catalog-card';
                 const start = new Date(item.startDateTime);
                 const end = new Date(item.endDateTime);
-                const dateLabel = formatDateLabel(item.startDateTime.split('T')[0]);
+                const dateLabel = formatDateLabel(parseIsoDate(item.startDateTime).date);
                 const timeRange = `${formatTime(start)} - ${formatTime(end)}`;
                 const baseCapacity = item.availableCapacity ?? item.capacity;
                 const reservedInCart = getCartUsageForCatalogItem(item.id);
-                const available = Math.max((baseCapacity ?? 0) - reservedInCart, 0);
+                const available = Math.max((Number(baseCapacity) || 0) - reservedInCart, 0);
                 const capacityLabel = currentLanguage === 'zh' ? '剩餘名額' : 'Seats left';
-                const priceLabel = type === 'workshop_class' ? `${currentLanguage === 'zh' ? '每位 HK$' : 'HK$'}${item.price}` : `${currentLanguage === 'zh' ? '價格依人數與時段計算' : 'Pricing based on group & period'}`;
-                card.innerHTML = `<h3>${item.name}</h3><div class="catalog-meta"><div>${dateLabel}</div><div>${timeRange}</div><div>${priceLabel}</div><div class="capacity-indicator">${capacityLabel}: ${available}</div>${item.instructorName ? `<div>${currentLanguage === 'zh' ? '導師：' : 'Instructor:'} ${item.instructorName}</div>` : ''}</div>`;
+                const priceLabel = type === 'workshop_class'
+                    ? `${currentLanguage === 'zh' ? '每位 HK$' : 'HK$'}${Number(item.price || 0).toFixed(2)}`
+                    : `${currentLanguage === 'zh' ? '價格依人數與時段計算' : 'Pricing based on group & period'}`;
+                const description = item.description ? `<div>${sanitizeMultilineText(item.description)}</div>` : '';
+                const instructor = item.instructorName
+                    ? `<div>${currentLanguage === 'zh' ? '導師：' : 'Instructor:'} ${sanitizeText(item.instructorName)}</div>`
+                    : '';
+                card.innerHTML = `<h3>${sanitizeText(item.name)}</h3><div class="catalog-meta"><div>${sanitizeText(dateLabel)}</div><div>${sanitizeText(timeRange)}</div><div>${sanitizeText(priceLabel)}</div><div class="capacity-indicator">${sanitizeText(capacityLabel)}: ${available}</div>${instructor}${description}</div>`;
                 const actions = document.createElement('div');
                 actions.className = 'catalog-actions';
                 const input = document.createElement('input');
                 input.type = 'number';
-                input.min = '1';
+                input.min = available > 0 ? '1' : '0';
                 input.max = Math.min(18, available);
                 input.value = Math.min(Math.max(available, 0), 4) || 1;
                 input.disabled = available <= 0;
                 const button = document.createElement('button');
+                button.type = 'button';
                 button.textContent = currentLanguage === 'zh' ? '加入購物車' : 'Add to cart';
                 button.disabled = available <= 0;
                 button.addEventListener('click', () => addCatalogItemToCart(item, type, parseInt(input.value, 10)));
@@ -480,23 +589,128 @@
                 container.appendChild(card);
             });
         }
+
+        function renderClassesList() {
+            const container = document.getElementById('classes-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const classes = Array.isArray(CATALOG.workshops) ? [...CATALOG.workshops] : [];
+            if (classes.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'classes-empty';
+                empty.textContent = currentLanguage === 'zh' ? '目前沒有可報名的課程。' : 'No upcoming classes are available right now.';
+                container.appendChild(empty);
+                return;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const isFilteringByDate = Boolean(classesFilterDate);
+            const filtered = classes
+                .filter(item => {
+                    if (!item?.startDateTime) return false;
+                    const start = new Date(item.startDateTime);
+                    const { date } = parseIsoDate(item.startDateTime);
+                    if (isFilteringByDate) {
+                        return date === classesFilterDate;
+                    }
+                    return start >= today;
+                })
+                .sort((a, b) => new Date(a.startDateTime) - new Date(b.startDateTime));
+
+            if (filtered.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'classes-empty';
+                empty.textContent = isFilteringByDate
+                    ? (currentLanguage === 'zh' ? '所選日期沒有課程安排。' : 'No classes scheduled for the selected date.')
+                    : (currentLanguage === 'zh' ? '目前沒有可報名的課程。' : 'No upcoming classes are available right now.');
+                container.appendChild(empty);
+                return;
+            }
+
+            filtered.forEach(item => {
+                const startDate = new Date(item.startDateTime);
+                const endDate = new Date(item.endDateTime);
+                const startInfo = parseIsoDate(item.startDateTime);
+                const dateLabel = formatDateLabel(startInfo.date);
+                const timeLabel = `${formatTime(startDate)} - ${formatTime(endDate)}`;
+                const priceValue = Number(item.price ?? 0);
+                const priceLabel = priceValue > 0
+                    ? `${currentLanguage === 'zh' ? '每位 HK$' : 'HK$'}${priceValue.toFixed(2)}`
+                    : currentLanguage === 'zh' ? '請聯絡我們了解價格' : 'Contact us for pricing';
+                const baseCapacity = Number(item.capacity ?? item.availableCapacity ?? 0);
+                const reservedInCart = getCartUsageForCatalogItem(item.id);
+                const available = Math.max((Number(item.availableCapacity ?? baseCapacity) || 0) - reservedInCart, 0);
+                const totalCapacity = baseCapacity > 0 ? baseCapacity : null;
+                const capacityLabel = totalCapacity !== null
+                    ? `${available} / ${totalCapacity}`
+                    : `${available}`;
+                const capacityText = `${currentLanguage === 'zh' ? '剩餘名額' : 'Seats available'}: ${capacityLabel}`;
+
+                const card = document.createElement('div');
+                card.className = 'classes-card';
+                if (available <= 0) {
+                    card.classList.add('full');
+                }
+
+                card.innerHTML = `
+                    <h3>${sanitizeText(item.name)}</h3>
+                    <div class="classes-meta">
+                        <div>${sanitizeText(dateLabel)}</div>
+                        <div>${sanitizeText(timeLabel)}</div>
+                        <div>${sanitizeText(priceLabel)}</div>
+                        ${item.instructorName ? `<div>${currentLanguage === 'zh' ? '導師：' : 'Instructor:'} ${sanitizeText(item.instructorName)}</div>` : ''}
+                        ${item.description ? `<div>${sanitizeMultilineText(item.description)}</div>` : ''}
+                        <div class="capacity-indicator">${sanitizeText(capacityText)}</div>
+                    </div>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'classes-actions';
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '1';
+                input.max = Math.min(18, available);
+                input.value = available > 0 ? 1 : 0;
+                input.disabled = available <= 0;
+
+                const button = document.createElement('button');
+                button.className = 'add-session-btn';
+                button.type = 'button';
+                button.style.width = 'auto';
+                button.textContent = available > 0 ? (currentLanguage === 'zh' ? '加入課程' : 'Join class') : (currentLanguage === 'zh' ? '已額滿' : 'Fully booked');
+                button.disabled = available <= 0;
+                button.addEventListener('click', () => {
+                    const count = parseInt(input.value, 10);
+                    addCatalogItemToCart(item, 'workshop_class', Number.isFinite(count) ? count : 1);
+                });
+
+                actions.appendChild(input);
+                actions.appendChild(button);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
         function addCatalogItemToCart(item, type, peopleCount) {
-            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-capacity']); return; }
+            const messageScope = type === 'workshop_class' ? 'classes' : 'studio';
+            if (!Number.isInteger(peopleCount) || peopleCount <= 0 || peopleCount > 18) { showMessage('error', translations[currentLanguage]['error-capacity'], messageScope); return; }
             const baseCapacity = item.availableCapacity ?? item.capacity;
             const reservedInCart = getCartUsageForCatalogItem(item.id);
             const remainingCapacity = Math.max((baseCapacity ?? 0) - reservedInCart, 0);
-            if (peopleCount > remainingCapacity) { showMessage('error', translations[currentLanguage]['error-capacity']); return; }
+            if (peopleCount > remainingCapacity) { showMessage('error', translations[currentLanguage]['error-capacity'], messageScope); return; }
             const startInfo = parseIsoDate(item.startDateTime);
             const endInfo = parseIsoDate(item.endDateTime);
             const duration = timeToMinutes(endInfo.time) - timeToMinutes(startInfo.time);
             const periodType = type === 'room_rental' ? determinePeriodType(startInfo.date, startInfo.time, endInfo.time) : 'catalog';
-            if (type === 'room_rental' && hasRoomRentalConflict(startInfo.date, startInfo.time, endInfo.time)) { showMessage('error', translations[currentLanguage]['error-overlap']); return; }
+            if (type === 'room_rental' && hasRoomRentalConflict(startInfo.date, startInfo.time, endInfo.time)) { showMessage('error', translations[currentLanguage]['error-overlap'], messageScope); return; }
             const price = type === 'room_rental' ? calculateRoomPrice(duration, peopleCount, periodType) : Math.round(Number(item.price || 0) * peopleCount * 100) / 100;
             cartItems.push({ id: `catalog-${++itemCounter}`, type, catalogItemId: item.id, date: startInfo.date, startTime: startInfo.time, endTime: endInfo.time, duration, peopleCount, price, periodType, titleZh: `${item.name}｜${formatDateLabel(startInfo.date)} ${startInfo.time}-${endInfo.time}`, titleEn: `${item.name} | ${formatDateLabel(startInfo.date)} ${startInfo.time}-${endInfo.time}` });
             renderCart();
             renderCatalogLists();
             document.getElementById('contact-section').style.display = 'block';
-            showMessage('success', `${item.name} ${currentLanguage === 'zh' ? '已加入購物車' : 'added to cart'}`);
+            showMessage('success', `${item.name} ${currentLanguage === 'zh' ? '已加入購物車' : 'added to cart'}`, messageScope);
         }
         function parseIsoDate(isoString) { const date = new Date(isoString); const year = date.getFullYear(); const month = `${date.getMonth() + 1}`.padStart(2,'0'); const day = `${date.getDate()}`.padStart(2,'0'); const hour = `${date.getHours()}`.padStart(2,'0'); const minute = `${date.getMinutes()}`.padStart(2,'0'); return { date: `${year}-${month}-${day}`, time: `${hour}:${minute}` }; }
         function timeToMinutes(time) { const [hour, minute] = time.split(':').map(Number); return hour * 60 + minute; }
@@ -507,7 +721,7 @@
         function formatTime(dateObj) { const hours = dateObj.getHours(); const minutes = `${dateObj.getMinutes()}`.padStart(2,'0'); if (currentLanguage === 'zh') { const period = hours >= 12 ? '下午' : '上午'; const displayHour = hours % 12 === 0 ? 12 : hours % 12; return `${period} ${displayHour}:${minutes}`; } const period = hours >= 12 ? 'PM' : 'AM'; const displayHour = hours % 12 === 0 ? 12 : hours % 12; return `${displayHour}:${minutes} ${period}`; }
         async function handleBookingSubmit(e) {
             e.preventDefault();
-            if (cartItems.length === 0) { showMessage('error', translations[currentLanguage]['error-cart-empty']); return; }
+            if (cartItems.length === 0) { showMessage('error', translations[currentLanguage]['error-cart-empty'], 'studio'); return; }
             const customerName = document.getElementById('customerName').value.trim();
             const email = document.getElementById('email').value.trim();
             const phone = document.getElementById('phone').value.trim();
@@ -526,7 +740,7 @@
                 const response = await fetch(`${API_BASE_URL}/bookings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const result = await response.json();
                 if (response.ok) {
-                    showMessage('success', translations[currentLanguage]['success-booking']);
+                    showMessage('success', translations[currentLanguage]['success-booking'], 'studio');
                     openWhatsappConfirmation(result.booking || {}, customerName);
                     cartItems = [];
                     renderCart();
@@ -538,11 +752,11 @@
                     document.getElementById('date-input').value = '';
                     document.getElementById('time-section').style.display = 'none';
                 } else {
-                    showMessage('error', result.error || translations[currentLanguage]['error-booking']);
+                    showMessage('error', result.error || translations[currentLanguage]['error-booking'], 'studio');
                 }
             } catch (error) {
                 console.error('Booking error:', error);
-                showMessage('error', translations[currentLanguage]['error-booking']);
+                showMessage('error', translations[currentLanguage]['error-booking'], 'studio');
             } finally {
                 submitBtn.disabled = cartItems.length === 0;
                 submitBtn.textContent = translations[currentLanguage]['submit-btn-text'];
@@ -565,19 +779,70 @@ Time: ${timeLabel}
 Total: HK$${total}`;
             window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
         }
-        function showMessage(type, message) {
-            const target = type === 'success' ? document.getElementById('success-message') : document.getElementById('error-message');
-            const other = type === 'success' ? document.getElementById('error-message') : document.getElementById('success-message');
-            other.style.display = 'none';
-            other.textContent = '';
-            if (!message) return;
-            target.textContent = Array.isArray(message) ? message.filter(Boolean).join('
-') : message;
+        function showMessage(type, message, view = activeView) {
+            const scope = view === 'classes' ? {
+                success: 'classes-success',
+                error: 'classes-error',
+                clearSuccess: 'success-message',
+                clearError: 'error-message'
+            } : {
+                success: 'success-message',
+                error: 'error-message',
+                clearSuccess: 'classes-success',
+                clearError: 'classes-error'
+            };
+
+            const targetId = type === 'success' ? scope.success : scope.error;
+            const otherId = type === 'success' ? scope.error : scope.success;
+
+            const target = document.getElementById(targetId);
+            const other = document.getElementById(otherId);
+            const oppositeSuccess = document.getElementById(scope.clearSuccess);
+            const oppositeError = document.getElementById(scope.clearError);
+
+            if (!target) {
+                return;
+            }
+
+            if (other) {
+                other.style.display = 'none';
+                other.textContent = '';
+            }
+
+            if (oppositeSuccess) {
+                oppositeSuccess.style.display = 'none';
+                oppositeSuccess.textContent = '';
+            }
+
+            if (oppositeError) {
+                oppositeError.style.display = 'none';
+                oppositeError.textContent = '';
+            }
+
+            if (!message) {
+                target.style.display = 'none';
+                target.textContent = '';
+                return;
+            }
+
+            target.textContent = Array.isArray(message) ? message.filter(Boolean).join('\n') : message;
             target.style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { target.style.display = 'none'; }, 8000);
+
+            if (view === 'classes') {
+                document.getElementById('classes-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            setTimeout(() => {
+                target.style.display = 'none';
+            }, 8000);
         }
-        function renderCatalogLists() { renderCatalogList('workshop-list', CATALOG.workshops, 'workshop_class'); renderCatalogList('rental-list', CATALOG.roomRentals, 'room_rental'); }
+
+        function renderCatalogLists() {
+            renderClassesList();
+            renderCatalogList('rental-list', CATALOG.roomRentals, 'room_rental');
+        }
         function minutesBetweenSelection(start, end) { return timeToMinutes(end) - timeToMinutes(start); }
         setLanguage('zh');
     </script>

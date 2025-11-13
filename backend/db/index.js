@@ -1,9 +1,17 @@
 require('dotenv').config();
 const { Pool } = require('pg');
-const { hashPassword } = require('../utils/hash');
+const { hashPassword, needsHashMigration } = require('../utils/hash');
 const crypto = require('crypto');
 
-const DEFAULT_ADMIN_PASSWORD = '12345678';
+const DEFAULT_ADMIN_EMAIL = (process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com').toLowerCase();
+const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || 'changeme123';
+
+const DEFAULT_OPERATING_HOURS = {
+    startTime: '07:00',
+    endTime: '22:00',
+    daysLabelZh: '每日營業',
+    daysLabelEn: 'Open Daily'
+};
 
 const DEFAULT_PEAK_SCHEDULE = {
     days: ['fri', 'sat', 'sun'],
@@ -16,12 +24,7 @@ const defaultSettings = {
     businessNameZh: '專業錄音室預約系統',
     businessDescription: 'Professional Recording Studio',
     businessDescriptionZh: '專業錄音室',
-    operatingHours: {
-        startTime: '07:00',
-        endTime: '22:00',
-        daysLabelZh: '每日營業',
-        daysLabelEn: 'Open Daily'
-    },
+    operatingHours: { ...DEFAULT_OPERATING_HOURS },
     pricing: {
         normalUpTo10: 250,
         normalUpTo18: 320,
@@ -70,9 +73,10 @@ const defaultSettings = {
         instruction6Zh: '您的預約將在 30 分鐘內確認',
         instruction6En: 'Your booking will be confirmed within 30 minutes'
     },
-    adminPassword: DEFAULT_ADMIN_PASSWORD,
     updatedAt: new Date().toISOString()
 };
+
+const DEFAULT_ADMIN_PASSWORD_HASH = hashPassword(DEFAULT_ADMIN_PASSWORD);
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -113,6 +117,21 @@ function mergePricing(pricing = {}) {
     };
 }
 
+function mergeOperatingHours(operatingHours = {}) {
+    const merged = {
+        ...DEFAULT_OPERATING_HOURS,
+        ...(operatingHours || {})
+    };
+
+    const normalizedStart = normalizeTimeString(merged.startTime);
+    const normalizedEnd = normalizeTimeString(merged.endTime);
+
+    merged.startTime = normalizedStart || DEFAULT_OPERATING_HOURS.startTime;
+    merged.endTime = normalizedEnd || DEFAULT_OPERATING_HOURS.endTime;
+
+    return merged;
+}
+
 function mapSettingsRow(row) {
     if (!row) {
         return null;
@@ -123,16 +142,13 @@ function mapSettingsRow(row) {
         businessNameZh: row.business_name_zh,
         businessDescription: row.business_description,
         businessDescriptionZh: row.business_description_zh,
-        operatingHours: {
-            ...defaultSettings.operatingHours,
-            ...(row.operating_hours || {})
-        },
+        operatingHours: mergeOperatingHours(row.operating_hours || {}),
         pricing: mergePricing(row.pricing || {}),
         paymentMethods: row.payment_methods,
         contactInfo: row.contact_info,
         bookingRules: row.booking_rules,
         bookingInstructions: row.booking_instructions,
-        adminPassword: row.admin_password,
+        adminPasswordHash: row.admin_password,
         updatedAt: row.updated_at ? row.updated_at.toISOString() : new Date().toISOString()
     };
 }
@@ -192,6 +208,7 @@ function mapCatalogItemRow(row) {
         id: row.id,
         type: row.type,
         name: row.name,
+        description: row.description || '',
         startDateTime: row.start_datetime ? new Date(row.start_datetime).toISOString() : null,
         endDateTime: row.end_datetime ? new Date(row.end_datetime).toISOString() : null,
         duration: row.duration,
@@ -200,6 +217,21 @@ function mapCatalogItemRow(row) {
         capacity: row.capacity,
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
         updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    };
+}
+
+function mapAdminUserRow(row) {
+    if (!row) {
+        return null;
+    }
+
+    return {
+        id: row.id,
+        email: row.email,
+        passwordHash: row.password_hash,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+        lastLoginAt: row.last_login_at ? new Date(row.last_login_at).toISOString() : null
     };
 }
 
@@ -237,6 +269,22 @@ async function initializeDatabase() {
     `);
 
     await pool.query(`
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id SERIAL PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_login_at TIMESTAMPTZ
+        )
+    `);
+
+    await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email_lower
+        ON admin_users ((LOWER(email)))
+    `);
+
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS bookings (
             id TEXT PRIMARY KEY,
             customer_name TEXT NOT NULL,
@@ -262,6 +310,7 @@ async function initializeDatabase() {
             id SERIAL PRIMARY KEY,
             type TEXT NOT NULL CHECK (type IN ('workshop_class', 'room_rental')),
             name TEXT NOT NULL,
+            description TEXT,
             start_datetime TIMESTAMPTZ NOT NULL,
             end_datetime TIMESTAMPTZ NOT NULL,
             duration INTEGER NOT NULL,
@@ -271,6 +320,11 @@ async function initializeDatabase() {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE catalog_items
+        ADD COLUMN IF NOT EXISTS description TEXT
     `);
 
     await pool.query(`
@@ -306,7 +360,6 @@ async function initializeDatabase() {
     // Ensure at least one settings row exists
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM settings');
     if (rows[0].count === 0) {
-        const hashedPassword = hashPassword(DEFAULT_ADMIN_PASSWORD);
         await pool.query(`
             INSERT INTO settings (
                 business_name,
@@ -327,16 +380,97 @@ async function initializeDatabase() {
             defaultSettings.businessNameZh,
             defaultSettings.businessDescription,
             defaultSettings.businessDescriptionZh,
-            defaultSettings.operatingHours,
-            defaultSettings.pricing,
+            mergeOperatingHours(defaultSettings.operatingHours),
+            mergePricing(defaultSettings.pricing),
             defaultSettings.paymentMethods,
             defaultSettings.contactInfo,
             defaultSettings.bookingRules,
             defaultSettings.bookingInstructions,
-            hashedPassword
+            DEFAULT_ADMIN_PASSWORD_HASH
         ]);
         console.log('Initialized settings with default admin password. Please change it as soon as possible.');
     }
+
+    await ensureDefaultAdminUser();
+}
+
+async function ensureDefaultAdminUser() {
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM admin_users');
+    if (rows[0].count > 0) {
+        return;
+    }
+
+    let passwordHash = DEFAULT_ADMIN_PASSWORD_HASH;
+    const settingsResult = await pool.query('SELECT admin_password FROM settings ORDER BY id LIMIT 1');
+    if (settingsResult.rows.length > 0 && settingsResult.rows[0].admin_password) {
+        passwordHash = settingsResult.rows[0].admin_password;
+    }
+
+    if (needsHashMigration(passwordHash)) {
+        console.warn('Legacy admin password hash detected. It will be upgraded on next successful admin login.');
+    }
+
+    await pool.query(`
+        INSERT INTO admin_users (email, password_hash)
+        VALUES ($1, $2)
+    `, [DEFAULT_ADMIN_EMAIL, passwordHash]);
+
+    console.log(`Default admin account created (${DEFAULT_ADMIN_EMAIL}). Please update the password immediately.`);
+}
+
+async function getAdminUserByEmail(email) {
+    if (!email) {
+        return null;
+    }
+
+    const result = await pool.query(
+        'SELECT * FROM admin_users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+        [email]
+    );
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapAdminUserRow(result.rows[0]);
+}
+
+async function getAdminUserById(id) {
+    if (!id) {
+        return null;
+    }
+
+    const result = await pool.query('SELECT * FROM admin_users WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapAdminUserRow(result.rows[0]);
+}
+
+async function updateAdminPassword(adminId, passwordHash) {
+    const result = await pool.query(`
+        UPDATE admin_users
+        SET password_hash = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+    `, [adminId, passwordHash]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapAdminUserRow(result.rows[0]);
+}
+
+async function recordAdminLogin(adminId) {
+    await pool.query(`
+        UPDATE admin_users
+        SET last_login_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+    `, [adminId]);
 }
 
 async function loadSettings() {
@@ -344,7 +478,9 @@ async function loadSettings() {
     if (result.rows.length === 0) {
         return {
             ...defaultSettings,
-            adminPassword: hashPassword(defaultSettings.adminPassword)
+            operatingHours: mergeOperatingHours(defaultSettings.operatingHours),
+            pricing: mergePricing(defaultSettings.pricing),
+            adminPasswordHash: DEFAULT_ADMIN_PASSWORD_HASH
         };
     }
     return mapSettingsRow(result.rows[0]);
@@ -357,10 +493,8 @@ async function saveSettings(settings) {
     }
 
     const id = result.rows[0].id;
-    const operatingHours = {
-        ...defaultSettings.operatingHours,
-        ...(settings.operatingHours || {})
-    };
+    const operatingHours = mergeOperatingHours(settings.operatingHours || {});
+    const adminPasswordHash = settings.adminPasswordHash || DEFAULT_ADMIN_PASSWORD_HASH;
 
     await pool.query(`
         UPDATE settings
@@ -389,7 +523,7 @@ async function saveSettings(settings) {
         settings.contactInfo,
         settings.bookingRules,
         settings.bookingInstructions,
-        settings.adminPassword,
+        adminPasswordHash,
         id
     ]);
 
@@ -669,20 +803,50 @@ async function getCatalogItemById(id) {
     return mapCatalogItemRow(result.rows[0]);
 }
 
-async function getCatalogItems({ includePast = false } = {}) {
+async function getCatalogItems({ includePast = false, type = null, onOrAfter = null, onDate = null } = {}) {
+    const conditions = [];
     const params = [];
-    let where = '';
 
     if (!includePast) {
         params.push(new Date());
-        where = 'WHERE end_datetime >= $1';
+        conditions.push(`end_datetime >= $${params.length}`);
     }
+
+    if (type) {
+        params.push(type);
+        conditions.push(`type = $${params.length}`);
+    }
+
+    if (onOrAfter) {
+        params.push(onOrAfter);
+        conditions.push(`start_datetime >= $${params.length}`);
+    }
+
+    if (onDate) {
+        params.push(onDate);
+        conditions.push(`DATE(start_datetime) = $${params.length}`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const result = await pool.query(`
         SELECT * FROM catalog_items
-        ${where}
+        ${whereClause}
         ORDER BY start_datetime ASC
     `, params);
+
+    return result.rows.map(mapCatalogItemRow);
+}
+
+async function getCatalogItemsByIds(ids = []) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return [];
+    }
+
+    const result = await pool.query(
+        'SELECT * FROM catalog_items WHERE id = ANY($1::int[])',
+        [ids]
+    );
 
     return result.rows.map(mapCatalogItemRow);
 }
@@ -692,6 +856,7 @@ async function createCatalogItem(item) {
         INSERT INTO catalog_items (
             type,
             name,
+            description,
             start_datetime,
             end_datetime,
             duration,
@@ -699,11 +864,12 @@ async function createCatalogItem(item) {
             instructor_name,
             capacity
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         RETURNING *
     `, [
         item.type,
         item.name,
+        item.description || null,
         item.startDateTime,
         item.endDateTime,
         item.duration,
@@ -721,18 +887,20 @@ async function updateCatalogItem(id, item) {
         SET
             type = $1,
             name = $2,
-            start_datetime = $3,
-            end_datetime = $4,
-            duration = $5,
-            price = $6,
-            instructor_name = $7,
-            capacity = $8,
+            description = $3,
+            start_datetime = $4,
+            end_datetime = $5,
+            duration = $6,
+            price = $7,
+            instructor_name = $8,
+            capacity = $9,
             updated_at = NOW()
-        WHERE id = $9
+        WHERE id = $10
         RETURNING *
     `, [
         item.type,
         item.name,
+        item.description || null,
         item.startDateTime,
         item.endDateTime,
         item.duration,
@@ -778,7 +946,9 @@ module.exports = {
     getPool,
     query,
     defaultSettings,
+    DEFAULT_ADMIN_EMAIL,
     DEFAULT_ADMIN_PASSWORD,
+    DEFAULT_ADMIN_PASSWORD_HASH,
     initializeDatabase,
     loadSettings,
     saveSettings,
@@ -792,8 +962,13 @@ module.exports = {
     getRoomConflicts,
     getCatalogItemById,
     getCatalogItems,
+    getCatalogItemsByIds,
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
-    getCatalogItemCapacityUsage
+    getCatalogItemCapacityUsage,
+    getAdminUserByEmail,
+    getAdminUserById,
+    updateAdminPassword,
+    recordAdminLogin
 };
