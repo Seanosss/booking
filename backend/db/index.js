@@ -79,6 +79,19 @@ const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
     console.error('DATABASE_URL environment variable is not set. Cannot establish database connection.');
     throw new Error('DATABASE_URL environment variable is required.');
+const connectionString = process.env.DATABASE_URL
+    || process.env.POSTGRES_URL
+    || process.env.POSTGRES_PRISMA_URL
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.SUPABASE_DB_URL
+    || (process.env.NODE_ENV === 'production' ? null : 'postgresql://localhost:5432/booking');
+
+if (!connectionString) {
+    throw new Error('Database connection string not provided. Set DATABASE_URL or POSTGRES_URL.');
+}
+
+if (!process.env.DATABASE_URL && connectionString.startsWith('postgresql://localhost')) {
+    console.warn('DATABASE_URL not set. Falling back to local database on postgresql://localhost:5432/booking');
 }
 
 console.log('DATABASE_URL detected. Connecting to configured database.');
