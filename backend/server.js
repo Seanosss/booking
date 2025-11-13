@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const {
     initializeDatabase,
@@ -35,7 +36,11 @@ const ADMIN_TOKEN_TTL_MS = (() => {
 })();
 
 const activeAdminTokens = new Map();
-const bookingCreationLimiter = (req, res, next) => next();
+const bookingCreationLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: { error: 'Too many booking attempts. Please try again shortly.' }
+});
 
 app.use(cors());
 app.use(express.json());
