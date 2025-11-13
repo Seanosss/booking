@@ -246,6 +246,7 @@
         const DEV_AUTH_DISABLED = true; // Toggle to false to restore admin authentication
         function isAuthDisabled() { return DEV_AUTH_DISABLED; }
 
+        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
         let refreshIntervalId = null;
         let currentSettings = {};
         let currentItems = [];
@@ -399,6 +400,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
+            }
+
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
             document.getElementById('itemForm').addEventListener('submit', submitItemForm);
             const passwordForm = document.getElementById('passwordForm');
@@ -412,16 +418,17 @@
                 overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
             }
 
-            const token = sessionStorage.getItem('adminToken');
-            const expiry = sessionStorage.getItem('adminTokenExpiry');
-            if (token && (!expiry || new Date(expiry) > new Date())) {
-                showAdminPanel();
+            if (isAuthDisabled()) {
+                const loginResult = await performAdminLogin();
+                if (!loginResult.success) {
+                    showLoginError(loginResult.error || LOGIN_ERROR_DEFAULT);
+                }
                 return;
             }
 
-            const loginResult = await performAdminLogin();
-            if (!loginResult.success) {
-                console.error('Automatic admin login failed:', loginResult.error);
+            const token = sessionStorage.getItem('adminToken');
+            const expiry = sessionStorage.getItem('adminTokenExpiry');
+            if (token && (!expiry || new Date(expiry) > new Date())) {
                 showAdminPanel();
             }
         });
@@ -456,7 +463,7 @@
 
                 return {
                     success: false,
-                    error: (result && result.error) || '登入失敗，請稍後再試。'
+                    error: (result && result.error) || LOGIN_ERROR_DEFAULT
                 };
             } catch (error) {
                 console.error('Login error:', error);
@@ -464,6 +471,20 @@
                     success: false,
                     error: '無法登入，請稍後再試。'
                 };
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('passwordInput');
+            const password = passwordInput ? passwordInput.value : '';
+            if (!isAuthDisabled() && !password) {
+                showLoginError('請輸入管理密碼。');
+                return;
+            }
+            const loginAttempt = await performAdminLogin(password);
+            if (!loginAttempt.success) {
+                showLoginError(loginAttempt.error || LOGIN_ERROR_DEFAULT);
             }
         }
 
@@ -506,12 +527,9 @@
             const passwordMsg = document.getElementById('passwordMessage');
             if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
             updateAdminIdentity(false);
-            performAdminLogin().then(result => {
-                if (!result?.success) {
-                    console.error('Automatic admin login after logout failed:', result?.error);
-                    showAdminPanel();
-                }
-            });
+            if (isAuthDisabled()) {
+                performAdminLogin();
+            }
         }
 
         async function loadStats() {
