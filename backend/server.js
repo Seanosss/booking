@@ -20,71 +20,279 @@ const { hashPassword } = require('./utils/hash');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const DEFAULT_SLOT_INTERVAL = 30;
+const ADMIN_TOKEN_TTL_MS = (() => {
+    const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
+    return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0
+        ? ttlFromEnv
+        : 1000 * 60 * 60; // 1 hour default
+})();
 
-const bookingSchema = z.object({
-    customerName: z.string({ required_error: 'Customer name is required' })
-        .trim()
-        .min(1, 'Customer name is required')
-        .max(100, 'Customer name must be 100 characters or fewer'),
-    email: z.string({ required_error: 'Email address is required' })
-        .trim()
-        .email('Please enter a valid email address'),
-    phone: z.string({ required_error: 'Phone number is required' })
-        .trim()
-        .regex(/^[+\d][\d\s-]{6,19}$/, 'Please enter a valid phone number'),
-    date: z.string({ required_error: 'Booking date is required' })
-        .trim()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-        .refine(value => {
-            const date = new Date(`${value}T00:00:00`);
-            return !Number.isNaN(date.getTime());
-        }, 'Date is invalid'),
-    startTime: z.string({ required_error: 'Start time is required' })
-        .trim()
-        .regex(/^\d{2}:\d{2}$/, 'Start time must be in HH:MM format')
-        .refine(value => {
-            const [hour, minute] = value.split(':').map(Number);
-            return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
-        }, 'Start time must be a valid time'),
-    selectedSlots: z.array(
-        z.string()
-            .trim()
-            .regex(/^\d{2}:\d{2}$/, 'Each selected slot must be in HH:MM format')
-            .refine(value => {
-                const [hour, minute] = value.split(':').map(Number);
-                return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
-            }, 'Each selected slot must be a valid time')
-    ).min(1, 'Please select at least one time slot'),
-    notes: z.string().trim().max(1000, 'Notes must be 1000 characters or fewer').optional().default('')
-}).strict();
-
-const rateLimitHandler = (message) => (req, res) => {
-    res.status(429).json({
-        error: message,
-        details: ['Please try again in a few minutes.']
-    });
-};
-
-const bookingCreationLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler('Too many booking attempts detected.')
-});
-
-const slotLookupLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler('Too many slot lookup requests.')
-});
+const activeAdminTokens = new Map();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+function cleanupExpiredTokens() {
+    const now = Date.now();
+    for (const [token, metadata] of activeAdminTokens.entries()) {
+        if (metadata.expiresAt <= now) {
+            activeAdminTokens.delete(token);
+        }
+    }
+}
+
+function issueAdminToken() {
+    const token = crypto.randomBytes(32).toString('hex');
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
+
+    activeAdminTokens.set(token, { issuedAt, expiresAt });
+
+    return { token, issuedAt, expiresAt };
+}
+
+function authenticateAdmin(req, res, next) {
+    cleanupExpiredTokens();
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+        return res.status(401).json({ error: 'Authorization header required' });
+    }
+
+    const [scheme, token] = authHeader.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+        return res.status(401).json({ error: 'Invalid authorization header format' });
+    }
+
+    const tokenMetadata = activeAdminTokens.get(token);
+    if (!tokenMetadata) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    if (tokenMetadata.expiresAt <= Date.now()) {
+        activeAdminTokens.delete(token);
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.admin = {
+        token,
+        issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
+        expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
+    };
+
+    next();
+}
+
+// Default settings with password and bilingual instructions
+const defaultSettings = {
+    businessName: "Premium Studio Booking",
+    businessNameZh: "專業錄音室預約系統",
+    businessDescription: "Professional Recording Studio",
+    businessDescriptionZh: "專業錄音室",
+    operatingHours: {
+        startTime: "07:00",
+        endTime: "22:00"
+    },
+    pricing: {
+        thirtyMinutes: 140,
+        oneHour: 280,
+        sundayAirconFee: 80
+    },
+    paymentMethods: {
+        bankTransfer: {
+            enabled: true,
+            bankName: "HSBC Hong Kong",
+            accountNumber: "123-456789-001",
+            accountName: "Connect Point Studio Ltd"
+        },
+        payme: {
+            enabled: true,
+            phoneNumber: "+852 9872 5268",
+            displayName: "Connect Point Studio"
+        }
+    },
+    contactInfo: {
+        whatsapp: "85298725268",
+        email: "connectpoint@atsumaru.com",
+        phone: "+852 9872 5268"
+    },
+    bookingRules: {
+        minAdvanceBooking: 0,
+        maxAdvanceBooking: 30,
+        slotInterval: 30,
+        autoConfirm: false,
+        requirePaymentProof: true
+    },
+    bookingInstructions: {
+        titleZh: "重要預約須知",
+        titleEn: "Important Booking Instructions",
+        instruction1Zh: "選擇您想要的日期",
+        instruction1En: "Select your preferred date",
+        instruction2Zh: "點擊開始時段，再點擊結束時段（可選擇多個連續時段）",
+        instruction2En: "Click start time, then click end time (can select multiple consecutive slots)",
+        instruction3Zh: "填寫您的聯絡資料",
+        instruction3En: "Fill in your contact information",
+        instruction4Zh: "透過銀行轉帳或 PayMe 付款",
+        instruction4En: "Make payment via Bank Transfer or PayMe",
+        instruction5Zh: "將付款證明傳送至 WhatsApp: 98725268",
+        instruction5En: "Send payment proof to WhatsApp: 98725268",
+        instruction6Zh: "您的預約將在 30 分鐘內確認",
+        instruction6En: "Your booking will be confirmed within 30 minutes"
+    },
+    adminPassword: "admin123", // Default password - CHANGE THIS!
+    updatedAt: new Date().toISOString()
+};
+
+// Hash password
+function hashPassword(password) {
+    return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+// Initialize files
+async function initFiles() {
+    // Initialize bookings file
+    try {
+        await fs.access(DATA_FILE);
+    } catch (error) {
+        await fs.writeFile(DATA_FILE, '[]');
+        console.log('Created bookings.json file');
+    }
+    
+    // Initialize settings file
+    try {
+        await fs.access(SETTINGS_FILE);
+    } catch (error) {
+        // Hash the default password before saving
+        defaultSettings.adminPassword = hashPassword(defaultSettings.adminPassword);
+        await fs.writeFile(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
+        console.log('Created settings.json with default password: admin123');
+    }
+}
+
+// Load settings
+async function loadSettings() {
+    try {
+        const data = await fs.readFile(SETTINGS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        return defaultSettings;
+    }
+}
+
+// Save settings
+async function saveSettings(settings) {
+    try {
+        settings.updatedAt = new Date().toISOString();
+        await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        return false;
+    }
+}
+
+// Load bookings
+async function loadBookings() {
+    try {
+        const data = await fs.readFile(DATA_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        return [];
+    }
+}
+
+// Save bookings
+async function saveBookings(bookings) {
+    try {
+        await fs.writeFile(DATA_FILE, JSON.stringify(bookings, null, 2));
+    } catch (error) {
+        console.error('Error saving bookings:', error);
+    }
+}
+
+// Generate unique booking ID
+function generateBookingId() {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 9);
+    return `BK-${timestamp}-${random}`.toUpperCase();
+}
+
+// Generate slots for a booking duration
+function generateSlotsForDuration(startTime, durationMinutes, slotInterval = DEFAULT_SLOT_INTERVAL) {
+    const slots = [];
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    let currentMinutes = startHour * 60 + startMinute;
+    const endMinutes = currentMinutes + durationMinutes;
+
+    while (currentMinutes < endMinutes) {
+        const hour = Math.floor(currentMinutes / 60);
+        const minute = currentMinutes % 60;
+        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(timeSlot);
+        currentMinutes += slotInterval;
+    }
+
+    return slots;
+}
+
+// Check if slots are available
+async function areSlotsAvailable(date, startTime, duration, excludeBookingId = null, slotInterval = DEFAULT_SLOT_INTERVAL) {
+    const bookings = await loadBookings();
+    const requestedSlots = generateSlotsForDuration(startTime, duration, slotInterval);
+
+    const confirmedBookings = bookings.filter(b =>
+        b.date === date &&
+        b.status === 'confirmed' &&
+        b.id !== excludeBookingId
+    );
+
+    for (const booking of confirmedBookings) {
+        const bookedSlots = generateSlotsForDuration(booking.startTime, booking.duration, slotInterval);
+        const hasConflict = requestedSlots.some(slot => bookedSlots.includes(slot));
+        if (hasConflict) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function timeStringToMinutes(timeString) {
+    const [hour, minute] = timeString.split(':').map(Number);
+    return hour * 60 + minute;
+}
+
+function minutesToTimeString(totalMinutes) {
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+}
+
+function calculateTotalPrice(settings, durationMinutes, date) {
+    const slotInterval = Number(settings.bookingRules?.slotInterval) || DEFAULT_SLOT_INTERVAL;
+    const pricePerHalfHour = Number(settings.pricing?.thirtyMinutes) || 0;
+    const pricePerInterval = pricePerHalfHour * (slotInterval / 30);
+    const intervals = durationMinutes / slotInterval;
+    let totalPrice = pricePerInterval * intervals;
+
+    if (!Number.isFinite(totalPrice)) {
+        totalPrice = 0;
+    }
+
+    const bookingDate = new Date(`${date}T00:00:00`);
+    const isSunday = !Number.isNaN(bookingDate.getTime()) && bookingDate.getDay() === 0;
+    const sundayFee = Number(settings.pricing?.sundayAirconFee) || 0;
+
+    if (isSunday && sundayFee > 0) {
+        const hours = Math.ceil(durationMinutes / 60);
+        totalPrice += sundayFee * hours;
+    }
+
+    return Math.round(totalPrice * 100) / 100;
+}
 
 // ===== ROUTES =====
 
@@ -110,12 +318,13 @@ app.post('/api/admin/login', async (req, res) => {
         const hashedPassword = hashPassword(password);
         
         if (hashedPassword === settings.adminPassword) {
-            // Generate session token
-            const token = crypto.randomBytes(32).toString('hex');
-            
+            const { token, expiresAt } = issueAdminToken();
+
             res.json({
                 success: true,
                 token: token,
+                tokenType: 'Bearer',
+                expiresAt: new Date(expiresAt).toISOString(),
                 message: 'Login successful'
             });
         } else {
@@ -131,7 +340,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Change admin password
-app.post('/api/admin/change-password', async (req, res) => {
+app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
         
@@ -150,6 +359,7 @@ app.post('/api/admin/change-password', async (req, res) => {
         const saved = await saveSettings(settings);
         
         if (saved) {
+            activeAdminTokens.clear();
             res.json({
                 success: true,
                 message: 'Password changed successfully'
@@ -178,7 +388,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // Update settings (requires admin access)
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', authenticateAdmin, async (req, res) => {
     try {
         const currentSettings = await loadSettings();
         const updatedSettings = {
@@ -207,7 +417,7 @@ app.put('/api/settings', async (req, res) => {
 });
 
 // Get all bookings
-app.get('/api/bookings', slotLookupLimiter, async (req, res) => {
+app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     try {
         const bookings = await getBookings({
             date: req.query.date,
@@ -283,7 +493,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
 });
 
 // Update booking status
-app.patch('/api/bookings/:id/status', async (req, res) => {
+app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes } = req.body;
@@ -354,7 +564,7 @@ app.get('/api/bookings/:id', async (req, res) => {
 });
 
 // Delete booking
-app.delete('/api/bookings/:id', async (req, res) => {
+app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const deleted = await deleteBooking(id);
@@ -375,7 +585,7 @@ app.delete('/api/bookings/:id', async (req, res) => {
 });
 
 // Get statistics
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
         const stats = await getStats(today);
