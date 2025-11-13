@@ -78,35 +78,25 @@ const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
     console.error('DATABASE_URL environment variable is not set. Cannot establish database connection.');
-    throw new Error('DATABASE_URL environment variable is required.');
-const connectionString = process.env.DATABASE_URL
-    || process.env.POSTGRES_URL
-    || process.env.POSTGRES_PRISMA_URL
-    || process.env.POSTGRES_URL_NON_POOLING
-    || process.env.SUPABASE_DB_URL
-    || (process.env.NODE_ENV === 'production' ? null : 'postgresql://localhost:5432/booking');
-
-if (!connectionString) {
-    throw new Error('Database connection string not provided. Set DATABASE_URL or POSTGRES_URL.');
+    process.exit(1);
 }
-
-if (!process.env.DATABASE_URL && connectionString.startsWith('postgresql://localhost')) {
-    console.warn('DATABASE_URL not set. Falling back to local database on postgresql://localhost:5432/booking');
-}
-
-console.log('DATABASE_URL detected. Connecting to configured database.');
 
 const pool = new Pool({
     connectionString,
-    max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
-    ssl: process.env.DB_SSL === 'true'
-        ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
-        : undefined
+    ssl: { rejectUnauthorized: false }
 });
 
 pool.on('error', (err) => {
     console.error('Unexpected database error:', err);
 });
+
+function getPool() {
+    return pool;
+}
+
+function query(text, params = []) {
+    return pool.query(text, params);
+}
 
 function mergePricing(pricing = {}) {
     const mergedSchedule = {
@@ -220,6 +210,14 @@ function generateBookingId() {
 }
 
 async function initializeDatabase() {
+    try {
+        await pool.query('SELECT 1');
+        console.log('Database connection established successfully.');
+    } catch (error) {
+        console.error('Failed to connect to the database:', error);
+        throw error;
+    }
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS settings (
             id SERIAL PRIMARY KEY,
@@ -777,6 +775,8 @@ async function getCatalogItemCapacityUsage(catalogItemId, excludeBookingId = nul
 
 module.exports = {
     pool,
+    getPool,
+    query,
     defaultSettings,
     DEFAULT_ADMIN_PASSWORD,
     initializeDatabase,
