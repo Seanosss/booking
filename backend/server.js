@@ -1,193 +1,28 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs').promises;
-const path = require('path');
 const crypto = require('crypto');
+const {
+    initializeDatabase,
+    loadSettings,
+    saveSettings,
+    areSlotsAvailable,
+    getBookings,
+    createBooking,
+    getBookingById,
+    updateBookingStatus,
+    deleteBooking,
+    getStats,
+    DEFAULT_ADMIN_PASSWORD
+} = require('./db');
+const { hashPassword } = require('./utils/hash');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'bookings.json');
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Default settings with password and bilingual instructions
-const defaultSettings = {
-    businessName: "Premium Studio Booking",
-    businessNameZh: "專業錄音室預約系統",
-    businessDescription: "Professional Recording Studio",
-    businessDescriptionZh: "專業錄音室",
-    operatingHours: {
-        startTime: "07:00",
-        endTime: "22:00"
-    },
-    pricing: {
-        thirtyMinutes: 140,
-        oneHour: 280,
-        sundayAirconFee: 80
-    },
-    paymentMethods: {
-        bankTransfer: {
-            enabled: true,
-            bankName: "HSBC Hong Kong",
-            accountNumber: "123-456789-001",
-            accountName: "Connect Point Studio Ltd"
-        },
-        payme: {
-            enabled: true,
-            phoneNumber: "+852 9872 5268",
-            displayName: "Connect Point Studio"
-        }
-    },
-    contactInfo: {
-        whatsapp: "85298725268",
-        email: "connectpoint@atsumaru.com",
-        phone: "+852 9872 5268"
-    },
-    bookingRules: {
-        minAdvanceBooking: 0,
-        maxAdvanceBooking: 30,
-        slotInterval: 30,
-        autoConfirm: false,
-        requirePaymentProof: true
-    },
-    bookingInstructions: {
-        titleZh: "重要預約須知",
-        titleEn: "Important Booking Instructions",
-        instruction1Zh: "選擇您想要的日期",
-        instruction1En: "Select your preferred date",
-        instruction2Zh: "點擊開始時段，再點擊結束時段（可選擇多個連續時段）",
-        instruction2En: "Click start time, then click end time (can select multiple consecutive slots)",
-        instruction3Zh: "填寫您的聯絡資料",
-        instruction3En: "Fill in your contact information",
-        instruction4Zh: "透過銀行轉帳或 PayMe 付款",
-        instruction4En: "Make payment via Bank Transfer or PayMe",
-        instruction5Zh: "將付款證明傳送至 WhatsApp: 98725268",
-        instruction5En: "Send payment proof to WhatsApp: 98725268",
-        instruction6Zh: "您的預約將在 30 分鐘內確認",
-        instruction6En: "Your booking will be confirmed within 30 minutes"
-    },
-    adminPassword: "admin123", // Default password - CHANGE THIS!
-    updatedAt: new Date().toISOString()
-};
-
-// Hash password
-function hashPassword(password) {
-    return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-// Initialize files
-async function initFiles() {
-    // Initialize bookings file
-    try {
-        await fs.access(DATA_FILE);
-    } catch (error) {
-        await fs.writeFile(DATA_FILE, '[]');
-        console.log('Created bookings.json file');
-    }
-    
-    // Initialize settings file
-    try {
-        await fs.access(SETTINGS_FILE);
-    } catch (error) {
-        // Hash the default password before saving
-        defaultSettings.adminPassword = hashPassword(defaultSettings.adminPassword);
-        await fs.writeFile(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-        console.log('Created settings.json with default password: admin123');
-    }
-}
-
-// Load settings
-async function loadSettings() {
-    try {
-        const data = await fs.readFile(SETTINGS_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading settings:', error);
-        return defaultSettings;
-    }
-}
-
-// Save settings
-async function saveSettings(settings) {
-    try {
-        settings.updatedAt = new Date().toISOString();
-        await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
-        return true;
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        return false;
-    }
-}
-
-// Load bookings
-async function loadBookings() {
-    try {
-        const data = await fs.readFile(DATA_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading bookings:', error);
-        return [];
-    }
-}
-
-// Save bookings
-async function saveBookings(bookings) {
-    try {
-        await fs.writeFile(DATA_FILE, JSON.stringify(bookings, null, 2));
-    } catch (error) {
-        console.error('Error saving bookings:', error);
-    }
-}
-
-// Generate unique booking ID
-function generateBookingId() {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
-    return `BK-${timestamp}-${random}`.toUpperCase();
-}
-
-// Generate slots for a booking duration
-function generateSlotsForDuration(startTime, durationMinutes) {
-    const slots = [];
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    let currentMinutes = startHour * 60 + startMinute;
-    const endMinutes = currentMinutes + durationMinutes;
-    
-    while (currentMinutes < endMinutes) {
-        const hour = Math.floor(currentMinutes / 60);
-        const minute = currentMinutes % 60;
-        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeSlot);
-        currentMinutes += 30;
-    }
-    
-    return slots;
-}
-
-// Check if slots are available
-async function areSlotsAvailable(date, startTime, duration, excludeBookingId = null) {
-    const bookings = await loadBookings();
-    const requestedSlots = generateSlotsForDuration(startTime, duration);
-    
-    const confirmedBookings = bookings.filter(b => 
-        b.date === date && 
-        b.status === 'confirmed' && 
-        b.id !== excludeBookingId
-    );
-    
-    for (const booking of confirmedBookings) {
-        const bookedSlots = generateSlotsForDuration(booking.startTime, booking.duration);
-        const hasConflict = requestedSlots.some(slot => bookedSlots.includes(slot));
-        if (hasConflict) {
-            return false;
-        }
-    }
-    
-    return true;
-}
 
 // ===== ROUTES =====
 
@@ -312,22 +147,11 @@ app.put('/api/settings', async (req, res) => {
 // Get all bookings
 app.get('/api/bookings', async (req, res) => {
     try {
-        let bookings = await loadBookings();
-        
-        if (req.query.date) {
-            bookings = bookings.filter(b => b.date === req.query.date);
-        }
-        
-        if (req.query.status) {
-            bookings = bookings.filter(b => b.status === req.query.status);
-        }
-        
-        bookings.sort((a, b) => {
-            const dateA = new Date(a.date + 'T' + a.startTime);
-            const dateB = new Date(b.date + 'T' + b.startTime);
-            return dateA - dateB;
+        const bookings = await getBookings({
+            date: req.query.date,
+            status: req.query.status
         });
-        
+
         res.json(bookings);
     } catch (error) {
         console.error('Error getting bookings:', error);
@@ -339,49 +163,51 @@ app.get('/api/bookings', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
     try {
         const { customerName, email, phone, date, startTime, duration, totalPrice, notes } = req.body;
-        
-        if (!customerName || !email || !phone || !date || !startTime || !duration || !totalPrice) {
-            return res.status(400).json({ 
+
+        if (!customerName || !email || !phone || !date || !startTime || !duration || totalPrice === undefined) {
+            return res.status(400).json({
                 error: 'Missing required fields',
                 required: ['customerName', 'email', 'phone', 'date', 'startTime', 'duration', 'totalPrice']
             });
         }
-        
-        const available = await areSlotsAvailable(date, startTime, duration);
+
+        const parsedDuration = parseInt(duration, 10);
+        const numericTotalPrice = Number(totalPrice);
+
+        if (Number.isNaN(parsedDuration) || parsedDuration <= 0) {
+            return res.status(400).json({ error: 'Duration must be a positive number of minutes' });
+        }
+
+        if (Number.isNaN(numericTotalPrice)) {
+            return res.status(400).json({ error: 'Total price must be a valid number' });
+        }
+
+        const available = await areSlotsAvailable(date, startTime, parsedDuration);
         if (!available) {
-            return res.status(400).json({ 
-                error: 'This time slot has already been confirmed. Please select another time.' 
+            return res.status(400).json({
+                error: 'This time slot has already been confirmed. Please select another time.'
             });
         }
-        
+
         const settings = await loadSettings();
         const status = settings.bookingRules.autoConfirm ? 'confirmed' : 'pending';
-        
-        const newBooking = {
-            id: generateBookingId(),
+
+        const newBooking = await createBooking({
             customerName,
             email,
             phone,
             date,
             startTime,
-            duration,
-            totalPrice,
+            duration: parsedDuration,
+            totalPrice: numericTotalPrice,
             notes: notes || '',
-            status: status,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            confirmedAt: status === 'confirmed' ? new Date().toISOString() : null,
-            cancelledAt: null
-        };
-        
-        const bookings = await loadBookings();
-        bookings.push(newBooking);
-        await saveBookings(bookings);
-        
-        const message = status === 'confirmed' 
+            status
+        });
+
+        const message = status === 'confirmed'
             ? 'Booking confirmed successfully!'
             : 'Booking created successfully. Please send payment confirmation.';
-        
+
         res.status(201).json({
             success: true,
             booking: newBooking,
@@ -407,48 +233,36 @@ app.patch('/api/bookings/:id/status', async (req, res) => {
             });
         }
         
-        const bookings = await loadBookings();
-        const bookingIndex = bookings.findIndex(b => b.id === id);
-        
-        if (bookingIndex === -1) {
+        const booking = await getBookingById(id);
+
+        if (!booking) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
-        const booking = bookings[bookingIndex];
-        
+
         if (status === 'confirmed' && booking.status !== 'confirmed') {
             const available = await areSlotsAvailable(
-                booking.date, 
-                booking.startTime, 
-                booking.duration, 
+                booking.date,
+                booking.startTime,
+                booking.duration,
                 booking.id
             );
-            
+
             if (!available) {
-                return res.status(400).json({ 
-                    error: 'Cannot confirm booking. Time slot is already taken.' 
+                return res.status(400).json({
+                    error: 'Cannot confirm booking. Time slot is already taken.'
                 });
             }
         }
-        
-        booking.status = status;
-        booking.updatedAt = new Date().toISOString();
-        
-        if (adminNotes) {
-            booking.adminNotes = adminNotes;
+
+        const updatedBooking = await updateBookingStatus(id, status, adminNotes);
+
+        if (!updatedBooking) {
+            return res.status(500).json({ error: 'Failed to update booking status' });
         }
-        
-        if (status === 'confirmed') {
-            booking.confirmedAt = new Date().toISOString();
-        } else if (status === 'cancelled') {
-            booking.cancelledAt = new Date().toISOString();
-        }
-        
-        await saveBookings(bookings);
-        
+
         res.json({
             success: true,
-            booking: booking,
+            booking: updatedBooking,
             message: `Booking ${status} successfully`
         });
         
@@ -462,13 +276,12 @@ app.patch('/api/bookings/:id/status', async (req, res) => {
 app.get('/api/bookings/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const bookings = await loadBookings();
-        const booking = bookings.find(b => b.id === id);
-        
+        const booking = await getBookingById(id);
+
         if (!booking) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
+
         res.json(booking);
     } catch (error) {
         console.error('Error getting booking:', error);
@@ -480,19 +293,15 @@ app.get('/api/bookings/:id', async (req, res) => {
 app.delete('/api/bookings/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const bookings = await loadBookings();
-        const bookingIndex = bookings.findIndex(b => b.id === id);
-        
-        if (bookingIndex === -1) {
+        const deleted = await deleteBooking(id);
+
+        if (!deleted) {
             return res.status(404).json({ error: 'Booking not found' });
         }
-        
-        bookings.splice(bookingIndex, 1);
-        await saveBookings(bookings);
-        
-        res.json({ 
+
+        res.json({
             success: true,
-            message: 'Booking deleted successfully' 
+            message: 'Booking deleted successfully'
         });
         
     } catch (error) {
@@ -504,21 +313,9 @@ app.delete('/api/bookings/:id', async (req, res) => {
 // Get statistics
 app.get('/api/stats', async (req, res) => {
     try {
-        const bookings = await loadBookings();
         const today = new Date().toISOString().split('T')[0];
-        
-        const stats = {
-            total: bookings.length,
-            pending: bookings.filter(b => b.status === 'pending').length,
-            confirmed: bookings.filter(b => b.status === 'confirmed').length,
-            cancelled: bookings.filter(b => b.status === 'cancelled').length,
-            todayBookings: bookings.filter(b => b.date === today).length,
-            upcomingBookings: bookings.filter(b => b.date >= today && b.status === 'confirmed').length,
-            totalRevenue: bookings
-                .filter(b => b.status === 'confirmed')
-                .reduce((sum, b) => sum + (b.totalPrice || 0), 0)
-        };
-        
+        const stats = await getStats(today);
+
         res.json(stats);
     } catch (error) {
         console.error('Error getting stats:', error);
@@ -528,18 +325,23 @@ app.get('/api/stats', async (req, res) => {
 
 // Start server
 async function startServer() {
-    await initFiles();
-    
-    app.listen(PORT, () => {
-        console.log(`====================================`);
-        console.log(`🚀 Booking Server Running`);
-        console.log(`====================================`);
-        console.log(`📍 Port: ${PORT}`);
-        console.log(`🌐 API: http://localhost:${PORT}/api`);
-        console.log(`🔐 Default Admin Password: admin123`);
-        console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
-        console.log(`====================================`);
-    });
+    try {
+        await initializeDatabase();
+
+        app.listen(PORT, () => {
+            console.log(`====================================`);
+            console.log(`🚀 Booking Server Running`);
+            console.log(`====================================`);
+            console.log(`📍 Port: ${PORT}`);
+            console.log(`🌐 API: http://localhost:${PORT}/api`);
+            console.log(`🔐 Default Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
+            console.log(`⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!`);
+            console.log(`====================================`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 }
 
 startServer();

@@ -1,0 +1,457 @@
+require('dotenv').config();
+const { Pool } = require('pg');
+const { hashPassword } = require('../utils/hash');
+const crypto = require('crypto');
+
+const DEFAULT_ADMIN_PASSWORD = 'admin123';
+
+const defaultSettings = {
+    businessName: 'Premium Studio Booking',
+    businessNameZh: '專業錄音室預約系統',
+    businessDescription: 'Professional Recording Studio',
+    businessDescriptionZh: '專業錄音室',
+    operatingHours: {
+        startTime: '07:00',
+        endTime: '22:00'
+    },
+    pricing: {
+        thirtyMinutes: 140,
+        oneHour: 280,
+        sundayAirconFee: 80
+    },
+    paymentMethods: {
+        bankTransfer: {
+            enabled: true,
+            bankName: 'HSBC Hong Kong',
+            accountNumber: '123-456789-001',
+            accountName: 'Connect Point Studio Ltd'
+        },
+        payme: {
+            enabled: true,
+            phoneNumber: '+852 9872 5268',
+            displayName: 'Connect Point Studio'
+        }
+    },
+    contactInfo: {
+        whatsapp: '85298725268',
+        email: 'connectpoint@atsumaru.com',
+        phone: '+852 9872 5268'
+    },
+    bookingRules: {
+        minAdvanceBooking: 0,
+        maxAdvanceBooking: 30,
+        slotInterval: 30,
+        autoConfirm: false,
+        requirePaymentProof: true
+    },
+    bookingInstructions: {
+        titleZh: '重要預約須知',
+        titleEn: 'Important Booking Instructions',
+        instruction1Zh: '選擇您想要的日期',
+        instruction1En: 'Select your preferred date',
+        instruction2Zh: '點擊開始時段，再點擊結束時段（可選擇多個連續時段）',
+        instruction2En: 'Click start time, then click end time (can select multiple consecutive slots)',
+        instruction3Zh: '填寫您的聯絡資料',
+        instruction3En: 'Fill in your contact information',
+        instruction4Zh: '透過銀行轉帳或 PayMe 付款',
+        instruction4En: 'Make payment via Bank Transfer or PayMe',
+        instruction5Zh: '將付款證明傳送至 WhatsApp: 98725268',
+        instruction5En: 'Send payment proof to WhatsApp: 98725268',
+        instruction6Zh: '您的預約將在 30 分鐘內確認',
+        instruction6En: 'Your booking will be confirmed within 30 minutes'
+    },
+    adminPassword: DEFAULT_ADMIN_PASSWORD,
+    updatedAt: new Date().toISOString()
+};
+
+const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/booking';
+
+if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not set. Falling back to local database on postgresql://localhost:5432/booking');
+}
+
+const pool = new Pool({
+    connectionString,
+    max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : undefined
+});
+
+pool.on('error', (err) => {
+    console.error('Unexpected database error:', err);
+});
+
+function mapSettingsRow(row) {
+    if (!row) {
+        return null;
+    }
+
+    return {
+        businessName: row.business_name,
+        businessNameZh: row.business_name_zh,
+        businessDescription: row.business_description,
+        businessDescriptionZh: row.business_description_zh,
+        operatingHours: row.operating_hours,
+        pricing: row.pricing,
+        paymentMethods: row.payment_methods,
+        contactInfo: row.contact_info,
+        bookingRules: row.booking_rules,
+        bookingInstructions: row.booking_instructions,
+        adminPassword: row.admin_password,
+        updatedAt: row.updated_at ? row.updated_at.toISOString() : new Date().toISOString()
+    };
+}
+
+function normalizeTimeString(timeString) {
+    if (!timeString) {
+        return null;
+    }
+
+    if (typeof timeString === 'string') {
+        return timeString.slice(0, 5);
+    }
+
+    return timeString.toString().slice(0, 5);
+}
+
+function mapBookingRow(row) {
+    return {
+        id: row.id,
+        customerName: row.customer_name,
+        email: row.email,
+        phone: row.phone,
+        date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
+        startTime: normalizeTimeString(row.start_time),
+        duration: row.duration,
+        totalPrice: row.total_price === null ? null : Number(row.total_price),
+        notes: row.notes || '',
+        status: row.status,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+        confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
+        cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).toISOString() : null,
+        adminNotes: row.admin_notes || null
+    };
+}
+
+async function initializeDatabase() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+            id SERIAL PRIMARY KEY,
+            business_name TEXT NOT NULL,
+            business_name_zh TEXT NOT NULL,
+            business_description TEXT NOT NULL,
+            business_description_zh TEXT NOT NULL,
+            operating_hours JSONB NOT NULL,
+            pricing JSONB NOT NULL,
+            payment_methods JSONB NOT NULL,
+            contact_info JSONB NOT NULL,
+            booking_rules JSONB NOT NULL,
+            booking_instructions JSONB NOT NULL,
+            admin_password TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS bookings (
+            id TEXT PRIMARY KEY,
+            customer_name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            duration INTEGER NOT NULL,
+            total_price NUMERIC(10, 2) NOT NULL,
+            notes TEXT,
+            status TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            confirmed_at TIMESTAMPTZ,
+            cancelled_at TIMESTAMPTZ,
+            admin_notes TEXT
+        )
+    `);
+
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM settings');
+    if (rows[0].count === 0) {
+        const hashedPassword = hashPassword(DEFAULT_ADMIN_PASSWORD);
+        await pool.query(`
+            INSERT INTO settings (
+                business_name,
+                business_name_zh,
+                business_description,
+                business_description_zh,
+                operating_hours,
+                pricing,
+                payment_methods,
+                contact_info,
+                booking_rules,
+                booking_instructions,
+                admin_password
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        `, [
+            defaultSettings.businessName,
+            defaultSettings.businessNameZh,
+            defaultSettings.businessDescription,
+            defaultSettings.businessDescriptionZh,
+            defaultSettings.operatingHours,
+            defaultSettings.pricing,
+            defaultSettings.paymentMethods,
+            defaultSettings.contactInfo,
+            defaultSettings.bookingRules,
+            defaultSettings.bookingInstructions,
+            hashedPassword
+        ]);
+        console.log('Initialized settings with default admin password. Please change it as soon as possible.');
+    }
+}
+
+async function loadSettings() {
+    const result = await pool.query('SELECT * FROM settings ORDER BY id LIMIT 1');
+    if (result.rows.length === 0) {
+        return {
+            ...defaultSettings,
+            adminPassword: hashPassword(defaultSettings.adminPassword)
+        };
+    }
+    return mapSettingsRow(result.rows[0]);
+}
+
+async function saveSettings(settings) {
+    const result = await pool.query('SELECT id FROM settings ORDER BY id LIMIT 1');
+    if (result.rows.length === 0) {
+        return false;
+    }
+
+    const id = result.rows[0].id;
+    await pool.query(`
+        UPDATE settings
+        SET
+            business_name = $1,
+            business_name_zh = $2,
+            business_description = $3,
+            business_description_zh = $4,
+            operating_hours = $5,
+            pricing = $6,
+            payment_methods = $7,
+            contact_info = $8,
+            booking_rules = $9,
+            booking_instructions = $10,
+            admin_password = $11,
+            updated_at = NOW()
+        WHERE id = $12
+    `, [
+        settings.businessName,
+        settings.businessNameZh,
+        settings.businessDescription,
+        settings.businessDescriptionZh,
+        settings.operatingHours,
+        settings.pricing,
+        settings.paymentMethods,
+        settings.contactInfo,
+        settings.bookingRules,
+        settings.bookingInstructions,
+        settings.adminPassword,
+        id
+    ]);
+
+    return true;
+}
+
+function generateBookingId() {
+    const timestamp = Date.now().toString(36);
+    const random = crypto.randomBytes(6).toString('hex');
+    return `BK-${timestamp}-${random}`.toUpperCase();
+}
+
+function generateSlotsForDuration(startTime, durationMinutes) {
+    const slots = [];
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    let currentMinutes = startHour * 60 + startMinute;
+    const endMinutes = currentMinutes + durationMinutes;
+
+    while (currentMinutes < endMinutes) {
+        const hour = Math.floor(currentMinutes / 60);
+        const minute = currentMinutes % 60;
+        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(timeSlot);
+        currentMinutes += 30;
+    }
+
+    return slots;
+}
+
+async function areSlotsAvailable(date, startTime, duration, excludeBookingId = null) {
+    const params = [date];
+    let query = `SELECT * FROM bookings WHERE date = $1 AND status = 'confirmed'`;
+
+    if (excludeBookingId) {
+        params.push(excludeBookingId);
+        query += ` AND id <> $${params.length}`;
+    }
+
+    const result = await pool.query(query, params);
+    const requestedSlots = generateSlotsForDuration(normalizeTimeString(startTime), duration);
+
+    for (const row of result.rows) {
+        const bookingSlots = generateSlotsForDuration(normalizeTimeString(row.start_time), row.duration);
+        if (requestedSlots.some(slot => bookingSlots.includes(slot))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+async function createBooking(bookingData) {
+    const id = generateBookingId();
+    const now = new Date();
+    const confirmedAt = bookingData.status === 'confirmed' ? now : null;
+
+    const normalizedStartTime = bookingData.startTime.includes(':') && bookingData.startTime.length === 5
+        ? `${bookingData.startTime}:00`
+        : bookingData.startTime;
+
+    const result = await pool.query(`
+        INSERT INTO bookings (
+            id,
+            customer_name,
+            email,
+            phone,
+            date,
+            start_time,
+            duration,
+            total_price,
+            notes,
+            status,
+            created_at,
+            updated_at,
+            confirmed_at,
+            cancelled_at,
+            admin_notes
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        RETURNING *
+    `, [
+        id,
+        bookingData.customerName,
+        bookingData.email,
+        bookingData.phone,
+        bookingData.date,
+        normalizedStartTime,
+        bookingData.duration,
+        bookingData.totalPrice,
+        bookingData.notes || '',
+        bookingData.status,
+        now,
+        now,
+        confirmedAt,
+        null,
+        bookingData.adminNotes || null
+    ]);
+
+    return mapBookingRow(result.rows[0]);
+}
+
+async function getBookings(filters = {}) {
+    const conditions = [];
+    const params = [];
+
+    if (filters.date) {
+        params.push(filters.date);
+        conditions.push(`date = $${params.length}`);
+    }
+
+    if (filters.status) {
+        params.push(filters.status);
+        conditions.push(`status = $${params.length}`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `SELECT * FROM bookings ${whereClause} ORDER BY date ASC, start_time ASC`;
+    const result = await pool.query(query, params);
+    return result.rows.map(mapBookingRow);
+}
+
+async function getBookingById(id) {
+    const result = await pool.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+        return null;
+    }
+    return mapBookingRow(result.rows[0]);
+}
+
+async function updateBookingStatus(id, status, adminNotes) {
+    const updates = ['status = $1', 'updated_at = NOW()'];
+    const params = [status];
+    let paramIndex = params.length;
+
+    if (adminNotes !== undefined) {
+        params.push(adminNotes);
+        paramIndex += 1;
+        updates.push(`admin_notes = $${paramIndex}`);
+    }
+
+    if (status === 'confirmed') {
+        updates.push('confirmed_at = NOW()');
+    } else if (status === 'cancelled') {
+        updates.push('cancelled_at = NOW()');
+    }
+
+    params.push(id);
+    const result = await pool.query(`
+        UPDATE bookings
+        SET ${updates.join(', ')}
+        WHERE id = $${params.length}
+        RETURNING *
+    `, params);
+
+    return result.rows.length > 0 ? mapBookingRow(result.rows[0]) : null;
+}
+
+async function deleteBooking(id) {
+    const result = await pool.query('DELETE FROM bookings WHERE id = $1', [id]);
+    return result.rowCount > 0;
+}
+
+async function getStats(today) {
+    const result = await pool.query(`
+        SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+            COUNT(*) FILTER (WHERE status = 'confirmed')::int AS confirmed,
+            COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled,
+            COUNT(*) FILTER (WHERE date = $1)::int AS today_bookings,
+            COUNT(*) FILTER (WHERE date >= $1 AND status = 'confirmed')::int AS upcoming_bookings,
+            COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) AS total_revenue
+        FROM bookings
+    `, [today]);
+
+    const row = result.rows[0];
+    return {
+        total: row.total,
+        pending: row.pending,
+        confirmed: row.confirmed,
+        cancelled: row.cancelled,
+        todayBookings: row.today_bookings,
+        upcomingBookings: row.upcoming_bookings,
+        totalRevenue: Number(row.total_revenue)
+    };
+}
+
+module.exports = {
+    pool,
+    defaultSettings,
+    DEFAULT_ADMIN_PASSWORD,
+    initializeDatabase,
+    loadSettings,
+    saveSettings,
+    areSlotsAvailable,
+    createBooking,
+    getBookings,
+    getBookingById,
+    updateBookingStatus,
+    deleteBooking,
+    getStats
+};

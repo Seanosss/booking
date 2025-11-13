@@ -24,8 +24,14 @@ If the button doesn't work, follow these steps:
 ### Local Development
 
 ```bash
+# Copy environment template and update values
+cp .env.example .env
+
 # Install dependencies
 npm install
+
+# Create database schema
+npm run db:migrate
 
 # Start server
 npm start
@@ -86,6 +92,10 @@ heroku open
 The backend uses these environment variables:
 
 - `PORT` - Server port (default: 3000)
+- `DATABASE_URL` - PostgreSQL connection string (required)
+- `DB_POOL_SIZE` - Optional connection pool size (default: 10)
+- `DB_SSL` - Enable SSL for database connections (`true`/`false`)
+- `DB_SSL_REJECT_UNAUTHORIZED` - When SSL is enabled, set to `false` to allow self-signed certificates
 - `NODE_ENV` - Environment (production/development)
 
 ---
@@ -104,10 +114,7 @@ app.use(cors({
 
 ## 💾 Data Storage
 
-Bookings are stored in `bookings.json` file. For production, consider upgrading to:
-- PostgreSQL
-- MongoDB
-- MySQL
+Bookings and settings are stored in PostgreSQL. Run `npm run db:migrate` after configuring `DATABASE_URL` to create the necessary tables. The server automatically seeds default settings (including the admin password) if no settings row exists.
 
 ---
 
