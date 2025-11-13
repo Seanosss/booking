@@ -261,6 +261,9 @@
             return `${DEFAULT_ORIGIN}${DEFAULT_API_PATH}`.replace(/\/+$/, '');
         })();
 
+        const DEV_AUTH_DISABLED = true; // Toggle to false to restore admin authentication
+        function isAuthDisabled() { return DEV_AUTH_DISABLED; }
+
         const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
         let refreshIntervalId = null;
         let currentSettings = {};
@@ -270,7 +273,9 @@
             const el = document.getElementById('adminIdentity');
             if (!el) return;
             if (isLoggedIn) {
-                el.textContent = '已使用共享管理密碼登入';
+                el.textContent = isAuthDisabled()
+                    ? '開發模式：已停用管理員驗證'
+                    : '已使用共享管理密碼登入';
                 el.style.display = 'block';
             } else {
                 el.textContent = '';
@@ -412,23 +417,37 @@
             showMessage('overviewMessage', type, message);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = sessionStorage.getItem('adminToken');
-            const expiry = sessionStorage.getItem('adminTokenExpiry');
-            if (token && (!expiry || new Date(expiry) > new Date())) {
-                showAdminPanel();
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
             }
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
             document.getElementById('itemForm').addEventListener('submit', submitItemForm);
             const passwordForm = document.getElementById('passwordForm');
             if (passwordForm) {
                 passwordForm.addEventListener('submit', handlePasswordChange);
             }
+
             setOverviewDateToToday();
             const overviewDateInput = document.getElementById('overviewDate');
             if (overviewDateInput) {
                 overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
+            }
+
+            if (isAuthDisabled()) {
+                const loginResult = await performAdminLogin();
+                if (!loginResult.success) {
+                    showLoginError(loginResult.error || LOGIN_ERROR_DEFAULT);
+                }
+                return;
+            }
+
+            const token = sessionStorage.getItem('adminToken');
+            const expiry = sessionStorage.getItem('adminTokenExpiry');
+            if (token && (!expiry || new Date(expiry) > new Date())) {
+                showAdminPanel();
             }
         });
 
@@ -437,26 +456,53 @@
             return token ? { 'Authorization': `Bearer ${token}` } : {};
         }
 
+        async function performAdminLogin(password = '') {
+            try {
+                const payload = isAuthDisabled() ? {} : { password };
+                const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (response.ok && result.success) {
+                    if (result.token) {
+                        sessionStorage.setItem('adminToken', result.token);
+                    }
+                    if (result.expiresAt) {
+                        sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
+                    } else {
+                        sessionStorage.removeItem('adminTokenExpiry');
+                    }
+                    showAdminPanel();
+                    return { success: true, result };
+                }
+
+                return {
+                    success: false,
+                    error: (result && result.error) || LOGIN_ERROR_DEFAULT
+                };
+            } catch (error) {
+                console.error('Login error:', error);
+                return {
+                    success: false,
+                    error: '無法登入，請稍後再試。'
+                };
+            }
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
-            const password = document.getElementById('passwordInput').value;
-            if (!password) {
+            const passwordInput = document.getElementById('passwordInput');
+            const password = passwordInput ? passwordInput.value : '';
+            if (!isAuthDisabled() && !password) {
                 showLoginError('請輸入管理密碼。');
                 return;
             }
-            try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    sessionStorage.setItem('adminToken', result.token);
-                    if (result.expiresAt) sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
-                    showAdminPanel();
-                } else {
-                    showLoginError(result.error || LOGIN_ERROR_DEFAULT);
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showLoginError('無法登入，請稍後再試。');
+            const loginAttempt = await performAdminLogin(password);
+            if (!loginAttempt.success) {
+                showLoginError(loginAttempt.error || LOGIN_ERROR_DEFAULT);
             }
         }
 
@@ -509,6 +555,9 @@
             const loginPasswordInput = document.getElementById('passwordInput');
             if (loginPasswordInput) loginPasswordInput.value = '';
             updateAdminIdentity(false);
+            if (isAuthDisabled()) {
+                performAdminLogin();
+            }
         }
 
         async function loadStats() {
@@ -662,6 +711,11 @@
 
         async function handlePasswordChange(event) {
             event.preventDefault();
+            if (isAuthDisabled()) {
+                showMessage('passwordMessage', 'success', '開發模式：目前已停用管理密碼驗證。');
+                event.target.reset();
+                return;
+            }
             const current = document.getElementById('currentAdminPassword').value;
             const nextPassword = document.getElementById('newAdminPassword').value;
             const confirmPassword = document.getElementById('confirmAdminPassword').value;
