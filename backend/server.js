@@ -35,6 +35,8 @@ const ADMIN_TOKEN_TTL_MS = (() => {
         : 1000 * 60 * 60; // 1 hour default
 })();
 
+const ADMIN_AUTH_DISABLED = true; // Toggle back to false to re-enable admin authentication
+
 const activeAdminTokens = new Map();
 const bookingCreationLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -46,6 +48,9 @@ app.use(cors());
 app.use(express.json());
 
 function cleanupExpiredTokens() {
+    if (ADMIN_AUTH_DISABLED) {
+        return;
+    }
     const now = Date.now();
     for (const [token, metadata] of activeAdminTokens.entries()) {
         if (metadata.expiresAt <= now) {
@@ -72,6 +77,16 @@ function issueAdminToken() {
 }
 
 function authenticateAdmin(req, res, next) {
+    if (ADMIN_AUTH_DISABLED) {
+        const issuedAt = Date.now();
+        req.admin = {
+            token: 'dev-admin-token',
+            issuedAt: new Date(issuedAt).toISOString(),
+            expiresAt: new Date(issuedAt + ADMIN_TOKEN_TTL_MS).toISOString()
+        };
+        return next();
+    }
+
     cleanupExpiredTokens();
 
     const authHeader = req.headers['authorization'];
@@ -260,6 +275,18 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/admin/login', async (req, res) => {
+    if (ADMIN_AUTH_DISABLED) {
+        const issuedAt = Date.now();
+        const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
+        return res.json({
+            success: true,
+            token: 'dev-admin-token',
+            tokenType: 'Bearer',
+            expiresAt: new Date(expiresAt).toISOString(),
+            message: 'Development login (no password required)'
+        });
+    }
+
     try {
         const { password } = req.body || {};
 
@@ -291,6 +318,13 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
+    if (ADMIN_AUTH_DISABLED) {
+        return res.json({
+            success: true,
+            message: 'Development mode: admin password changes are disabled while authentication is off.'
+        });
+    }
+
     try {
         const { oldPassword, currentPassword, newPassword } = req.body || {};
         const providedCurrent = typeof currentPassword === 'string' && currentPassword.length > 0

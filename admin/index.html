@@ -8,15 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background: #EDEDE9; min-height: 100vh; padding: 24px; color: #1f2933; }
         a { color: #145da0; }
-        .login-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
-        .login-box { background: #fff; border-radius: 20px; padding: 40px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); width: 100%; max-width: 420px; }
-        .login-box h2 { color: #0b4f6c; margin-bottom: 28px; text-align: center; font-size: 2em; }
-        .login-input { width: 100%; padding: 16px; border: 2px solid #d6dde6; border-radius: 12px; font-size: 1em; margin-bottom: 20px; }
-        .login-input:focus { border-color: #145da0; outline: none; box-shadow: 0 0 0 4px rgba(20,93,160,0.15); }
-        .login-btn { width: 100%; padding: 16px; background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; border: none; border-radius: 12px; font-size: 1.05em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(11,79,108,0.25); }
-        .login-error { color: #d64545; text-align: center; margin-top: 12px; display: none; }
-        .admin-container { max-width: 1280px; margin: 0 auto; display: none; }
+        .admin-container { max-width: 1280px; margin: 0 auto; display: block; }
         .admin-header { background: #fff; border-radius: 18px; padding: 28px; margin-bottom: 24px; box-shadow: 0 24px 50px rgba(0,0,0,0.12); position: relative; }
         .logout-btn { position: absolute; top: 24px; right: 24px; padding: 10px 18px; background: #f2545b; color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; }
         .logout-btn:hover { opacity: 0.8; }
@@ -70,16 +62,6 @@
     </style>
 </head>
 <body>
-    <div id="loginContainer" class="login-container">
-        <div class="login-box">
-            <h2>管理員登入</h2>
-            <form id="loginForm">
-                <input type="password" id="passwordInput" class="login-input" placeholder="請輸入管理密碼" required value="">
-                <button type="submit" class="login-btn">登入</button>
-            </form>
-            <div id="loginError" class="login-error"></div>
-        </div>
-    </div>
     <div id="adminContainer" class="admin-container">
         <div class="admin-header">
             <h1 style="color:#0b4f6c; font-size:2.2em;">Studio Booking 管理面板</h1>
@@ -261,7 +243,9 @@
             return `${DEFAULT_ORIGIN}${DEFAULT_API_PATH}`.replace(/\/+$/, '');
         })();
 
-        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
+        const DEV_AUTH_DISABLED = true; // Toggle to false to restore admin authentication
+        function isAuthDisabled() { return DEV_AUTH_DISABLED; }
+
         let refreshIntervalId = null;
         let currentSettings = {};
         let currentItems = [];
@@ -270,7 +254,9 @@
             const el = document.getElementById('adminIdentity');
             if (!el) return;
             if (isLoggedIn) {
-                el.textContent = '已使用共享管理密碼登入';
+                el.textContent = isAuthDisabled()
+                    ? '開發模式：已停用管理員驗證'
+                    : '已使用共享管理密碼登入';
                 el.style.display = 'block';
             } else {
                 el.textContent = '';
@@ -412,23 +398,31 @@
             showMessage('overviewMessage', type, message);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = sessionStorage.getItem('adminToken');
-            const expiry = sessionStorage.getItem('adminTokenExpiry');
-            if (token && (!expiry || new Date(expiry) > new Date())) {
-                showAdminPanel();
-            }
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
             document.getElementById('itemForm').addEventListener('submit', submitItemForm);
             const passwordForm = document.getElementById('passwordForm');
             if (passwordForm) {
                 passwordForm.addEventListener('submit', handlePasswordChange);
             }
+
             setOverviewDateToToday();
             const overviewDateInput = document.getElementById('overviewDate');
             if (overviewDateInput) {
                 overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
+            }
+
+            const token = sessionStorage.getItem('adminToken');
+            const expiry = sessionStorage.getItem('adminTokenExpiry');
+            if (token && (!expiry || new Date(expiry) > new Date())) {
+                showAdminPanel();
+                return;
+            }
+
+            const loginResult = await performAdminLogin();
+            if (!loginResult.success) {
+                console.error('Automatic admin login failed:', loginResult.error);
+                showAdminPanel();
             }
         });
 
@@ -437,38 +431,43 @@
             return token ? { 'Authorization': `Bearer ${token}` } : {};
         }
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            const password = document.getElementById('passwordInput').value;
-            if (!password) {
-                showLoginError('請輸入管理密碼。');
-                return;
-            }
+        async function performAdminLogin(password = '') {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-                const result = await response.json();
+                const payload = isAuthDisabled() ? {} : { password };
+                const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+
                 if (response.ok && result.success) {
-                    sessionStorage.setItem('adminToken', result.token);
-                    if (result.expiresAt) sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
+                    if (result.token) {
+                        sessionStorage.setItem('adminToken', result.token);
+                    }
+                    if (result.expiresAt) {
+                        sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
+                    } else {
+                        sessionStorage.removeItem('adminTokenExpiry');
+                    }
                     showAdminPanel();
-                } else {
-                    showLoginError(result.error || LOGIN_ERROR_DEFAULT);
+                    return { success: true, result };
                 }
+
+                return {
+                    success: false,
+                    error: (result && result.error) || '登入失敗，請稍後再試。'
+                };
             } catch (error) {
                 console.error('Login error:', error);
-                showLoginError('無法登入，請稍後再試。');
+                return {
+                    success: false,
+                    error: '無法登入，請稍後再試。'
+                };
             }
-        }
-
-        function showLoginError(message) {
-            const el = document.getElementById('loginError');
-            el.textContent = message;
-            el.style.display = 'block';
-            setTimeout(() => { el.style.display = 'none'; el.textContent = LOGIN_ERROR_DEFAULT; }, 3000);
         }
 
         function showAdminPanel() {
-            document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('adminContainer').style.display = 'block';
             updateAdminIdentity(true);
             const passwordMsg = document.getElementById('passwordMessage');
@@ -494,8 +493,8 @@
             sessionStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminTokenExpiry');
             if (refreshIntervalId) clearInterval(refreshIntervalId);
-            document.getElementById('adminContainer').style.display = 'none';
-            document.getElementById('loginContainer').style.display = 'flex';
+            const adminContainer = document.getElementById('adminContainer');
+            if (adminContainer) adminContainer.style.display = 'none';
             const studioList = document.getElementById('overviewStudioList');
             const classList = document.getElementById('overviewClassList');
             const overviewMsg = document.getElementById('overviewMessage');
@@ -506,9 +505,13 @@
             if (passwordForm) passwordForm.reset();
             const passwordMsg = document.getElementById('passwordMessage');
             if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
-            const loginPasswordInput = document.getElementById('passwordInput');
-            if (loginPasswordInput) loginPasswordInput.value = '';
             updateAdminIdentity(false);
+            performAdminLogin().then(result => {
+                if (!result?.success) {
+                    console.error('Automatic admin login after logout failed:', result?.error);
+                    showAdminPanel();
+                }
+            });
         }
 
         async function loadStats() {
@@ -662,6 +665,11 @@
 
         async function handlePasswordChange(event) {
             event.preventDefault();
+            if (isAuthDisabled()) {
+                showMessage('passwordMessage', 'success', '開發模式：目前已停用管理密碼驗證。');
+                event.target.reset();
+                return;
+            }
             const current = document.getElementById('currentAdminPassword').value;
             const nextPassword = document.getElementById('newAdminPassword').value;
             const confirmPassword = document.getElementById('confirmAdminPassword').value;
@@ -695,8 +703,6 @@
                     event.target.reset();
                     setTimeout(() => {
                         logout();
-                        const loginPasswordInput = document.getElementById('passwordInput');
-                        if (loginPasswordInput) loginPasswordInput.value = '';
                     }, 1500);
                 } else {
                     showMessage('passwordMessage', 'error', result.error || '更新失敗，請稍後再試');
