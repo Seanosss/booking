@@ -92,19 +92,44 @@ The server will start at: `http://localhost:3000`
 
 ---
 
+## 🔧 API URL Configuration
+
+### Local Development
+- When you open `frontend/index.html` or `admin/index.html` from the same host that is running the backend, no configuration is required. The pages will automatically call `${window.location.origin}/api`.
+
+### Production & Embedded Deployments
+- Inject the API URL instead of editing the source code by adding one of the following **before** the booking script runs:
+  - `<meta name="api-base-url" content="https://your-backend-url.com/api">`
+  - `window.__BOOKING_CONFIG__ = { apiBaseUrl: 'https://your-backend-url.com/api' };`
+- These options work for static hosting, Wix embeds, or any platform where you can control the surrounding HTML.
+
+### Temporary Overrides for Testing
+- Append `?apiBaseUrl=` to the page URL to try a different backend. The value is persisted to `localStorage` for convenience.
+- Alternatively, run `localStorage.setItem('booking.apiBaseUrl', 'https://staging-api.example.com/api')` in the browser console.
+- Remove the override with `localStorage.removeItem('booking.apiBaseUrl')`.
+
+---
+
 ## 🌐 Embedding in Wix
 
 ### Method 1: Using Wix Custom Element (Recommended)
 
 1. **Deploy Backend First** (see Deployment section below)
 
-2. **Update API URLs**:
-   - Open `frontend/index.html`
-   - Find line: `const API_BASE_URL = 'http://localhost:3000/api';`
-   - Replace with your deployed backend URL: 
-     ```javascript
-     const API_BASE_URL = 'https://your-backend-url.com/api';
-     ```
+2. **Configure the API URL**:
+   - The frontend automatically points to `window.location.origin + '/api'` when no override is supplied.
+   - Provide a custom URL (e.g. when embedding in Wix) by adding one of the following before the booking script loads:
+     - **Meta tag**:
+       ```html
+       <meta name="api-base-url" content="https://your-backend-url.com/api">
+       ```
+     - **Inline configuration**:
+       ```html
+       <script>
+         window.__BOOKING_CONFIG__ = { apiBaseUrl: 'https://your-backend-url.com/api' };
+       </script>
+       ```
+   - For quick testing you can append `?apiBaseUrl=https://staging-api.example.com/api` to the page URL or run `localStorage.setItem('booking.apiBaseUrl', 'https://staging-api.example.com/api')` in the browser console. Remove the override with `localStorage.removeItem('booking.apiBaseUrl')` when you're done.
 
 3. **In Wix Editor**:
    - Click **Add** (+) button
@@ -173,10 +198,9 @@ The server will start at: `http://localhost:3000`
 
 #### Frontend Deployment
 
-1. **Update API URL** in `frontend/index.html`:
-   ```javascript
-   const API_BASE_URL = 'https://your-booking-api.herokuapp.com/api';
-   ```
+1. **Provide the API URL** in your hosted page (Netlify, Vercel, etc.) by adding either:
+   - `<meta name="api-base-url" content="https://your-booking-api.herokuapp.com/api">`
+   - `window.__BOOKING_CONFIG__ = { apiBaseUrl: 'https://your-booking-api.herokuapp.com/api' };`
 
 2. **Deploy to Netlify/Vercel**:
    - Drag and drop `frontend` folder to [Netlify Drop](https://app.netlify.com/drop)
