@@ -11,71 +11,69 @@ const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'bookings.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
-const DEFAULT_SLOT_INTERVAL = 30;
+const ADMIN_TOKEN_TTL_MS = (() => {
+    const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
+    return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0
+        ? ttlFromEnv
+        : 1000 * 60 * 60; // 1 hour default
+})();
 
-const bookingSchema = z.object({
-    customerName: z.string({ required_error: 'Customer name is required' })
-        .trim()
-        .min(1, 'Customer name is required')
-        .max(100, 'Customer name must be 100 characters or fewer'),
-    email: z.string({ required_error: 'Email address is required' })
-        .trim()
-        .email('Please enter a valid email address'),
-    phone: z.string({ required_error: 'Phone number is required' })
-        .trim()
-        .regex(/^[+\d][\d\s-]{6,19}$/, 'Please enter a valid phone number'),
-    date: z.string({ required_error: 'Booking date is required' })
-        .trim()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-        .refine(value => {
-            const date = new Date(`${value}T00:00:00`);
-            return !Number.isNaN(date.getTime());
-        }, 'Date is invalid'),
-    startTime: z.string({ required_error: 'Start time is required' })
-        .trim()
-        .regex(/^\d{2}:\d{2}$/, 'Start time must be in HH:MM format')
-        .refine(value => {
-            const [hour, minute] = value.split(':').map(Number);
-            return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
-        }, 'Start time must be a valid time'),
-    selectedSlots: z.array(
-        z.string()
-            .trim()
-            .regex(/^\d{2}:\d{2}$/, 'Each selected slot must be in HH:MM format')
-            .refine(value => {
-                const [hour, minute] = value.split(':').map(Number);
-                return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
-            }, 'Each selected slot must be a valid time')
-    ).min(1, 'Please select at least one time slot'),
-    notes: z.string().trim().max(1000, 'Notes must be 1000 characters or fewer').optional().default('')
-}).strict();
-
-const rateLimitHandler = (message) => (req, res) => {
-    res.status(429).json({
-        error: message,
-        details: ['Please try again in a few minutes.']
-    });
-};
-
-const bookingCreationLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler('Too many booking attempts detected.')
-});
-
-const slotLookupLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler('Too many slot lookup requests.')
-});
+const activeAdminTokens = new Map();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+function cleanupExpiredTokens() {
+    const now = Date.now();
+    for (const [token, metadata] of activeAdminTokens.entries()) {
+        if (metadata.expiresAt <= now) {
+            activeAdminTokens.delete(token);
+        }
+    }
+}
+
+function issueAdminToken() {
+    const token = crypto.randomBytes(32).toString('hex');
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
+
+    activeAdminTokens.set(token, { issuedAt, expiresAt });
+
+    return { token, issuedAt, expiresAt };
+}
+
+function authenticateAdmin(req, res, next) {
+    cleanupExpiredTokens();
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+        return res.status(401).json({ error: 'Authorization header required' });
+    }
+
+    const [scheme, token] = authHeader.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+        return res.status(401).json({ error: 'Invalid authorization header format' });
+    }
+
+    const tokenMetadata = activeAdminTokens.get(token);
+    if (!tokenMetadata) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    if (tokenMetadata.expiresAt <= Date.now()) {
+        activeAdminTokens.delete(token);
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.admin = {
+        token,
+        issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
+        expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
+    };
+
+    next();
+}
 
 // Default settings with password and bilingual instructions
 const defaultSettings = {
@@ -311,12 +309,13 @@ app.post('/api/admin/login', async (req, res) => {
         const hashedPassword = hashPassword(password);
         
         if (hashedPassword === settings.adminPassword) {
-            // Generate session token
-            const token = crypto.randomBytes(32).toString('hex');
-            
+            const { token, expiresAt } = issueAdminToken();
+
             res.json({
                 success: true,
                 token: token,
+                tokenType: 'Bearer',
+                expiresAt: new Date(expiresAt).toISOString(),
                 message: 'Login successful'
             });
         } else {
@@ -332,7 +331,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Change admin password
-app.post('/api/admin/change-password', async (req, res) => {
+app.post('/api/admin/change-password', authenticateAdmin, async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
         
@@ -351,6 +350,7 @@ app.post('/api/admin/change-password', async (req, res) => {
         const saved = await saveSettings(settings);
         
         if (saved) {
+            activeAdminTokens.clear();
             res.json({
                 success: true,
                 message: 'Password changed successfully'
@@ -379,7 +379,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // Update settings (requires admin access)
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', authenticateAdmin, async (req, res) => {
     try {
         const currentSettings = await loadSettings();
         const updatedSettings = {
@@ -408,7 +408,7 @@ app.put('/api/settings', async (req, res) => {
 });
 
 // Get all bookings
-app.get('/api/bookings', slotLookupLimiter, async (req, res) => {
+app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     try {
         let bookings = await loadBookings();
 
@@ -582,7 +582,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
 });
 
 // Update booking status
-app.patch('/api/bookings/:id/status', async (req, res) => {
+app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes } = req.body;
@@ -667,7 +667,7 @@ app.get('/api/bookings/:id', async (req, res) => {
 });
 
 // Delete booking
-app.delete('/api/bookings/:id', async (req, res) => {
+app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const bookings = await loadBookings();
@@ -692,7 +692,7 @@ app.delete('/api/bookings/:id', async (req, res) => {
 });
 
 // Get statistics
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const bookings = await loadBookings();
         const today = new Date().toISOString().split('T')[0];
