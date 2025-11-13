@@ -578,7 +578,59 @@
 
     <script>
         // ===== CONFIGURATION =====
-        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
+        const API_BASE_URL = (() => {
+            const DEFAULT_API_PATH = '/api';
+            const DEFAULT_ORIGIN = (window.location.origin && window.location.origin !== 'null')
+                ? window.location.origin
+                : 'http://localhost:3000';
+
+            const resolveUrl = (value) => {
+                if (!value) return null;
+                try {
+                    const resolved = new URL(value, DEFAULT_ORIGIN).toString();
+                    return resolved.replace(/\/+$/, '');
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+
+            const params = new URLSearchParams(window.location.search);
+            const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
+            if (queryOverride) {
+                const queryUrl = resolveUrl(queryOverride);
+                if (queryUrl) {
+                    try {
+                        localStorage.setItem('booking.apiBaseUrl', queryUrl);
+                    } catch (error) {
+                        console.warn('Unable to persist API base URL override from query string:', error);
+                    }
+                    return queryUrl;
+                }
+            }
+
+            try {
+                const stored = resolveUrl(localStorage.getItem('booking.apiBaseUrl'));
+                if (stored) {
+                    return stored;
+                }
+            } catch (error) {
+                console.warn('Unable to read stored API base URL override:', error);
+            }
+
+            const inlineConfig = resolveUrl(window.__BOOKING_CONFIG__?.apiBaseUrl);
+            if (inlineConfig) {
+                return inlineConfig;
+            }
+
+            const metaTag = document.querySelector('meta[name="api-base-url"]');
+            const metaUrl = resolveUrl(metaTag?.content);
+            if (metaUrl) {
+                return metaUrl;
+            }
+
+            return `${DEFAULT_ORIGIN}${DEFAULT_API_PATH}`.replace(/\/+$/, '');
+        })();
         let SETTINGS = {}; // Will be loaded dynamically
         
         // ===== STATE VARIABLES =====
