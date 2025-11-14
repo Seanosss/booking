@@ -272,7 +272,31 @@ function mapClassBookingRow(row) {
         phone: row.phone,
         status: row.status,
         peopleCount: Number(row.people_count || 1),
-        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    };
+}
+
+function mapClassBookingWithClassRow(row) {
+    const base = mapClassBookingRow(row);
+
+    return {
+        ...base,
+        className: row.class_name || null,
+        classStartTime: row.class_start_time
+            ? new Date(row.class_start_time).toISOString()
+            : null,
+        classEndTime: row.class_end_time
+            ? new Date(row.class_end_time).toISOString()
+            : null,
+        classInstructor: row.class_instructor || null,
+        classLocation: row.class_location || null,
+        classCapacity: row.class_capacity === null
+            ? null
+            : Number(row.class_capacity),
+        classPrice: row.class_price === null
+            ? null
+            : Number(row.class_price)
     };
 }
 
@@ -421,6 +445,11 @@ async function initializeDatabase() {
             people_count INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE class_bookings
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     `);
 
     await pool.query(`
@@ -1131,6 +1160,95 @@ async function getClassBookings(classId) {
     return result.rows.map(mapClassBookingRow);
 }
 
+async function getClassBookingById(id) {
+    const result = await pool.query(`
+        SELECT cb.*,
+               c.name AS class_name,
+               c.start_time AS class_start_time,
+               c.end_time AS class_end_time,
+               c.instructor AS class_instructor,
+               c.location AS class_location,
+               c.capacity AS class_capacity,
+               c.price AS class_price
+        FROM class_bookings cb
+        JOIN classes c ON c.id = cb.class_id
+        WHERE cb.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapClassBookingWithClassRow(result.rows[0]);
+}
+
+async function getClassBookingsByClassIds(classIds = []) {
+    if (!Array.isArray(classIds) || classIds.length === 0) {
+        return [];
+    }
+
+    const result = await pool.query(`
+        SELECT cb.*,
+               c.start_time AS class_start_time
+        FROM class_bookings cb
+        JOIN classes c ON c.id = cb.class_id
+        WHERE cb.class_id = ANY($1::int[])
+        ORDER BY c.start_time ASC, cb.created_at ASC
+    `, [classIds]);
+
+    return result.rows.map(mapClassBookingRow);
+}
+
+async function getClassBookingsDetailed({ date = null } = {}) {
+    const params = [];
+    const conditions = [];
+
+    if (date) {
+        params.push(date);
+        conditions.push(`DATE(c.start_time) = $${params.length}`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await pool.query(`
+        SELECT cb.*,
+               c.name AS class_name,
+               c.start_time AS class_start_time,
+               c.end_time AS class_end_time,
+               c.instructor AS class_instructor,
+               c.location AS class_location,
+               c.capacity AS class_capacity,
+               c.price AS class_price
+        FROM class_bookings cb
+        JOIN classes c ON c.id = cb.class_id
+        ${whereClause}
+        ORDER BY c.start_time ASC, cb.created_at ASC
+    `, params);
+
+    return result.rows.map(mapClassBookingWithClassRow);
+}
+
+async function updateClassBookingStatus(id, status) {
+    const result = await pool.query(`
+        UPDATE class_bookings
+        SET status = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+    `, [status, id]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return mapClassBookingRow(result.rows[0]);
+}
+
+async function deleteClassBooking(id) {
+    const result = await pool.query('DELETE FROM class_bookings WHERE id = $1', [id]);
+    return result.rowCount > 0;
+}
+
 async function getClassProducts({ type = null } = {}) {
     const conditions = [];
     const params = [];
@@ -1242,6 +1360,11 @@ module.exports = {
     getClassCapacityUsage,
     createClassBooking,
     getClassBookings,
+    getClassBookingById,
+    getClassBookingsByClassIds,
+    getClassBookingsDetailed,
+    updateClassBookingStatus,
+    deleteClassBooking,
     getClassProducts,
     createClassProduct,
     updateClassProduct,

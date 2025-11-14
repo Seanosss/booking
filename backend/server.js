@@ -17,7 +17,6 @@ const {
     getRoomConflicts,
     getCatalogItemById,
     getCatalogItems,
-    getCatalogItemsByIds,
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
@@ -30,6 +29,11 @@ const {
     getClassCapacityUsage,
     createClassBooking,
     getClassBookings,
+    getClassBookingById,
+    getClassBookingsByClassIds,
+    getClassBookingsDetailed,
+    updateClassBookingStatus,
+    deleteClassBooking,
     getClassProducts,
     createClassProduct,
     updateClassProduct,
@@ -1061,6 +1065,86 @@ app.delete('/api/admin/class-products/:id', authenticateAdmin, async (req, res) 
     }
 });
 
+app.get('/api/admin/class-bookings', authenticateAdmin, async (req, res) => {
+    try {
+        const { date } = req.query;
+        const bookings = await getClassBookingsDetailed({ date: date || null });
+        res.json(bookings);
+    } catch (error) {
+        console.error('Error listing class bookings:', error);
+        res.status(500).json({ error: 'Failed to retrieve class bookings' });
+    }
+});
+
+app.patch('/api/admin/class-bookings/:id/status', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body || {};
+        const validStatuses = ['pending', 'confirmed', 'cancelled'];
+
+        if (!status || !validStatuses.includes(status)) {
+            return res.status(400).json({ error: 'Invalid status. Must be pending, confirmed, or cancelled.' });
+        }
+
+        const booking = await getClassBookingById(id);
+        if (!booking) {
+            return res.status(404).json({ error: 'Class booking not found' });
+        }
+
+        if (status === 'confirmed' && booking.status !== 'confirmed') {
+            const usedCapacity = await getClassCapacityUsage(booking.classId, booking.id);
+            const classCapacity = Number.isFinite(booking.classCapacity)
+                ? booking.classCapacity
+                : (await getClassById(booking.classId))?.capacity ?? 0;
+
+            if (usedCapacity + booking.peopleCount > classCapacity) {
+                const remaining = Math.max(classCapacity - usedCapacity, 0);
+                return res.status(400).json({
+                    error: remaining > 0
+                        ? `Only ${remaining} seat(s) remaining for ${booking.className || 'the class'}.`
+                        : `${booking.className || 'The class'} is fully booked.`
+                });
+            }
+        }
+
+        const updated = await updateClassBookingStatus(id, status);
+        if (!updated) {
+            return res.status(500).json({ error: 'Failed to update class booking status' });
+        }
+
+        const refreshed = await getClassBookingById(id);
+
+        res.json({
+            success: true,
+            booking: refreshed,
+            message: `Class booking ${status} successfully`
+        });
+    } catch (error) {
+        console.error('Error updating class booking status:', error);
+        res.status(500).json({ error: 'Failed to update class booking status' });
+    }
+});
+
+app.delete('/api/admin/class-bookings/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const booking = await getClassBookingById(id);
+        if (!booking) {
+            return res.status(404).json({ error: 'Class booking not found' });
+        }
+
+        const deleted = await deleteClassBooking(id);
+        if (!deleted) {
+            return res.status(500).json({ error: 'Failed to delete class booking' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting class booking:', error);
+        res.status(500).json({ error: 'Failed to delete class booking' });
+    }
+});
+
 app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
     try {
         const { date } = req.query;
@@ -1070,7 +1154,6 @@ app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
 
         const bookings = await getBookings({ date });
         const studioSessions = [];
-        const classSessionsMap = new Map();
 
         bookings.forEach(booking => {
             (booking.items || []).forEach(item => {
@@ -1090,58 +1173,64 @@ app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
                         phone: booking.phone,
                         notes: booking.adminNotes || null
                     });
-                } else if (item.catalogItemId) {
-                    const entry = classSessionsMap.get(item.catalogItemId) || {
-                        attendees: [],
-                        totalParticipants: 0
-                    };
-
-                    entry.attendees.push({
-                        bookingId: booking.id,
-                        customerName: booking.customerName,
-                        email: booking.email,
-                        phone: booking.phone,
-                        peopleCount: item.peopleCount,
-                        status: booking.status,
-                        notes: booking.adminNotes || null
-                    });
-                    entry.totalParticipants += item.peopleCount;
-                    classSessionsMap.set(item.catalogItemId, entry);
                 }
             });
         });
 
         studioSessions.sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
 
-        const classIds = Array.from(classSessionsMap.keys());
-        let classDetailsMap = new Map();
+        const classes = await getClasses({ includePast: true, onDate: date });
+        const classIds = classes.map(cls => cls.id);
+        const bookingsByClass = new Map();
+
         if (classIds.length > 0) {
-            const classDetails = await getCatalogItemsByIds(classIds);
-            classDetailsMap = new Map(classDetails.map(cls => [cls.id, cls]));
+            const classBookings = await getClassBookingsByClassIds(classIds);
+            classBookings.forEach(entry => {
+                const list = bookingsByClass.get(entry.classId) || [];
+                list.push(entry);
+                bookingsByClass.set(entry.classId, list);
+            });
         }
 
-        const classSessions = classIds.map(id => {
-            const session = classSessionsMap.get(id);
-            const detail = classDetailsMap.get(id) || {};
-            const startTimestamp = detail.startDateTime ? new Date(detail.startDateTime).getTime() : 0;
-            const seatsRemaining = Math.max((detail.capacity || 0) - session.totalParticipants, 0);
+        const classSessions = classes.map(cls => {
+            const attendeesRaw = (bookingsByClass.get(cls.id) || []).slice();
+            attendeesRaw.sort((a, b) => {
+                const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return aTime - bTime;
+            });
 
-            const attendees = session.attendees.sort((a, b) => a.customerName.localeCompare(b.customerName));
+            const totalParticipants = attendeesRaw.reduce((sum, bookingEntry) => sum + bookingEntry.peopleCount, 0);
+
+            const attendees = attendeesRaw.map(entry => ({
+                bookingId: entry.id,
+                customerName: entry.customerName,
+                email: entry.email,
+                phone: entry.phone,
+                peopleCount: entry.peopleCount,
+                status: entry.status,
+                createdAt: entry.createdAt
+            }));
 
             return {
-                classId: id,
-                name: detail.name || 'Unnamed Class',
-                description: detail.description || '',
-                instructorName: detail.instructorName || null,
-                startDateTime: detail.startDateTime || null,
-                endDateTime: detail.endDateTime || null,
-                capacity: detail.capacity || 0,
-                totalParticipants: session.totalParticipants,
-                seatsRemaining,
-                attendees,
-                _sortKey: startTimestamp
+                classId: cls.id,
+                name: cls.name,
+                description: cls.description || '',
+                instructorName: cls.instructor || null,
+                location: cls.location || null,
+                startDateTime: cls.startTime,
+                endDateTime: cls.endTime,
+                capacity: cls.capacity,
+                price: cls.price,
+                totalParticipants,
+                seatsRemaining: Math.max(cls.capacity - totalParticipants, 0),
+                attendees
             };
-        }).sort((a, b) => a._sortKey - b._sortKey).map(({ _sortKey, ...rest }) => rest);
+        }).sort((a, b) => {
+            const aTime = a.startDateTime ? new Date(a.startDateTime).getTime() : 0;
+            const bTime = b.startDateTime ? new Date(b.startDateTime).getTime() : 0;
+            return aTime - bTime;
+        });
 
         res.json({
             date,
