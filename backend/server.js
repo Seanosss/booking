@@ -1569,11 +1569,13 @@ async function startServer() {
     try {
         await initializeDatabase();
 
+        console.log('Starting HTTP server...');
         app.listen(PORT, () => {
             console.log('====================================');
             console.log('🚀 Booking Server Running');
             console.log('====================================');
             console.log(`📍 Port: ${PORT}`);
+            console.log(`🔊 Booking server listening on port ${PORT}`);
             console.log(`🌐 API: http://localhost:${PORT}/api`);
             console.log(`🔐 Shared Admin Password: ${DEFAULT_ADMIN_PASSWORD}`);
             console.log('⚠️  PLEASE CHANGE THE DEFAULT PASSWORD!');

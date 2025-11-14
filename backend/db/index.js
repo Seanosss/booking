@@ -91,7 +91,8 @@ if (!connectionString) {
 
 const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000
 });
 
 pool.on('error', (err) => {
@@ -347,6 +348,8 @@ function mapClassProductRow(row) {
 }
 
 async function initializeDatabase() {
+    console.log('Initializing database...');
+
     try {
         await pool.query('SELECT 1');
         console.log('Database connection established successfully.');
@@ -355,7 +358,8 @@ async function initializeDatabase() {
         throw error;
     }
 
-    await pool.query(`
+    const schemaStatements = [
+        `
         CREATE TABLE IF NOT EXISTS settings (
             id SERIAL PRIMARY KEY,
             business_name TEXT NOT NULL,
@@ -371,9 +375,8 @@ async function initializeDatabase() {
             admin_password TEXT NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS bookings (
             id TEXT PRIMARY KEY,
             customer_name TEXT NOT NULL,
@@ -392,9 +395,8 @@ async function initializeDatabase() {
             cancelled_at TIMESTAMPTZ,
             admin_notes TEXT
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS catalog_items (
             id SERIAL PRIMARY KEY,
             type TEXT NOT NULL CHECK (type IN ('workshop_class', 'room_rental')),
@@ -409,14 +411,12 @@ async function initializeDatabase() {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         ALTER TABLE catalog_items
         ADD COLUMN IF NOT EXISTS description TEXT
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS booking_items (
             id SERIAL PRIMARY KEY,
             booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
@@ -431,22 +431,18 @@ async function initializeDatabase() {
             period_type TEXT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE INDEX IF NOT EXISTS idx_booking_items_date ON booking_items(date)
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE INDEX IF NOT EXISTS idx_booking_items_catalog ON booking_items(catalog_item_id)
-    `);
-
-    await pool.query(`
+    `,
+        `
         ALTER TABLE bookings
         ALTER COLUMN total_people SET DEFAULT 0
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS classes (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
@@ -462,9 +458,8 @@ async function initializeDatabase() {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS class_bookings (
             id SERIAL PRIMARY KEY,
             class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
@@ -475,14 +470,12 @@ async function initializeDatabase() {
             people_count INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         ALTER TABLE class_bookings
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE TABLE IF NOT EXISTS class_products (
             id SERIAL PRIMARY KEY,
             type TEXT NOT NULL CHECK (type IN ('package', 'trial')),
@@ -494,19 +487,23 @@ async function initializeDatabase() {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE INDEX IF NOT EXISTS idx_classes_start_time ON classes(start_time)
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE INDEX IF NOT EXISTS idx_classes_tags ON classes USING GIN (tags)
-    `);
-
-    await pool.query(`
+    `,
+        `
         CREATE INDEX IF NOT EXISTS idx_class_bookings_class_id ON class_bookings(class_id)
-    `);
+    `
+    ];
+
+    for (const statement of schemaStatements) {
+        await pool.query(statement);
+    }
+
+    console.log('Database schema ensured.');
 
     // Ensure at least one settings row exists
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM settings');
@@ -541,6 +538,8 @@ async function initializeDatabase() {
         ]);
         console.log('Initialized settings with default admin password. Please change it as soon as possible.');
     }
+
+    console.log('Database initialization complete.');
 }
 
 async function loadSettings() {
