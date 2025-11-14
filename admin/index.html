@@ -84,7 +84,7 @@
         </div>
         <div id="bookingsTab" class="tab-content active">
             <div class="section-card">
-                <h3>預約列表</h3>
+                <h3>場地預約</h3>
                 <div id="bookingsMessage" class="message"></div>
                 <div style="overflow-x:auto;">
                     <table>
@@ -100,6 +100,25 @@
                             </tr>
                         </thead>
                         <tbody id="bookingsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>課程預約</h3>
+                <div id="classBookingsMessage" class="message"></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>預約編號</th>
+                                <th>課程資訊</th>
+                                <th>客戶 / 聯絡</th>
+                                <th>人數</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="classBookingsTable"></tbody>
                     </table>
                 </div>
             </div>
@@ -162,6 +181,40 @@
                     <div class="input-group"><label>營業資訊 (中文)</label><input id="daysLabelZh" type="text" placeholder="每日營業"></div>
                     <div class="input-group"><label>營業資訊 (英文)</label><input id="daysLabelEn" type="text" placeholder="Open Daily"></div>
                 </div>
+                <div class="form-grid two-columns" style="margin-top:18px;">
+                    <div class="input-group"><label>英文介紹</label><textarea id="businessDescription" rows="3"></textarea></div>
+                    <div class="input-group"><label>中文介紹</label><textarea id="businessDescriptionZh" rows="3"></textarea></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>聯絡資訊</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>WhatsApp</label><input id="contactWhatsapp" type="text"></div>
+                    <div class="input-group"><label>電話</label><input id="contactPhone" type="text"></div>
+                    <div class="input-group"><label>Email</label><input id="contactEmail" type="email"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>付款方式</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>銀行轉帳啟用</label><select id="paymentBankEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
+                    <div class="input-group"><label>PayMe 啟用</label><select id="paymentPaymeEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
+                    <div class="input-group"><label>銀行名稱</label><input id="paymentBankName" type="text"></div>
+                    <div class="input-group"><label>銀行戶口號碼</label><input id="paymentBankAccount" type="text"></div>
+                    <div class="input-group"><label>戶口名稱</label><input id="paymentBankAccountName" type="text"></div>
+                    <div class="input-group"><label>PayMe 顯示名稱</label><input id="paymentPaymeDisplayName" type="text"></div>
+                    <div class="input-group"><label>PayMe 電話</label><input id="paymentPaymePhone" type="text"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>預約規則</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>最少提前天數</label><input id="bookingMinAdvance" type="number" min="0"></div>
+                    <div class="input-group"><label>最多提前天數</label><input id="bookingMaxAdvance" type="number" min="0"></div>
+                    <div class="input-group"><label>時段間隔 (分鐘)</label><input id="bookingSlotInterval" type="number" min="5" step="5"></div>
+                    <div class="input-group"><label>自動確認預約</label><select id="bookingAutoConfirm"><option value="true">是</option><option value="false">否</option></select></div>
+                    <div class="input-group"><label>需要付款證明</label><select id="bookingRequirePaymentProof"><option value="true">是</option><option value="false">否</option></select></div>
+                </div>
             </div>
             <div class="section-card">
                 <h3>價格設定</h3>
@@ -174,7 +227,9 @@
                     <div class="input-group"><label>高峰開始時間</label><input id="peakStart" type="time"></div>
                     <div class="input-group"><label>高峰結束時間</label><input id="peakEnd" type="time"></div>
                 </div>
-                <div style="margin-top:18px;"><button class="btn btn-primary" onclick="saveSettings()">儲存設定</button></div>
+            </div>
+            <div style="margin:18px 0 24px;">
+                <button class="btn btn-primary" type="button" onclick="saveSettings()">儲存設定</button>
             </div>
         </div>
         <div id="instructionsTab" class="tab-content">
@@ -203,30 +258,77 @@
             </div>
         </div>
         <div id="itemsTab" class="tab-content">
-            <div id="itemsMessage" class="message"></div>
             <div class="section-card">
-                <h3>新增 / 編輯項目</h3>
-                <form id="itemForm">
-                    <input type="hidden" id="itemId">
+                <h3>課程排程</h3>
+                <div id="classesMessage" class="message"></div>
+                <form id="classForm">
+                    <input type="hidden" id="classId">
                     <div class="form-grid two-columns">
-                        <div class="input-group"><label>類型</label><select id="itemType"><option value="workshop_class">工作坊 / 課程</option><option value="room_rental">場地租用</option></select></div>
-                        <div class="input-group"><label>名稱</label><input id="itemName" type="text" required></div>
-                        <div class="input-group"><label>開始時間</label><input id="itemStart" type="datetime-local" required></div>
-                        <div class="input-group"><label>結束時間</label><input id="itemEnd" type="datetime-local" required></div>
-                        <div class="input-group"><label>時長 (分鐘)</label><input id="itemDuration" type="number" min="1" required></div>
-                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="itemPrice" type="number" min="0" step="1" required></div>
-                        <div class="input-group"><label>導師名稱</label><input id="itemInstructor" type="text"></div>
-                        <div class="input-group"><label>人數上限</label><input id="itemCapacity" type="number" min="1" required></div>
+                        <div class="input-group"><label>課程名稱</label><input id="className" type="text" required></div>
+                        <div class="input-group"><label>導師</label><input id="classInstructor" type="text"></div>
+                        <div class="input-group"><label>地點</label><input id="classLocation" type="text"></div>
+                        <div class="input-group"><label>開始時間</label><input id="classStart" type="datetime-local" required></div>
+                        <div class="input-group"><label>結束時間</label><input id="classEnd" type="datetime-local" required></div>
+                        <div class="input-group"><label>價格 (每人)</label><input id="classPrice" type="number" min="0" step="1" required></div>
+                        <div class="input-group"><label>人數上限</label><input id="classCapacity" type="number" min="1" required></div>
+                        <div class="input-group"><label>是否為體驗限定</label><select id="classIsTrialOnly"><option value="false">否</option><option value="true">是</option></select></div>
+                        <div class="input-group"><label>標籤 (逗號分隔)</label><input id="classTags" type="text" placeholder="例如 beginner,evening"></div>
+                    </div>
+                    <div class="form-grid" style="margin-top:18px;">
+                        <div class="input-group"><label>課程介紹</label><textarea id="classDescription"></textarea></div>
                     </div>
                     <div style="margin-top:18px;">
-                        <button type="submit" class="btn btn-primary">儲存項目</button>
-                        <button type="button" class="btn btn-secondary" onclick="resetItemForm()">清除</button>
+                        <button type="submit" class="btn btn-primary">儲存課程</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetClassForm()">清除</button>
                     </div>
                 </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有課程</h4>
+                <div id="classesList" class="item-list"></div>
             </div>
             <div class="section-card">
-                <h3>現有項目</h3>
-                <div id="itemsList" class="item-list"></div>
+                <h3>課程方案 / 體驗方案</h3>
+                <div id="classProductsMessage" class="message"></div>
+                <form id="classProductForm">
+                    <input type="hidden" id="classProductId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>類型</label><select id="classProductType"><option value="package">課程方案</option><option value="trial">體驗方案</option></select></div>
+                        <div class="input-group"><label>名稱</label><input id="classProductName" type="text" required></div>
+                        <div class="input-group"><label>價格</label><input id="classProductPrice" type="number" min="0" step="1" required></div>
+                        <div class="input-group"><label>堂數</label><input id="classProductCount" type="number" min="1" required></div>
+                        <div class="input-group"><label>有效期 (天)</label><input id="classProductValidity" type="number" min="1"></div>
+                    </div>
+                    <div class="form-grid" style="margin-top:18px;">
+                        <div class="input-group"><label>方案介紹</label><textarea id="classProductDescription"></textarea></div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存方案</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetClassProductForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有方案</h4>
+                <div id="classProductsList" class="item-list"></div>
+            </div>
+            <div class="section-card">
+                <h3>場地租用項目</h3>
+                <div id="rentalItemsMessage" class="message"></div>
+                <form id="rentalItemForm">
+                    <input type="hidden" id="rentalItemId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
+                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local" required></div>
+                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local" required></div>
+                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number" min="1" required></div>
+                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number" min="0" step="1" required></div>
+                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text"></div>
+                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1" required></div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存場地項目</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有場地項目</h4>
+                <div id="rentalItemsList" class="item-list"></div>
             </div>
         </div>
     </div>
@@ -302,7 +404,9 @@
         const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
         let refreshIntervalId = null;
         let currentSettings = {};
-        let currentItems = [];
+        let currentRentalItems = [];
+        let currentClasses = [];
+        let currentClassProducts = [];
 
         async function checkApiHealth() {
             const statusEl = document.getElementById('apiStatusMessage');
@@ -483,7 +587,12 @@
             }
 
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
-            document.getElementById('itemForm').addEventListener('submit', submitItemForm);
+            const classForm = document.getElementById('classForm');
+            if (classForm) classForm.addEventListener('submit', submitClassForm);
+            const classProductForm = document.getElementById('classProductForm');
+            if (classProductForm) classProductForm.addEventListener('submit', submitClassProductForm);
+            const rentalItemForm = document.getElementById('rentalItemForm');
+            if (rentalItemForm) rentalItemForm.addEventListener('submit', submitRentalItemForm);
             const passwordForm = document.getElementById('passwordForm');
             if (passwordForm) {
                 passwordForm.addEventListener('submit', handlePasswordChange);
@@ -578,7 +687,9 @@
             loadBookings();
             loadSettings();
             loadInstructions();
-            loadItems();
+            loadClasses();
+            loadClassProducts();
+            loadRentalItems();
             if (refreshIntervalId) clearInterval(refreshIntervalId);
             refreshIntervalId = setInterval(() => {
                 loadStats();
@@ -630,6 +741,10 @@
         }
 
         async function loadBookings() {
+            await Promise.all([loadRentalBookings(), loadClassBookings()]);
+        }
+
+        async function loadRentalBookings() {
             try {
                 const response = await fetch(`${API_BASE_URL}/bookings`, { headers: authHeaders() });
                 if (response.status === 401) return logout();
@@ -640,7 +755,7 @@
                     return;
                 }
                 const bookings = await response.json();
-                renderBookings(bookings);
+                renderRentalBookings(bookings);
                 hideMessage('bookingsMessage');
             } catch (error) {
                 console.error('Error loading bookings:', error);
@@ -648,8 +763,9 @@
             }
         }
 
-        function renderBookings(bookings) {
+        function renderRentalBookings(bookings) {
             const tbody = document.getElementById('bookingsTable');
+            if (!tbody) return;
             tbody.innerHTML = '';
             if (!bookings || bookings.length === 0) {
                 const row = document.createElement('tr');
@@ -665,16 +781,73 @@
                 const row = document.createElement('tr');
                 const itemsHtml = (booking.items || []).map(item => `<div><strong>${item.itemType === 'workshop_class' ? '課程' : '場地'}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${item.peopleCount}人)</div>`).join('');
                 row.innerHTML = `
-                    <td>${booking.id}</td>
-                    <td>${booking.customerName}<br><small>${booking.email}<br>${booking.phone}</small></td>
+                    <td>${escapeHtml(booking.id)}</td>
+                    <td>${escapeHtml(booking.customerName)}<br><small>${escapeHtml(booking.email)}<br>${escapeHtml(booking.phone)}</small></td>
                     <td>${itemsHtml || '—'}</td>
-                    <td>${booking.totalPeople || 0}</td>
+                    <td>${escapeHtml(String(booking.totalPeople || 0))}</td>
                     <td>HK$${Number(booking.totalPrice || 0).toFixed(2)}</td>
-                    <td><span class="status-chip status-${booking.status}">${booking.status}</span></td>
+                    <td><span class="status-chip status-${booking.status}">${escapeHtml(booking.status)}</span></td>
                     <td>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','confirmed')">確認</button>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','pending')">待處理</button>
-                        <button class="btn btn-danger" onclick="updateBookingStatus('${booking.id}','cancelled')">取消</button>
+                        <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','cancelled')">取消</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function loadClassBookings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/class-bookings`, { headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load class bookings:', response.status, errorPayload);
+                    showMessage('classBookingsMessage', 'error', errorPayload.error || '無法載入課程預約資料，請稍後再試。');
+                    return;
+                }
+                const bookings = await response.json();
+                renderClassBookings(bookings);
+                hideMessage('classBookingsMessage');
+            } catch (error) {
+                console.error('Error loading class bookings:', error);
+                showMessage('classBookingsMessage', 'error', '無法載入課程預約資料，請稍後再試。');
+            }
+        }
+
+        function renderClassBookings(bookings) {
+            const tbody = document.getElementById('classBookingsTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!bookings || bookings.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 6;
+                cell.style.textAlign = 'center';
+                cell.textContent = '暫無課程預約';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                return;
+            }
+
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                const startLabel = booking.classStartTime ? formatOverviewDateTime(booking.classStartTime) : '';
+                const endLabel = booking.classEndTime ? formatOverviewTime(booking.classEndTime) : '';
+                const scheduleDisplay = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+                const locationHtml = booking.classLocation ? `<br><small>${escapeHtml(booking.classLocation)}</small>` : '';
+                row.innerHTML = `
+                    <td>${escapeHtml(booking.id)}</td>
+                    <td>${escapeHtml(booking.className || '—')}<br><small>${escapeHtml(scheduleDisplay || '')}</small>${locationHtml}</td>
+                    <td>${escapeHtml(booking.customerName)}<br><small>${escapeHtml(booking.email)}<br>${escapeHtml(booking.phone)}</small></td>
+                    <td>${escapeHtml(String(booking.peopleCount || 0))}</td>
+                    <td><span class="status-chip status-${booking.status}">${escapeHtml(booking.status)}</span></td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="updateClassBookingStatus('${booking.id}','confirmed')">確認</button>
+                        <button class="btn btn-secondary" onclick="updateClassBookingStatus('${booking.id}','pending')">待處理</button>
+                        <button class="btn btn-secondary" onclick="updateClassBookingStatus('${booking.id}','cancelled')">取消</button>
+                        <button class="btn btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -688,13 +861,55 @@
                 const result = await response.json();
                 if (response.ok) {
                     showMessage('bookingsMessage', 'success', result.message || '更新成功');
-                    loadBookings();
+                    loadRentalBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
                 } else {
                     showMessage('bookingsMessage', 'error', result.error || '更新失敗');
                 }
             } catch (error) {
                 console.error('Error updating booking status:', error);
                 showMessage('bookingsMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function updateClassBookingStatus(id, status) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/class-bookings/${id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ status })
+                });
+                if (response.status === 401) return logout();
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('classBookingsMessage', 'success', result.message || '更新成功');
+                    loadClassBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    showMessage('classBookingsMessage', 'error', result.error || '更新失敗');
+                }
+            } catch (error) {
+                console.error('Error updating class booking status:', error);
+                showMessage('classBookingsMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function deleteClassBooking(id) {
+            if (!confirm('確定要刪除此課程預約？')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/class-bookings/${id}`, { method: 'DELETE', headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (response.ok) {
+                    showMessage('classBookingsMessage', 'success', '課程預約已刪除');
+                    loadClassBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classBookingsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class booking:', error);
+                showMessage('classBookingsMessage', 'error', '刪除失敗，請稍後再試');
             }
         }
 
@@ -718,53 +933,181 @@
         }
 
         function populateSettings() {
+            const operatingHours = currentSettings.operatingHours || {};
+            const pricing = currentSettings.pricing || {};
+            const peakSchedule = pricing.peakSchedule || {};
+            const contactInfo = currentSettings.contactInfo || {};
+            const paymentMethods = currentSettings.paymentMethods || {};
+            const bankTransfer = paymentMethods.bankTransfer || {};
+            const payme = paymentMethods.payme || {};
+            const bookingRules = currentSettings.bookingRules || {};
+
             document.getElementById('businessName').value = currentSettings.businessName || '';
             document.getElementById('businessNameZh').value = currentSettings.businessNameZh || '';
-            document.getElementById('startTime').value = currentSettings.operatingHours?.startTime || '07:00';
-            document.getElementById('endTime').value = currentSettings.operatingHours?.endTime || '22:00';
-            document.getElementById('daysLabelZh').value = currentSettings.operatingHours?.daysLabelZh || '';
-            document.getElementById('daysLabelEn').value = currentSettings.operatingHours?.daysLabelEn || '';
-            document.getElementById('normalUpTo10').value = currentSettings.pricing?.normalUpTo10 || '';
-            document.getElementById('normalUpTo18').value = currentSettings.pricing?.normalUpTo18 || '';
-            document.getElementById('peakUpTo10').value = currentSettings.pricing?.peakUpTo10 || '';
-            document.getElementById('peakUpTo18').value = currentSettings.pricing?.peakUpTo18 || '';
-            const peakSchedule = currentSettings.pricing?.peakSchedule || {};
+            document.getElementById('businessDescription').value = currentSettings.businessDescription || '';
+            document.getElementById('businessDescriptionZh').value = currentSettings.businessDescriptionZh || '';
+            document.getElementById('startTime').value = operatingHours.startTime || '07:00';
+            document.getElementById('endTime').value = operatingHours.endTime || '22:00';
+            document.getElementById('daysLabelZh').value = operatingHours.daysLabelZh || '';
+            document.getElementById('daysLabelEn').value = operatingHours.daysLabelEn || '';
+            document.getElementById('normalUpTo10').value = pricing.normalUpTo10 ?? '';
+            document.getElementById('normalUpTo18').value = pricing.normalUpTo18 ?? '';
+            document.getElementById('peakUpTo10').value = pricing.peakUpTo10 ?? '';
+            document.getElementById('peakUpTo18').value = pricing.peakUpTo18 ?? '';
             document.getElementById('peakDays').value = Array.isArray(peakSchedule.days) ? peakSchedule.days.join(',') : '';
             document.getElementById('peakStart').value = peakSchedule.startTime || '';
             document.getElementById('peakEnd').value = peakSchedule.endTime || '';
+            document.getElementById('contactWhatsapp').value = contactInfo.whatsapp || '';
+            document.getElementById('contactPhone').value = contactInfo.phone || '';
+            document.getElementById('contactEmail').value = contactInfo.email || '';
+            document.getElementById('paymentBankEnabled').value = bankTransfer.enabled ? 'true' : 'false';
+            document.getElementById('paymentBankName').value = bankTransfer.bankName || '';
+            document.getElementById('paymentBankAccount').value = bankTransfer.accountNumber || '';
+            document.getElementById('paymentBankAccountName').value = bankTransfer.accountName || '';
+            document.getElementById('paymentPaymeEnabled').value = payme.enabled ? 'true' : 'false';
+            document.getElementById('paymentPaymeDisplayName').value = payme.displayName || '';
+            document.getElementById('paymentPaymePhone').value = payme.phoneNumber || '';
+            document.getElementById('bookingMinAdvance').value = bookingRules.minAdvanceBooking ?? '';
+            document.getElementById('bookingMaxAdvance').value = bookingRules.maxAdvanceBooking ?? '';
+            document.getElementById('bookingSlotInterval').value = bookingRules.slotInterval ?? '';
+            document.getElementById('bookingAutoConfirm').value = bookingRules.autoConfirm ? 'true' : 'false';
+            document.getElementById('bookingRequirePaymentProof').value = bookingRules.requirePaymentProof === false ? 'false' : 'true';
         }
 
         async function saveSettings() {
+            const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+            const parseTimeToMinutes = (value) => {
+                if (!timePattern.test(value)) return null;
+                const [hours, minutes] = value.split(':').map(Number);
+                return (hours * 60) + minutes;
+            };
+
+            const startTimeValue = document.getElementById('startTime').value.trim();
+            const endTimeValue = document.getElementById('endTime').value.trim();
+            if (!startTimeValue || !endTimeValue || !timePattern.test(startTimeValue) || !timePattern.test(endTimeValue)) {
+                showMessage('settingsMessage', 'error', '請輸入有效的營業開始與結束時間（格式：HH:MM）');
+                return;
+            }
+
+            const startMinutes = parseTimeToMinutes(startTimeValue);
+            const endMinutes = parseTimeToMinutes(endTimeValue);
+            if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+                showMessage('settingsMessage', 'error', '營業開始時間需早於結束時間');
+                return;
+            }
+
+            const peakStartValue = document.getElementById('peakStart').value.trim();
+            const peakEndValue = document.getElementById('peakEnd').value.trim();
+            if (peakStartValue && !timePattern.test(peakStartValue)) {
+                showMessage('settingsMessage', 'error', '請輸入有效的繁忙時段開始時間（格式：HH:MM）');
+                return;
+            }
+            if (peakEndValue && !timePattern.test(peakEndValue)) {
+                showMessage('settingsMessage', 'error', '請輸入有效的繁忙時段結束時間（格式：HH:MM）');
+                return;
+            }
+            if (peakStartValue && peakEndValue) {
+                const peakStartMinutes = parseTimeToMinutes(peakStartValue);
+                const peakEndMinutes = parseTimeToMinutes(peakEndValue);
+                if (peakStartMinutes !== null && peakEndMinutes !== null && peakStartMinutes >= peakEndMinutes) {
+                    showMessage('settingsMessage', 'error', '繁忙時段開始時間需早於結束時間');
+                    return;
+                }
+            }
+
+            const toFloat = (value) => {
+                const parsed = Number.parseFloat(value);
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+            const toInt = (value) => {
+                const parsed = Number.parseInt(value, 10);
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+
+            const currentPricing = currentSettings.pricing || {};
+            const normalUpTo10Value = toFloat(document.getElementById('normalUpTo10').value);
+            const normalUpTo18Value = toFloat(document.getElementById('normalUpTo18').value);
+            const peakUpTo10Value = toFloat(document.getElementById('peakUpTo10').value);
+            const peakUpTo18Value = toFloat(document.getElementById('peakUpTo18').value);
+            const peakDays = document.getElementById('peakDays').value
+                .split(',')
+                .map(v => v.trim().toLowerCase())
+                .filter(Boolean);
+
+            const pricing = {
+                ...currentPricing,
+                normalUpTo10: normalUpTo10Value !== null ? normalUpTo10Value : currentPricing.normalUpTo10 ?? null,
+                normalUpTo18: normalUpTo18Value !== null ? normalUpTo18Value : currentPricing.normalUpTo18 ?? null,
+                peakUpTo10: peakUpTo10Value !== null ? peakUpTo10Value : currentPricing.peakUpTo10 ?? null,
+                peakUpTo18: peakUpTo18Value !== null ? peakUpTo18Value : currentPricing.peakUpTo18 ?? null,
+                peakSchedule: {
+                    ...(currentPricing.peakSchedule || {}),
+                    days: peakDays,
+                    startTime: peakStartValue || null,
+                    endTime: peakEndValue || null
+                }
+            };
+
+            const currentRules = currentSettings.bookingRules || {};
+            const minAdvanceInput = toInt(document.getElementById('bookingMinAdvance').value);
+            const maxAdvanceInput = toInt(document.getElementById('bookingMaxAdvance').value);
+            const slotIntervalInput = toInt(document.getElementById('bookingSlotInterval').value);
+
+            const bookingRules = {
+                ...currentRules,
+                minAdvanceBooking: minAdvanceInput !== null ? minAdvanceInput : currentRules.minAdvanceBooking ?? null,
+                maxAdvanceBooking: maxAdvanceInput !== null ? maxAdvanceInput : currentRules.maxAdvanceBooking ?? null,
+                slotInterval: slotIntervalInput !== null ? slotIntervalInput : currentRules.slotInterval ?? null,
+                autoConfirm: document.getElementById('bookingAutoConfirm').value === 'true',
+                requirePaymentProof: document.getElementById('bookingRequirePaymentProof').value === 'true'
+            };
+
             const payload = {
                 ...currentSettings,
                 businessName: document.getElementById('businessName').value,
                 businessNameZh: document.getElementById('businessNameZh').value,
+                businessDescription: document.getElementById('businessDescription').value,
+                businessDescriptionZh: document.getElementById('businessDescriptionZh').value,
                 operatingHours: {
                     ...(currentSettings.operatingHours || {}),
-                    startTime: document.getElementById('startTime').value,
-                    endTime: document.getElementById('endTime').value,
+                    startTime: startTimeValue,
+                    endTime: endTimeValue,
                     daysLabelZh: document.getElementById('daysLabelZh').value,
                     daysLabelEn: document.getElementById('daysLabelEn').value
                 },
-                pricing: {
-                    ...(currentSettings.pricing || {}),
-                    normalUpTo10: Number(document.getElementById('normalUpTo10').value),
-                    normalUpTo18: Number(document.getElementById('normalUpTo18').value),
-                    peakUpTo10: Number(document.getElementById('peakUpTo10').value),
-                    peakUpTo18: Number(document.getElementById('peakUpTo18').value),
-                    peakSchedule: {
-                        days: document.getElementById('peakDays').value.split(',').map(v => v.trim()).filter(Boolean),
-                        startTime: document.getElementById('peakStart').value,
-                        endTime: document.getElementById('peakEnd').value
+                pricing,
+                contactInfo: {
+                    ...(currentSettings.contactInfo || {}),
+                    whatsapp: document.getElementById('contactWhatsapp').value,
+                    phone: document.getElementById('contactPhone').value,
+                    email: document.getElementById('contactEmail').value
+                },
+                paymentMethods: {
+                    ...(currentSettings.paymentMethods || {}),
+                    bankTransfer: {
+                        ...(currentSettings.paymentMethods?.bankTransfer || {}),
+                        enabled: document.getElementById('paymentBankEnabled').value === 'true',
+                        bankName: document.getElementById('paymentBankName').value,
+                        accountNumber: document.getElementById('paymentBankAccount').value,
+                        accountName: document.getElementById('paymentBankAccountName').value
+                    },
+                    payme: {
+                        ...(currentSettings.paymentMethods?.payme || {}),
+                        enabled: document.getElementById('paymentPaymeEnabled').value === 'true',
+                        displayName: document.getElementById('paymentPaymeDisplayName').value,
+                        phoneNumber: document.getElementById('paymentPaymePhone').value
                     }
-                }
+                },
+                bookingRules
             };
             try {
                 const response = await fetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
                 if (response.status === 401) return logout();
                 if (response.ok) {
-                    currentSettings = (await response.json()).settings || payload;
-                    showMessage('settingsMessage', 'success', '設定已更新');
+                    const result = await response.json().catch(() => ({}));
+                    currentSettings = result.settings || payload;
+                    populateSettings();
+                    showMessage('settingsMessage', 'success', result.message || '設定已更新');
                 } else {
                     const result = await response.json().catch(() => ({}));
                     console.error('Failed to save settings:', response.status, result);
@@ -874,57 +1217,70 @@
             }
         }
 
-        async function loadItems() {
+        async function loadClasses() {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/items`, { headers: authHeaders() });
+                const response = await fetch(`${API_BASE_URL}/admin/classes?includePast=true`, { headers: authHeaders() });
                 if (response.status === 401) return logout();
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
-                    console.error('Failed to load items:', response.status, errorPayload);
-                    showItemsMessage('error', errorPayload.error || '無法載入項目資料，請稍後再試。');
+                    console.error('Failed to load classes:', response.status, errorPayload);
+                    showMessage('classesMessage', 'error', errorPayload.error || '無法載入課程資料，請稍後再試。');
                     return;
                 }
-                currentItems = await response.json();
-                renderItems();
-                hideMessage('itemsMessage');
+                currentClasses = await response.json();
+                renderClasses();
+                hideMessage('classesMessage');
             } catch (error) {
-                console.error('Error loading items:', error);
-                showItemsMessage('error', '無法載入項目資料，請稍後再試。');
+                console.error('Error loading classes:', error);
+                showMessage('classesMessage', 'error', '無法載入課程資料，請稍後再試。');
             }
         }
 
-        function renderItems() {
-            const container = document.getElementById('itemsList');
+        function renderClasses() {
+            const container = document.getElementById('classesList');
+            if (!container) return;
             container.innerHTML = '';
-            if (!currentItems || currentItems.length === 0) {
+            if (!currentClasses || currentClasses.length === 0) {
                 const empty = document.createElement('div');
                 empty.style.color = '#516273';
-                empty.textContent = '目前沒有項目';
+                empty.textContent = '目前沒有課程';
                 container.appendChild(empty);
                 return;
             }
-            currentItems.forEach(item => {
+
+            currentClasses.forEach(cls => {
                 const card = document.createElement('div');
                 card.className = 'item-card';
-                const start = new Date(item.startDateTime);
-                const end = new Date(item.endDateTime);
+                const start = cls.startTime ? new Date(cls.startTime) : null;
+                const end = cls.endTime ? new Date(cls.endTime) : null;
+                const capacity = cls.capacity || 0;
+                const remaining = cls.seatsRemaining != null
+                    ? cls.seatsRemaining
+                    : Math.max(capacity - (cls.usedCapacity || 0), 0);
+                const tags = Array.isArray(cls.tags) ? cls.tags.filter(Boolean) : [];
+                const tagsRow = tags.length ? `<small>標籤：${tags.map(tag => escapeHtml(tag)).join(', ')}</small>` : '';
+                const trialLabel = cls.isTrialOnly ? '<small style="color:#f2545b;">體驗限定</small>' : '';
+
                 card.innerHTML = `
-                    <h4>${item.name} <small>(${item.type === 'workshop_class' ? '課程' : '場地'})</small></h4>
-                    <small>${formatDateTime(start)} - ${formatTime(end)}</small>
-                    <small>時長：${item.duration} 分鐘｜價錢：HK$${Number(item.price || 0).toFixed(2)}</small>
-                    <small>導師：${item.instructorName || '—'}｜容量：${item.capacity}</small>
-                    <small>剩餘名額：${Math.max((item.availableCapacity ?? item.capacity), 0)}</small>
+                    <h4>${escapeHtml(cls.name)} ${trialLabel}</h4>
+                    <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
+                    <small>地點：${escapeHtml(cls.location || '—')}</small>
+                    <small>導師：${escapeHtml(cls.instructor || '—')}</small>
+                    <small>價格：HK$${Number(cls.price || 0).toFixed(2)}</small>
+                    <small>人數：${escapeHtml(String(capacity))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
+                    ${tagsRow}
                 `;
+
                 const actions = document.createElement('div');
                 actions.className = 'item-actions';
                 const editBtn = document.createElement('button');
                 editBtn.className = 'btn btn-secondary';
                 editBtn.textContent = '編輯';
-                editBtn.addEventListener('click', () => editItem(item));
+                editBtn.addEventListener('click', () => editClass(cls));
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn btn-danger';
                 deleteBtn.textContent = '刪除';
-                deleteBtn.addEventListener('click', () => deleteItem(item.id));
+                deleteBtn.addEventListener('click', () => deleteClass(cls.id));
                 actions.appendChild(editBtn);
                 actions.appendChild(deleteBtn);
                 card.appendChild(actions);
@@ -932,79 +1288,450 @@
             });
         }
 
-        function formatDateTime(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${formatTime(date)}`; }
-        function formatTime(date) { return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`; }
+        function editClass(cls) {
+            document.getElementById('classId').value = cls.id;
+            document.getElementById('className').value = cls.name || '';
+            document.getElementById('classInstructor').value = cls.instructor || '';
+            document.getElementById('classLocation').value = cls.location || '';
+            document.getElementById('classStart').value = cls.startTime ? cls.startTime.slice(0, 16) : '';
+            document.getElementById('classEnd').value = cls.endTime ? cls.endTime.slice(0, 16) : '';
+            document.getElementById('classPrice').value = cls.price != null ? cls.price : '';
+            document.getElementById('classCapacity').value = cls.capacity != null ? cls.capacity : '';
+            document.getElementById('classDescription').value = cls.description || '';
+            document.getElementById('classTags').value = Array.isArray(cls.tags) ? cls.tags.join(',') : '';
+            document.getElementById('classIsTrialOnly').value = cls.isTrialOnly ? 'true' : 'false';
+        }
 
-        async function submitItemForm(e) {
-            e.preventDefault();
-            const id = document.getElementById('itemId').value;
+        function resetClassForm() {
+            const form = document.getElementById('classForm');
+            if (form) form.reset();
+            document.getElementById('classId').value = '';
+            document.getElementById('classIsTrialOnly').value = 'false';
+        }
+
+        async function submitClassForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('classId').value;
+            const name = document.getElementById('className').value.trim();
+            const startValue = document.getElementById('classStart').value;
+            const endValue = document.getElementById('classEnd').value;
+            const priceValue = Number.parseFloat(document.getElementById('classPrice').value);
+            const capacityValue = Number.parseInt(document.getElementById('classCapacity').value, 10);
+
+            if (!name) {
+                showMessage('classesMessage', 'error', '請輸入課程名稱');
+                return;
+            }
+            if (!startValue || !endValue) {
+                showMessage('classesMessage', 'error', '請選擇開始與結束時間');
+                return;
+            }
+            const startTime = new Date(startValue);
+            const endTime = new Date(endValue);
+            if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+                showMessage('classesMessage', 'error', '請輸入有效的日期時間');
+                return;
+            }
+            if (startTime >= endTime) {
+                showMessage('classesMessage', 'error', '結束時間需晚於開始時間');
+                return;
+            }
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                showMessage('classesMessage', 'error', '請輸入有效的價格');
+                return;
+            }
+            if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
+                showMessage('classesMessage', 'error', '請輸入有效的人數上限');
+                return;
+            }
+
             const payload = {
-                type: document.getElementById('itemType').value,
-                name: document.getElementById('itemName').value,
-                startDateTime: document.getElementById('itemStart').value,
-                endDateTime: document.getElementById('itemEnd').value,
-                duration: Number(document.getElementById('itemDuration').value),
-                price: Number(document.getElementById('itemPrice').value),
-                instructorName: document.getElementById('itemInstructor').value,
-                capacity: Number(document.getElementById('itemCapacity').value)
+                name,
+                description: document.getElementById('classDescription').value,
+                instructor: document.getElementById('classInstructor').value,
+                location: document.getElementById('classLocation').value,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                price: priceValue,
+                capacity: capacityValue,
+                tags: document.getElementById('classTags').value.split(',').map(tag => tag.trim()).filter(Boolean),
+                isTrialOnly: document.getElementById('classIsTrialOnly').value === 'true'
             };
+
             try {
                 const method = id ? 'PUT' : 'POST';
-                const endpoint = id ? `${API_BASE_URL}/admin/items/${id}` : `${API_BASE_URL}/admin/items`;
-                const response = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
+                const endpoint = id ? `${API_BASE_URL}/admin/classes/${id}` : `${API_BASE_URL}/admin/classes`;
+                const response = await fetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify(payload)
+                });
                 if (response.status === 401) return logout();
+                const result = await response.json().catch(() => ({}));
                 if (response.ok) {
-                    showItemsMessage('success', '項目已儲存');
-                    resetItemForm();
-                    loadItems();
+                    showMessage('classesMessage', 'success', '課程已儲存');
+                    resetClassForm();
+                    loadClasses();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
                 } else {
-                    const result = await response.json().catch(() => ({}));
-                    console.error('Failed to save item:', response.status, result);
-                    showItemsMessage('error', result.error || '儲存失敗');
+                    console.error('Failed to save class:', response.status, result);
+                    showMessage('classesMessage', 'error', result.error || '儲存失敗');
                 }
             } catch (error) {
-                console.error('Error saving item:', error);
-                showItemsMessage('error', '儲存失敗，請稍後再試');
+                console.error('Error saving class:', error);
+                showMessage('classesMessage', 'error', '儲存失敗，請稍後再試');
             }
         }
 
-        function editItem(item) {
-            document.getElementById('itemId').value = item.id;
-            document.getElementById('itemType').value = item.type;
-            document.getElementById('itemName').value = item.name;
-            document.getElementById('itemStart').value = item.startDateTime ? item.startDateTime.slice(0,16) : '';
-            document.getElementById('itemEnd').value = item.endDateTime ? item.endDateTime.slice(0,16) : '';
-            document.getElementById('itemDuration').value = item.duration || '';
-            document.getElementById('itemPrice').value = item.price || '';
-            document.getElementById('itemInstructor').value = item.instructorName || '';
-            document.getElementById('itemCapacity').value = item.capacity || '';
+        async function deleteClass(id) {
+            if (!confirm('確定要刪除此課程？')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/classes/${id}`, { method: 'DELETE', headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (response.ok) {
+                    showMessage('classesMessage', 'success', '課程已刪除');
+                    loadClasses();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classesMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class:', error);
+                showMessage('classesMessage', 'error', '刪除失敗，請稍後再試');
+            }
         }
 
-        function resetItemForm() {
-            document.getElementById('itemId').value = '';
-            document.getElementById('itemForm').reset();
+        async function loadClassProducts() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/class-products`, { headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load class products:', response.status, errorPayload);
+                    showMessage('classProductsMessage', 'error', errorPayload.error || '無法載入方案資料，請稍後再試。');
+                    return;
+                }
+                currentClassProducts = await response.json();
+                renderClassProducts();
+                hideMessage('classProductsMessage');
+            } catch (error) {
+                console.error('Error loading class products:', error);
+                showMessage('classProductsMessage', 'error', '無法載入方案資料，請稍後再試。');
+            }
         }
 
-        async function deleteItem(id) {
-            if (!confirm('確定要刪除此項目？')) return;
+        function renderClassProducts() {
+            const container = document.getElementById('classProductsList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!currentClassProducts || currentClassProducts.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#516273';
+                empty.textContent = '目前沒有方案';
+                container.appendChild(empty);
+                return;
+            }
+
+            currentClassProducts.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const typeLabel = product.type === 'trial' ? '體驗方案' : '課程方案';
+                card.innerHTML = `
+                    <h4>${escapeHtml(product.name)} <small>(${typeLabel})</small></h4>
+                    <small>價格：HK$${Number(product.price || 0).toFixed(2)}｜堂數：${escapeHtml(String(product.numberOfClasses || 0))}</small>
+                    <small>有效期：${product.validityPeriodDays ? `${escapeHtml(String(product.validityPeriodDays))} 天` : '—'}</small>
+                    <small>${escapeHtml(product.description || '無介紹')}</small>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-secondary';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => editClassProduct(product));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteClassProduct(product.id));
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        function editClassProduct(product) {
+            document.getElementById('classProductId').value = product.id;
+            document.getElementById('classProductType').value = product.type || 'package';
+            document.getElementById('classProductName').value = product.name || '';
+            document.getElementById('classProductPrice').value = product.price != null ? product.price : '';
+            document.getElementById('classProductCount').value = product.numberOfClasses || '';
+            document.getElementById('classProductValidity').value = product.validityPeriodDays != null ? product.validityPeriodDays : '';
+            document.getElementById('classProductDescription').value = product.description || '';
+        }
+
+        function resetClassProductForm() {
+            const form = document.getElementById('classProductForm');
+            if (form) form.reset();
+            document.getElementById('classProductId').value = '';
+            document.getElementById('classProductType').value = 'package';
+        }
+
+        async function submitClassProductForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('classProductId').value;
+            const name = document.getElementById('classProductName').value.trim();
+            const priceValue = Number.parseFloat(document.getElementById('classProductPrice').value);
+            const countValue = Number.parseInt(document.getElementById('classProductCount').value, 10);
+            const validityValueRaw = document.getElementById('classProductValidity').value;
+            const validityValue = validityValueRaw ? Number.parseInt(validityValueRaw, 10) : null;
+
+            if (!name) {
+                showMessage('classProductsMessage', 'error', '請輸入方案名稱');
+                return;
+            }
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                showMessage('classProductsMessage', 'error', '請輸入有效的價格');
+                return;
+            }
+            if (!Number.isInteger(countValue) || countValue <= 0) {
+                showMessage('classProductsMessage', 'error', '請輸入有效的堂數');
+                return;
+            }
+            if (validityValueRaw && (!Number.isInteger(validityValue) || validityValue <= 0)) {
+                showMessage('classProductsMessage', 'error', '有效期需為正整數');
+                return;
+            }
+
+            const payload = {
+                type: document.getElementById('classProductType').value,
+                name,
+                description: document.getElementById('classProductDescription').value,
+                price: priceValue,
+                numberOfClasses: countValue,
+                validityPeriodDays: validityValue
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const endpoint = id ? `${API_BASE_URL}/admin/class-products/${id}` : `${API_BASE_URL}/admin/class-products`;
+                const response = await fetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify(payload)
+                });
+                if (response.status === 401) return logout();
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('classProductsMessage', 'success', '方案已儲存');
+                    resetClassProductForm();
+                    loadClassProducts();
+                } else {
+                    console.error('Failed to save class product:', response.status, result);
+                    showMessage('classProductsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving class product:', error);
+                showMessage('classProductsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function deleteClassProduct(id) {
+            if (!confirm('確定要刪除此方案？')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/class-products/${id}`, { method: 'DELETE', headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (response.ok) {
+                    showMessage('classProductsMessage', 'success', '方案已刪除');
+                    loadClassProducts();
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classProductsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class product:', error);
+                showMessage('classProductsMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        async function loadRentalItems() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/items`, { headers: authHeaders() });
+                if (response.status === 401) return logout();
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load rental items:', response.status, errorPayload);
+                    showMessage('rentalItemsMessage', 'error', errorPayload.error || '無法載入場地項目，請稍後再試。');
+                    return;
+                }
+                const items = await response.json();
+                currentRentalItems = (items || []).filter(item => item.type === 'room_rental');
+                renderRentalItems();
+                hideMessage('rentalItemsMessage');
+            } catch (error) {
+                console.error('Error loading rental items:', error);
+                showMessage('rentalItemsMessage', 'error', '無法載入場地項目，請稍後再試。');
+            }
+        }
+
+        function renderRentalItems() {
+            const container = document.getElementById('rentalItemsList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!currentRentalItems || currentRentalItems.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#516273';
+                empty.textContent = '目前沒有場地項目';
+                container.appendChild(empty);
+                return;
+            }
+
+            currentRentalItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const start = item.startDateTime ? new Date(item.startDateTime) : null;
+                const end = item.endDateTime ? new Date(item.endDateTime) : null;
+                const remaining = item.availableCapacity != null
+                    ? item.availableCapacity
+                    : Math.max((item.capacity || 0) - (item.usedCapacity || 0), 0);
+                card.innerHTML = `
+                    <h4>${escapeHtml(item.name)}</h4>
+                    <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
+                    <small>時長：${escapeHtml(String(item.duration || 0))} 分鐘｜價錢：HK$${Number(item.price || 0).toFixed(2)}</small>
+                    <small>人數上限：${escapeHtml(String(item.capacity || 0))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-secondary';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => editRentalItem(item));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteRentalItem(item.id));
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        function editRentalItem(item) {
+            document.getElementById('rentalItemId').value = item.id;
+            document.getElementById('rentalItemName').value = item.name || '';
+            document.getElementById('rentalItemStart').value = item.startDateTime ? item.startDateTime.slice(0, 16) : '';
+            document.getElementById('rentalItemEnd').value = item.endDateTime ? item.endDateTime.slice(0, 16) : '';
+            document.getElementById('rentalItemDuration').value = item.duration || '';
+            document.getElementById('rentalItemPrice').value = item.price != null ? item.price : '';
+            document.getElementById('rentalItemInstructor').value = item.instructorName || '';
+            document.getElementById('rentalItemCapacity').value = item.capacity != null ? item.capacity : '';
+        }
+
+        function resetRentalItemForm() {
+            const form = document.getElementById('rentalItemForm');
+            if (form) form.reset();
+            document.getElementById('rentalItemId').value = '';
+        }
+
+        async function submitRentalItemForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('rentalItemId').value;
+            const name = document.getElementById('rentalItemName').value.trim();
+            const startDateTime = document.getElementById('rentalItemStart').value;
+            const endDateTime = document.getElementById('rentalItemEnd').value;
+            const durationValue = Number.parseInt(document.getElementById('rentalItemDuration').value, 10);
+            const priceValue = Number.parseFloat(document.getElementById('rentalItemPrice').value);
+            const capacityValue = Number.parseInt(document.getElementById('rentalItemCapacity').value, 10);
+
+            if (!name) {
+                showMessage('rentalItemsMessage', 'error', '請輸入項目名稱');
+                return;
+            }
+            if (!startDateTime || !endDateTime) {
+                showMessage('rentalItemsMessage', 'error', '請選擇開始與結束時間');
+                return;
+            }
+            const rentalStart = new Date(startDateTime);
+            const rentalEnd = new Date(endDateTime);
+            if (Number.isNaN(rentalStart.getTime()) || Number.isNaN(rentalEnd.getTime())) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的日期時間');
+                return;
+            }
+            if (rentalStart >= rentalEnd) {
+                showMessage('rentalItemsMessage', 'error', '結束時間需晚於開始時間');
+                return;
+            }
+            if (!Number.isInteger(durationValue) || durationValue <= 0) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的時長');
+                return;
+            }
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的價格');
+                return;
+            }
+            if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的人數上限');
+                return;
+            }
+
+            const payload = {
+                type: 'room_rental',
+                name,
+                startDateTime,
+                endDateTime,
+                duration: durationValue,
+                price: priceValue,
+                instructorName: document.getElementById('rentalItemInstructor').value,
+                capacity: capacityValue
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const endpoint = id ? `${API_BASE_URL}/admin/items/${id}` : `${API_BASE_URL}/admin/items`;
+                const response = await fetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify(payload)
+                });
+                if (response.status === 401) return logout();
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('rentalItemsMessage', 'success', '場地項目已儲存');
+                    resetRentalItemForm();
+                    loadRentalItems();
+                } else {
+                    console.error('Failed to save rental item:', response.status, result);
+                    showMessage('rentalItemsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving rental item:', error);
+                showMessage('rentalItemsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function deleteRentalItem(id) {
+            if (!confirm('確定要刪除此場地項目？')) return;
             try {
                 const response = await fetch(`${API_BASE_URL}/admin/items/${id}`, { method: 'DELETE', headers: authHeaders() });
                 if (response.status === 401) return logout();
                 if (response.ok) {
-                    showItemsMessage('success', '項目已刪除');
-                    loadItems();
+                    showMessage('rentalItemsMessage', 'success', '場地項目已刪除');
+                    loadRentalItems();
                 } else {
                     const result = await response.json().catch(() => ({}));
-                    console.error('Failed to delete item:', response.status, result);
-                    showItemsMessage('error', result.error || '刪除失敗');
+                    showMessage('rentalItemsMessage', 'error', result.error || '刪除失敗');
                 }
             } catch (error) {
-                console.error('Error deleting item:', error);
-                showItemsMessage('error', '刪除失敗');
+                console.error('Error deleting rental item:', error);
+                showMessage('rentalItemsMessage', 'error', '刪除失敗，請稍後再試');
             }
         }
 
-        function showItemsMessage(type, message) { showMessage('itemsMessage', type, message); }
+        function formatDateTime(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${formatTime(date)}`; }
+        function formatTime(date) { return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`; }
 
         function hideMessage(elementId) {
             const el = document.getElementById(elementId);
