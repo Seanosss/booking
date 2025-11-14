@@ -17,6 +17,25 @@ const DEFAULT_PEAK_SCHEDULE = {
     endTime: '23:00'
 };
 
+const DEFAULT_PAYMENT_METHODS = {
+    bankTransfer: {
+        enabled: true,
+        bankName: 'HSBC Hong Kong',
+        accountNumber: '123-456789-001',
+        accountName: 'Connect Point Studio Ltd'
+    },
+    payme: {
+        enabled: true,
+        phoneNumber: '+852 9872 5268',
+        displayName: 'Connect Point Studio'
+    },
+    fps: {
+        enabled: false,
+        fpsNumber: '',
+        displayName: 'FPS 轉數快'
+    }
+};
+
 const defaultSettings = {
     businessName: 'Premium Studio Booking',
     businessNameZh: '專業錄音室預約系統',
@@ -30,19 +49,7 @@ const defaultSettings = {
         peakUpTo18: 350,
         peakSchedule: DEFAULT_PEAK_SCHEDULE
     },
-    paymentMethods: {
-        bankTransfer: {
-            enabled: true,
-            bankName: 'HSBC Hong Kong',
-            accountNumber: '123-456789-001',
-            accountName: 'Connect Point Studio Ltd'
-        },
-        payme: {
-            enabled: true,
-            phoneNumber: '+852 9872 5268',
-            displayName: 'Connect Point Studio'
-        }
-    },
+    paymentMethods: { ...DEFAULT_PAYMENT_METHODS },
     contactInfo: {
         whatsapp: '85298725268',
         email: 'connectpoint@atsumaru.com',
@@ -114,6 +121,29 @@ function mergePricing(pricing = {}) {
     };
 }
 
+function mergePaymentMethods(paymentMethods = {}) {
+    const bankTransfer = {
+        ...DEFAULT_PAYMENT_METHODS.bankTransfer,
+        ...(paymentMethods.bankTransfer || {})
+    };
+
+    const payme = {
+        ...DEFAULT_PAYMENT_METHODS.payme,
+        ...(paymentMethods.payme || {})
+    };
+
+    const fps = {
+        ...DEFAULT_PAYMENT_METHODS.fps,
+        ...(paymentMethods.fps || {})
+    };
+
+    return {
+        bankTransfer,
+        payme,
+        fps
+    };
+}
+
 function mergeOperatingHours(operatingHours = {}) {
     const merged = {
         ...DEFAULT_OPERATING_HOURS,
@@ -141,7 +171,7 @@ function mapSettingsRow(row) {
         businessDescriptionZh: row.business_description_zh,
         operatingHours: mergeOperatingHours(row.operating_hours || {}),
         pricing: mergePricing(row.pricing || {}),
-        paymentMethods: row.payment_methods,
+        paymentMethods: mergePaymentMethods(row.payment_methods || {}),
         contactInfo: row.contact_info,
         bookingRules: row.booking_rules,
         bookingInstructions: row.booking_instructions,
@@ -503,7 +533,7 @@ async function initializeDatabase() {
             defaultSettings.businessDescriptionZh,
             mergeOperatingHours(defaultSettings.operatingHours),
             mergePricing(defaultSettings.pricing),
-            defaultSettings.paymentMethods,
+            mergePaymentMethods(defaultSettings.paymentMethods),
             defaultSettings.contactInfo,
             defaultSettings.bookingRules,
             defaultSettings.bookingInstructions,
@@ -520,6 +550,7 @@ async function loadSettings() {
             ...defaultSettings,
             operatingHours: mergeOperatingHours(defaultSettings.operatingHours),
             pricing: mergePricing(defaultSettings.pricing),
+            paymentMethods: mergePaymentMethods(defaultSettings.paymentMethods),
             adminPassword: DEFAULT_ADMIN_PASSWORD
         };
     }
@@ -566,7 +597,7 @@ async function saveSettings(settings) {
         settings.businessDescriptionZh,
         operatingHours,
         mergePricing(settings.pricing),
-        settings.paymentMethods,
+        mergePaymentMethods(settings.paymentMethods),
         settings.contactInfo,
         settings.bookingRules,
         settings.bookingInstructions,
@@ -617,7 +648,11 @@ async function createBooking(bookingData) {
 
         const firstItem = sortedItems[0];
         const totalDuration = bookingData.items.reduce((sum, item) => sum + item.duration, 0);
-        const totalPeople = bookingData.items.reduce((sum, item) => sum + item.peopleCount, 0);
+        const aggregatedPeople = Number.isInteger(bookingData.totalPeople) && bookingData.totalPeople > 0
+            ? bookingData.totalPeople
+            : null;
+        const totalPeople = aggregatedPeople
+            ?? bookingData.items.reduce((sum, item) => sum + item.peopleCount, 0);
         const totalPrice = bookingData.items.reduce((sum, item) => sum + Number(item.price), 0);
 
         const bookingResult = await client.query(`
