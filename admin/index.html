@@ -204,6 +204,9 @@
                     <div class="input-group"><label>戶口名稱</label><input id="paymentBankAccountName" type="text"></div>
                     <div class="input-group"><label>PayMe 顯示名稱</label><input id="paymentPaymeDisplayName" type="text"></div>
                     <div class="input-group"><label>PayMe 電話</label><input id="paymentPaymePhone" type="text"></div>
+                    <div class="input-group"><label>FPS 啟用</label><select id="paymentFpsEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
+                    <div class="input-group"><label>FPS 號碼</label><input id="paymentFpsNumber" type="text"></div>
+                    <div class="input-group"><label>FPS 顯示名稱</label><input id="paymentFpsDisplayName" type="text" placeholder="例如 FPS 轉數快"></div>
                 </div>
             </div>
             <div class="section-card">
@@ -779,18 +782,28 @@
             }
             bookings.forEach(booking => {
                 const row = document.createElement('tr');
-                const itemsHtml = (booking.items || []).map(item => `<div><strong>${item.itemType === 'workshop_class' ? '課程' : '場地'}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${item.peopleCount}人)</div>`).join('');
+                const itemsHtml = (booking.items || []).map(item => {
+                    const peopleCount = Number.isFinite(Number(item.peopleCount)) && Number(item.peopleCount) > 0
+                        ? Number(item.peopleCount)
+                        : 1;
+                    const label = item.itemType === 'workshop_class' ? '課程' : '場地';
+                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${peopleCount}人)</div>`;
+                }).join('');
+                const totalPeopleValue = Number.isFinite(Number(booking.totalPeople)) && Number(booking.totalPeople) > 0
+                    ? Number(booking.totalPeople)
+                    : 1;
                 row.innerHTML = `
                     <td>${escapeHtml(booking.id)}</td>
                     <td>${escapeHtml(booking.customerName)}<br><small>${escapeHtml(booking.email)}<br>${escapeHtml(booking.phone)}</small></td>
                     <td>${itemsHtml || '—'}</td>
-                    <td>${escapeHtml(String(booking.totalPeople || 0))}</td>
+                    <td>${escapeHtml(String(totalPeopleValue))}</td>
                     <td>HK$${Number(booking.totalPrice || 0).toFixed(2)}</td>
                     <td><span class="status-chip status-${booking.status}">${escapeHtml(booking.status)}</span></td>
                     <td>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','confirmed')">確認</button>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','pending')">待處理</button>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','cancelled')">取消</button>
+                        <button class="btn btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -863,12 +876,33 @@
                     showMessage('bookingsMessage', 'success', result.message || '更新成功');
                     loadRentalBookings();
                     loadBookingOverview(document.getElementById('overviewDate')?.value);
+                    loadStats();
                 } else {
                     showMessage('bookingsMessage', 'error', result.error || '更新失敗');
                 }
             } catch (error) {
                 console.error('Error updating booking status:', error);
                 showMessage('bookingsMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function deleteRentalBooking(id) {
+            if (!confirm('確定要刪除此預約記錄嗎？此動作無法復原。')) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/bookings/${id}`, { method: 'DELETE', headers: authHeaders() });
+                if (response.status === 401) return logout();
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('bookingsMessage', 'success', result.message || '預約記錄已刪除');
+                    loadRentalBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                    loadStats();
+                } else {
+                    showMessage('bookingsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                showMessage('bookingsMessage', 'error', '刪除失敗，請稍後再試');
             }
         }
 
@@ -940,6 +974,7 @@
             const paymentMethods = currentSettings.paymentMethods || {};
             const bankTransfer = paymentMethods.bankTransfer || {};
             const payme = paymentMethods.payme || {};
+            const fps = paymentMethods.fps || {};
             const bookingRules = currentSettings.bookingRules || {};
 
             document.getElementById('businessName').value = currentSettings.businessName || '';
@@ -967,6 +1002,9 @@
             document.getElementById('paymentPaymeEnabled').value = payme.enabled ? 'true' : 'false';
             document.getElementById('paymentPaymeDisplayName').value = payme.displayName || '';
             document.getElementById('paymentPaymePhone').value = payme.phoneNumber || '';
+            document.getElementById('paymentFpsEnabled').value = fps.enabled ? 'true' : 'false';
+            document.getElementById('paymentFpsNumber').value = fps.fpsNumber || '';
+            document.getElementById('paymentFpsDisplayName').value = fps.displayName || '';
             document.getElementById('bookingMinAdvance').value = bookingRules.minAdvanceBooking ?? '';
             document.getElementById('bookingMaxAdvance').value = bookingRules.maxAdvanceBooking ?? '';
             document.getElementById('bookingSlotInterval').value = bookingRules.slotInterval ?? '';
@@ -1096,6 +1134,12 @@
                         enabled: document.getElementById('paymentPaymeEnabled').value === 'true',
                         displayName: document.getElementById('paymentPaymeDisplayName').value,
                         phoneNumber: document.getElementById('paymentPaymePhone').value
+                    },
+                    fps: {
+                        ...(currentSettings.paymentMethods?.fps || {}),
+                        enabled: document.getElementById('paymentFpsEnabled').value === 'true',
+                        fpsNumber: document.getElementById('paymentFpsNumber').value,
+                        displayName: document.getElementById('paymentFpsDisplayName').value
                     }
                 },
                 bookingRules

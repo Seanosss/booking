@@ -162,6 +162,11 @@
             align-items: center;
             gap: 12px;
         }
+        .summary-date {
+            font-weight: 700;
+            color: var(--brand-secondary);
+            margin-top: 4px;
+        }
         .summary-item strong { color: var(--brand-primary); }
         .summary-item button {
             border: none;
@@ -266,10 +271,6 @@
                     <label for="date-input">預約日期</label>
                     <input type="date" id="date-input" min="" max="">
                 </div>
-                <div class="form-group">
-                    <label for="people-count">參與人數 (最多 18 人)</label>
-                    <input type="number" id="people-count" min="1" max="18" value="4">
-                </div>
                 <div id="slots-section" style="display:none;">
                     <div class="slot-grid" id="slot-grid"></div>
                     <div class="legend">
@@ -308,6 +309,10 @@
                         <label for="phone">電話 / WhatsApp *</label>
                         <input type="tel" id="phone" required>
                     </div>
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="people-count">參與人數 (可選，最多 18 人)</label>
+                    <input type="number" id="people-count" min="1" max="18" placeholder="例如 6">
                 </div>
                 <div class="form-group" style="margin-top:18px;">
                     <label for="notes">備註 (可選)</label>
@@ -393,9 +398,9 @@
 
         const state = {
             settings: null,
-            selectedDate: null,
-            availability: null,
-            selectedSlots: new Set(),
+            selectedDate: '',
+            availabilityByDate: new Map(),
+            selectedSlotsByDate: new Map(),
             slotInterval: 30
         };
 
@@ -440,8 +445,32 @@
             return slots;
         }
 
-        function groupSelectedSlots() {
-            const sorted = Array.from(state.selectedSlots)
+        function ensureSelectionSet(date) {
+            if (!date) {
+                return null;
+            }
+            let set = state.selectedSlotsByDate.get(date);
+            if (!set) {
+                set = new Set();
+                state.selectedSlotsByDate.set(date, set);
+            }
+            return set;
+        }
+
+        function cleanupEmptySelections() {
+            Array.from(state.selectedSlotsByDate.entries()).forEach(([date, slots]) => {
+                if (!slots || slots.size === 0) {
+                    state.selectedSlotsByDate.delete(date);
+                }
+            });
+        }
+
+        function groupSlotsForDate(date) {
+            const slots = state.selectedSlotsByDate.get(date);
+            if (!slots || slots.size === 0) {
+                return [];
+            }
+            const sorted = Array.from(slots)
                 .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
             const groups = [];
             let current = [];
@@ -467,6 +496,19 @@
                 end: minutesToTime(timeToMinutes(group[group.length - 1]) + interval),
                 slots: group
             }));
+        }
+
+        function getAllSelectedGroups() {
+            cleanupEmptySelections();
+            const dates = Array.from(state.selectedSlotsByDate.keys()).sort();
+            const aggregated = [];
+            dates.forEach(date => {
+                const groups = groupSlotsForDate(date);
+                groups.forEach(group => {
+                    aggregated.push({ date, ...group });
+                });
+            });
+            return aggregated;
         }
 
         function resolvePeakSchedule(settings) {
@@ -510,66 +552,118 @@
             return Number(rateTable[`${baseKey}UpTo18`] || 0);
         }
 
+        function resolvePeopleCountInput() {
+            const value = Number(elements.peopleInput.value);
+            if (!Number.isFinite(value) || value <= 0) {
+                return null;
+            }
+            return Math.min(Math.floor(value), 18);
+        }
+
         function calculateTotals() {
-            const groups = groupSelectedSlots();
-            const peopleCount = Number(elements.peopleInput.value) || 0;
+            const groups = getAllSelectedGroups();
+            const providedPeopleCount = resolvePeopleCountInput();
+            const effectivePeopleCount = providedPeopleCount ?? 1;
             let totalMinutes = 0;
             let totalPrice = 0;
-            if (peopleCount > 0) {
-                groups.forEach(group => {
-                    const duration = timeToMinutes(group.end) - timeToMinutes(group.start);
-                    totalMinutes += duration;
-                    const periodType = determinePeriodType(state.selectedDate, group.start, group.end, state.settings);
-                    const rate = resolveHourlyRate(state.settings?.pricing, peopleCount, periodType);
-                    totalPrice += (rate * (duration / 60));
-                });
-            } else {
-                totalMinutes = groups.reduce((sum, group) => sum + (timeToMinutes(group.end) - timeToMinutes(group.start)), 0);
-            }
+
+            groups.forEach(group => {
+                const duration = timeToMinutes(group.end) - timeToMinutes(group.start);
+                totalMinutes += duration;
+                if (state.settings?.pricing) {
+                    try {
+                        const periodType = determinePeriodType(group.date, group.start, group.end, state.settings);
+                        const rate = resolveHourlyRate(state.settings.pricing, effectivePeopleCount, periodType);
+                        totalPrice += rate * (duration / 60);
+                    } catch (error) {
+                        console.error('Failed to resolve pricing for group:', error);
+                    }
+                }
+            });
+
             elements.totalBlocks.textContent = groups.length.toString();
             elements.totalHours.textContent = `${(totalMinutes / 60).toFixed(1)} 小時`;
-            elements.totalPeople.textContent = peopleCount > 0 ? peopleCount.toString() : '0';
+            elements.totalPeople.textContent = providedPeopleCount ? providedPeopleCount.toString() : '—';
             elements.totalAmount.textContent = totalPrice.toFixed(2);
-            elements.submitButton.disabled = groups.length === 0 || peopleCount <= 0 || peopleCount > 18;
+            elements.submitButton.disabled = groups.length === 0;
             elements.contactCard.style.display = groups.length > 0 ? 'block' : 'none';
         }
 
         function renderSummary() {
-            const groups = groupSelectedSlots();
+            const groups = getAllSelectedGroups();
             elements.summaryList.innerHTML = '';
+
             if (groups.length === 0) {
                 const empty = document.createElement('div');
                 empty.textContent = '尚未選擇任何時段。';
                 empty.style.color = '#64748b';
                 elements.summaryList.appendChild(empty);
-            } else {
-                groups.forEach((group, index) => {
+                calculateTotals();
+                return;
+            }
+
+            const groupedByDate = new Map();
+            groups.forEach(group => {
+                if (!groupedByDate.has(group.date)) {
+                    groupedByDate.set(group.date, []);
+                }
+                groupedByDate.get(group.date).push(group);
+            });
+
+            Array.from(groupedByDate.entries()).forEach(([date, items]) => {
+                const header = document.createElement('div');
+                header.className = 'summary-date';
+                header.textContent = date;
+                elements.summaryList.appendChild(header);
+
+                items.forEach(group => {
                     const row = document.createElement('div');
                     row.className = 'summary-item';
                     const info = document.createElement('div');
-                    info.innerHTML = `<strong>${state.selectedDate}</strong><div>${group.start} - ${group.end}</div>`;
+                    info.innerHTML = `<div>${group.start} - ${group.end}</div>`;
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.textContent = '移除';
                     removeBtn.addEventListener('click', () => {
-                        group.slots.forEach(slot => state.selectedSlots.delete(slot));
-                        renderSlots();
+                        const selection = state.selectedSlotsByDate.get(date);
+                        if (selection) {
+                            group.slots.forEach(slot => selection.delete(slot));
+                            if (selection.size === 0) {
+                                state.selectedSlotsByDate.delete(date);
+                            }
+                        }
+                        if (state.selectedDate === date) {
+                            renderSlots();
+                        }
                         renderSummary();
-                        calculateTotals();
                     });
                     row.appendChild(info);
                     row.appendChild(removeBtn);
                     elements.summaryList.appendChild(row);
                 });
-            }
+            });
+
             calculateTotals();
         }
 
         function renderSlots() {
-            if (!state.availability) return;
-            const { openingHours, confirmedSlots = [], pendingSlots = [] } = state.availability;
+            const date = state.selectedDate;
+            if (!date) {
+                elements.slotGrid.innerHTML = '';
+                elements.slotsSection.style.display = 'none';
+                return;
+            }
+
+            const availability = state.availabilityByDate.get(date);
+            if (!availability) {
+                return;
+            }
+
+            const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
             const interval = state.slotInterval;
             const slots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
+            const selectedSlots = ensureSelectionSet(date);
+
             elements.slotGrid.innerHTML = '';
             slots.forEach(slot => {
                 const btn = document.createElement('button');
@@ -585,14 +679,18 @@
                     btn.classList.add('pending');
                     btn.disabled = true;
                 } else {
-                    if (state.selectedSlots.has(slot)) {
+                    if (selectedSlots?.has(slot)) {
                         btn.classList.add('selected');
                     }
                     btn.addEventListener('click', () => {
-                        if (state.selectedSlots.has(slot)) {
-                            state.selectedSlots.delete(slot);
+                        const selection = ensureSelectionSet(date);
+                        if (selection.has(slot)) {
+                            selection.delete(slot);
+                            if (selection.size === 0) {
+                                state.selectedSlotsByDate.delete(date);
+                            }
                         } else {
-                            state.selectedSlots.add(slot);
+                            selection.add(slot);
                         }
                         renderSlots();
                         renderSummary();
@@ -603,19 +701,25 @@
         }
 
         async function fetchAvailability(date) {
+            if (!date) return;
             try {
                 const response = await fetch(`${API_BASE_URL}/rentals/availability?date=${date}`);
                 if (!response.ok) {
                     throw new Error('Failed to load availability');
                 }
-                state.availability = await response.json();
-                elements.slotsSection.style.display = 'block';
-                renderSlots();
+                const availability = await response.json();
+                state.availabilityByDate.set(date, availability);
+                if (state.selectedDate === date) {
+                    elements.slotsSection.style.display = 'block';
+                    renderSlots();
+                }
             } catch (error) {
-                console.error(error);
-                state.availability = null;
-                elements.slotGrid.innerHTML = '<p style="color:#b91c1c;">無法取得該日的可用時段，請稍後再試。</p>';
-                elements.slotsSection.style.display = 'block';
+                console.error('Unable to load availability:', error);
+                state.availabilityByDate.delete(date);
+                if (state.selectedDate === date) {
+                    elements.slotGrid.innerHTML = '<p style="color:#b91c1c;">無法取得該日的可用時段，請稍後再試。</p>';
+                    elements.slotsSection.style.display = 'block';
+                }
             }
         }
 
@@ -641,7 +745,14 @@
                 parts.push(`銀行轉帳：${payments.bankTransfer.bankName} ${payments.bankTransfer.accountNumber} (${payments.bankTransfer.accountName})`);
             }
             if (payments.payme?.enabled) {
-                parts.push(`PayMe：${payments.payme.displayName || ''} (${payments.payme.phoneNumber || ''})`);
+                const name = payments.payme.displayName || 'PayMe';
+                const phone = payments.payme.phoneNumber || '';
+                parts.push(`PayMe：${`${name} ${phone}`.trim()}`);
+            }
+            if (payments.fps?.enabled) {
+                const label = payments.fps.displayName || 'FPS 轉數快';
+                const number = payments.fps.fpsNumber || '';
+                parts.push(`${label}：${number}`.trim());
             }
             if (parts.length === 0) {
                 elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
@@ -687,19 +798,27 @@
         elements.dateInput.addEventListener('change', (event) => {
             const value = event.target.value;
             state.selectedDate = value;
-            state.selectedSlots.clear();
-            renderSummary();
             if (value) {
+                elements.slotsSection.style.display = 'block';
+                elements.slotGrid.innerHTML = '<p style="color:#64748b;">載入可用時段...</p>';
+                if (state.availabilityByDate.has(value)) {
+                    renderSlots();
+                }
                 fetchAvailability(value);
             } else {
                 elements.slotsSection.style.display = 'none';
+                elements.slotGrid.innerHTML = '';
             }
+            renderSummary();
         });
 
         elements.peopleInput.addEventListener('input', () => {
-            const people = Number(elements.peopleInput.value);
-            if (people > 18) {
-                elements.peopleInput.value = '18';
+            const parsed = resolvePeopleCountInput();
+            if (parsed !== null && parsed.toString() !== elements.peopleInput.value) {
+                elements.peopleInput.value = parsed.toString();
+            }
+            if (parsed === null && elements.peopleInput.value) {
+                elements.peopleInput.value = '';
             }
             calculateTotals();
         });
@@ -709,7 +828,7 @@
             elements.successMessage.style.display = 'none';
             elements.errorMessage.style.display = 'none';
 
-            const groups = groupSelectedSlots();
+            const groups = getAllSelectedGroups();
             if (groups.length === 0) {
                 elements.errorMessage.textContent = '請先選擇預約時段。';
                 elements.errorMessage.style.display = 'block';
@@ -721,14 +840,17 @@
                 email: document.getElementById('email').value.trim(),
                 phone: document.getElementById('phone').value.trim(),
                 notes: document.getElementById('notes').value.trim(),
-                bookingItems: groups.map(group => ({
-                    date: state.selectedDate,
+                slots: groups.map(group => ({
+                    date: group.date,
                     startTime: group.start,
-                    endTime: group.end,
-                    peopleCount: Number(elements.peopleInput.value) || 1,
-                    type: 'room_rental'
+                    endTime: group.end
                 }))
             };
+
+            const sharedPeopleCount = resolvePeopleCountInput();
+            if (sharedPeopleCount) {
+                payload.peopleCount = sharedPeopleCount;
+            }
 
             if (!payload.customerName || !payload.email || !payload.phone) {
                 elements.errorMessage.textContent = '請填寫完整聯絡資料。';
@@ -749,20 +871,28 @@
                 }
                 elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
                 elements.successMessage.style.display = 'block';
-                state.selectedSlots.clear();
-                await fetchAvailability(state.selectedDate);
+                const affectedDates = Array.from(new Set(groups.map(group => group.date)));
+                state.selectedSlotsByDate.clear();
+                affectedDates.forEach(date => state.availabilityByDate.delete(date));
                 renderSummary();
+                calculateTotals();
                 document.getElementById('booking-form').reset();
+                if (state.selectedDate) {
+                    fetchAvailability(state.selectedDate);
+                }
                 elements.submitButton.disabled = true;
             } catch (error) {
                 console.error(error);
                 elements.errorMessage.textContent = error.message || '提交失敗，請稍後再試。';
                 elements.errorMessage.style.display = 'block';
             } finally {
-                elements.submitButton.disabled = groupSelectedSlots().length === 0;
+                elements.submitButton.disabled = getAllSelectedGroups().length === 0;
+                calculateTotals();
             }
         });
 
+        renderSummary();
+        calculateTotals();
         init();
     </script>
 </body>

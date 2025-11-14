@@ -737,7 +737,7 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
     }
 });
 
-app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
+async function deleteBookingHandler(req, res) {
     try {
         const deleted = await deleteBooking(req.params.id);
 
@@ -754,7 +754,11 @@ app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
         console.error('Error deleting booking:', error);
         res.status(500).json({ error: 'Failed to delete booking' });
     }
-});
+}
+
+app.delete('/api/admin/bookings/:id', authenticateAdmin, deleteBookingHandler);
+
+app.delete('/api/bookings/:id', authenticateAdmin, deleteBookingHandler);
 
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
@@ -1372,12 +1376,34 @@ app.delete('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
 
 app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
     try {
-        const { customerName, email, phone, notes, bookingItems } = req.body;
+        const {
+            customerName,
+            email,
+            phone,
+            notes,
+            bookingItems: incomingBookingItems,
+            slots,
+            peopleCount: sharedPeopleCountInput
+        } = req.body;
 
         if (!customerName || !email || !phone) {
             return res.status(400).json({
                 error: 'Customer name, email, and phone are required.'
             });
+        }
+
+        const parsedSharedPeopleCount = parseInt(sharedPeopleCountInput, 10);
+        const normalizedSharedPeopleCount = Number.isInteger(parsedSharedPeopleCount) && parsedSharedPeopleCount > 0
+            ? Math.min(parsedSharedPeopleCount, 18)
+            : null;
+
+        let bookingItems = Array.isArray(incomingBookingItems) ? incomingBookingItems : null;
+
+        if ((!bookingItems || bookingItems.length === 0) && Array.isArray(slots) && slots.length > 0) {
+            bookingItems = slots.map(slot => ({
+                ...slot,
+                type: slot.type || 'room_rental'
+            }));
         }
 
         if (!Array.isArray(bookingItems) || bookingItems.length === 0) {
@@ -1392,9 +1418,14 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             const item = bookingItems[index];
             const itemLabel = `Item #${index + 1}`;
 
-            const peopleCount = parseInt(item.peopleCount, 10);
+            const defaultPeopleCount = normalizedSharedPeopleCount ?? 1;
+            let peopleCount = parseInt(item.peopleCount, 10);
             if (!Number.isInteger(peopleCount) || peopleCount <= 0) {
-                return res.status(400).json({ error: `${itemLabel}: peopleCount must be a positive integer.` });
+                peopleCount = defaultPeopleCount;
+            }
+
+            if (!Number.isInteger(peopleCount) || peopleCount <= 0) {
+                peopleCount = 1;
             }
 
             if (peopleCount > 18) {
@@ -1514,6 +1545,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             phone,
             notes: notes || '',
             status,
+            totalPeople: normalizedSharedPeopleCount,
             items: normalizedItems
         };
 
