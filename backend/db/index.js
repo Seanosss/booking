@@ -934,22 +934,12 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
     return [...bookingConflicts, ...classConflicts];
 }
 
-async function checkRoomAvailability(date, startTime, endTime, excludeBookingId = null) {
-    const bookingConflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId);
-    if (bookingConflicts.length > 0) {
-        return false;
-    }
-
-    const classConflicts = await pool.query(`
-        SELECT 1
-        FROM classes
-        WHERE DATE(start_time) = $1
-          AND start_time::time < $2
-          AND end_time::time > $3
-        LIMIT 1
-    `, [date, `${endTime}:00`, `${startTime}:00`]);
-
-    return classConflicts.rowCount === 0;
+async function checkRentalAvailability(date, startTime, endTime, excludeBookingId = null) {
+    const conflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId);
+    return {
+        available: conflicts.length === 0,
+        conflicts
+    };
 }
 
 async function getCatalogItemById(id) {
@@ -1245,7 +1235,7 @@ async function getClassConflicts(startTimeIso, endTimeIso, excludeClassId = null
     return result.rows.map(mapClassRow);
 }
 
-async function checkRoomAvailability(startTimeIso, endTimeIso, excludeClassId = null) {
+async function checkClassScheduleAvailability(startTimeIso, endTimeIso, excludeClassId = null) {
     const start = new Date(startTimeIso);
     const end = new Date(endTimeIso);
 
@@ -1522,7 +1512,8 @@ module.exports = {
     createClass,
     updateClass,
     deleteClass,
-    checkRoomAvailability,
+    checkClassScheduleAvailability,
+    checkRentalAvailability,
     getClassCapacityUsage,
     createClassBooking,
     getClassBookings,

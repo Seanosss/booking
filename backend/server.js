@@ -38,7 +38,8 @@ const {
     createClassProduct,
     updateClassProduct,
     deleteClassProduct,
-    checkRoomAvailability,
+    checkClassScheduleAvailability,
+    checkRentalAvailability,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -1110,7 +1111,7 @@ app.post('/api/admin/classes', authenticateAdmin, async (req, res) => {
             return res.status(400).json({ error: errors.join(' ') });
         }
 
-        const availability = await checkRoomAvailability(data.startTime, data.endTime);
+        const availability = await checkClassScheduleAvailability(data.startTime, data.endTime);
         if (!availability.available) {
             return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
         }
@@ -1131,7 +1132,7 @@ app.put('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
             return res.status(400).json({ error: errors.join(' ') });
         }
 
-        const availability = await checkRoomAvailability(data.startTime, data.endTime, req.params.id);
+        const availability = await checkClassScheduleAvailability(data.startTime, data.endTime, req.params.id);
         if (!availability.available) {
             return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
         }
@@ -1539,10 +1540,22 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             peopleCount: sharedPeopleCountInput
         } = req.body;
 
+        console.log('[BookingCreate] Incoming payload summary:', {
+            customerNameLength: (customerName || '').length,
+            hasEmail: Boolean(email),
+            hasPhone: Boolean(phone),
+            slotCount: Array.isArray(slots) ? slots.length : 0,
+            bookingItemsCount: Array.isArray(incomingBookingItems) ? incomingBookingItems.length : 0,
+            sharedPeopleCountInput
+        });
+
+        const respondValidationError = (message) => {
+            console.warn('[BookingCreate] Validation failed:', message);
+            return res.status(400).json({ error: message });
+        };
+
         if (!customerName || !email || !phone) {
-            return res.status(400).json({
-                error: 'Customer name, email, and phone are required.'
-            });
+            return respondValidationError('Customer name, email, and phone are required.');
         }
 
         const parsedSharedPeopleCount = parseInt(sharedPeopleCountInput, 10);
@@ -1560,7 +1573,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
         }
 
         if (!Array.isArray(bookingItems) || bookingItems.length === 0) {
-            return res.status(400).json({ error: 'At least one booking item is required.' });
+            return respondValidationError('At least one booking item is required.');
         }
 
         const settings = await loadSettings();
@@ -1582,14 +1595,14 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             }
 
             if (peopleCount > 18) {
-                return res.status(400).json({ error: `${itemLabel}: maximum of 18 people per session.` });
+                return respondValidationError(`${itemLabel}: maximum of 18 people per session.`);
             }
 
             let catalogItem = null;
             if (item.catalogItemId) {
                 catalogItem = await getCatalogItemById(item.catalogItemId);
                 if (!catalogItem) {
-                    return res.status(400).json({ error: `${itemLabel}: linked item not found.` });
+                    return respondValidationError(`${itemLabel}: linked item not found.`);
                 }
             }
 
@@ -1603,7 +1616,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                 const startInfo = normalizeIsoToDateTimeStrings(catalogItem.startDateTime);
                 const endInfo = normalizeIsoToDateTimeStrings(catalogItem.endDateTime);
                 if (!startInfo || !endInfo) {
-                    return res.status(400).json({ error: `${itemLabel}: invalid catalog item schedule.` });
+                    return respondValidationError(`${itemLabel}: invalid catalog item schedule.`);
                 }
 
                 date = startInfo.date;
@@ -1615,9 +1628,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                 const alreadySelected = catalogUsage.get(catalogItem.id) || 0;
                 if (usedCapacity + alreadySelected + peopleCount > catalogItem.capacity) {
                     const remaining = Math.max(catalogItem.capacity - usedCapacity - alreadySelected, 0);
-                    return res.status(400).json({
-                        error: `${catalogItem.name} has only ${remaining} seats remaining.`
-                    });
+                    return respondValidationError(`${catalogItem.name} has only ${remaining} seats remaining.`);
                 }
                 catalogUsage.set(catalogItem.id, alreadySelected + peopleCount);
             } else {
@@ -1625,13 +1636,13 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                 startTime = item.startTime;
                 endTime = item.endTime;
                 if (!date || !startTime || !endTime) {
-                    return res.status(400).json({ error: `${itemLabel}: date, startTime, and endTime are required.` });
+                    return respondValidationError(`${itemLabel}: date, startTime, and endTime are required.`);
                 }
                 duration = minutesBetween(startTime, endTime);
             }
 
             if (duration <= 0) {
-                return res.status(400).json({ error: `${itemLabel}: end time must be after start time.` });
+                return respondValidationError(`${itemLabel}: end time must be after start time.`);
             }
 
             const periodType = itemType === 'room_rental'
@@ -1648,22 +1659,23 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                 const itemEndMinutes = parseTimeToMinutes(endTime);
 
                 if (itemStartMinutes < openingStartMinutes || itemEndMinutes > openingEndMinutes) {
-                    return res.status(400).json({
-                        error: `${itemLabel}: selected time must fall within studio hours (${openingStart}-${openingEnd}).`
-                    });
+                    return respondValidationError(`${itemLabel}: selected time must fall within studio hours (${openingStart}-${openingEnd}).`);
                 }
 
                 if (hasInPayloadRoomConflict(normalizedItems, date, startTime, endTime)) {
-                    return res.status(400).json({
-                        error: `${itemLabel}: selected time overlaps with another session in your booking.`
-                    });
+                    return respondValidationError(`${itemLabel}: selected time overlaps with another session in your booking.`);
                 }
 
-                const isAvailable = await checkRoomAvailability(date, startTime, endTime);
-                if (!isAvailable) {
-                    return res.status(400).json({
-                        error: '時間衝突：此時段已有場地租用或課堂安排'
+                const availability = await checkRentalAvailability(date, startTime, endTime);
+                if (!availability.available) {
+                    console.warn('[BookingCreate] Availability conflict detected:', {
+                        itemLabel,
+                        date,
+                        startTime,
+                        endTime,
+                        conflicts: availability.conflicts
                     });
+                    return respondValidationError('時間衝突：此時段已有場地租用或課堂安排');
                 }
             }
 
@@ -1673,7 +1685,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             } else {
                 const catalogPrice = catalogItem ? catalogItem.price : Number(item.price);
                 if (Number.isNaN(catalogPrice) || catalogPrice < 0) {
-                    return res.status(400).json({ error: `${itemLabel}: invalid catalog price.` });
+                    return respondValidationError(`${itemLabel}: invalid catalog price.`);
                 }
                 price = Math.round(catalogPrice * peopleCount * 100) / 100;
             }
@@ -1721,7 +1733,17 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             message
         });
     } catch (error) {
-        console.error('Error creating booking:', error);
+        console.error('[BookingCreate] Unexpected error:', {
+            message: error.message,
+            stack: error.stack,
+            payloadSummary: {
+                customerNameLength: (req.body?.customerName || '').length,
+                hasEmail: Boolean(req.body?.email),
+                hasPhone: Boolean(req.body?.phone),
+                slotCount: Array.isArray(req.body?.slots) ? req.body.slots.length : 0,
+                bookingItemsCount: Array.isArray(req.body?.bookingItems) ? req.body.bookingItems.length : 0
+            }
+        });
         res.status(500).json({ error: 'Failed to create booking' });
     }
 });

@@ -1016,9 +1016,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const result = await response.json();
+                const result = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(result.error || '無法提交預約');
+                    console.error('Booking create failed:', response.status, result);
+                    const message = result?.error || '無法提交預約';
+                    throw new Error(message);
                 }
                 elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
                 elements.successMessage.style.display = 'block';
