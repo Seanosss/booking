@@ -510,6 +510,16 @@
             paymentReminderClose: document.getElementById('payment-reminder-close')
         };
 
+        function formatDateInputValue(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+                return '';
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         function timeToMinutes(value) {
             const [h, m] = value.split(':').map(Number);
             return (h * 60) + m;
@@ -899,8 +909,8 @@
             today.setDate(today.getDate() + minDays);
             const maxDate = new Date();
             maxDate.setDate(maxDate.getDate() + maxDays);
-            elements.dateInput.min = today.toISOString().split('T')[0];
-            elements.dateInput.max = maxDate.toISOString().split('T')[0];
+            elements.dateInput.min = formatDateInputValue(today);
+            elements.dateInput.max = formatDateInputValue(maxDate);
         }
 
         async function init() {

@@ -170,6 +170,16 @@ function normalizeIsoToDateTimeStrings(isoString) {
     };
 }
 
+function formatDateOnly(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function resolvePeakSchedule(settings) {
     const schedule = settings.pricing?.peakSchedule;
     if (!schedule) {
@@ -887,7 +897,7 @@ app.get('/api/bookings/:id/ics', async (req, res) => {
 
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = formatDateOnly(new Date());
         const stats = await getStats(today);
 
         res.json(stats);
@@ -1693,7 +1703,15 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             items: normalizedItems
         };
 
+        console.log('[BookingCreate] Received date payloads:', {
+            requestedDates: normalizedItems.map(item => item.date)
+        });
+
         const booking = await createBooking(bookingPayload);
+        console.log('[BookingCreate] API response date fields:', {
+            bookingDate: booking.date,
+            bookingItemDates: (booking.items || []).map(item => item.date)
+        });
         const message = status === 'confirmed'
             ? 'Booking confirmed successfully!'
             : 'Booking created successfully. Please send payment confirmation.';

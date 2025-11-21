@@ -160,6 +160,26 @@ function mergeOperatingHours(operatingHours = {}) {
     return merged;
 }
 
+function formatDateOnly(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (typeof value === 'string') {
+        return value.length >= 10 ? value.slice(0, 10) : value;
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function mapSettingsRow(row) {
     if (!row) {
         return null;
@@ -200,7 +220,7 @@ function mapBookingRow(row) {
         customerName: row.customer_name,
         email: row.email,
         phone: row.phone,
-        date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
+        date: formatDateOnly(row.date),
         startTime: normalizeTimeString(row.start_time),
         duration: row.duration,
         totalPrice: row.total_price === null ? null : Number(row.total_price),
@@ -221,7 +241,7 @@ function mapBookingItemRow(row) {
         bookingId: row.booking_id,
         catalogItemId: row.catalog_item_id,
         itemType: row.item_type,
-        date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
+        date: formatDateOnly(row.date),
         startTime: normalizeTimeString(row.start_time),
         endTime: normalizeTimeString(row.end_time),
         duration: row.duration,
@@ -702,6 +722,11 @@ async function createBooking(bookingData) {
             null,
             bookingData.adminNotes || null
         ]);
+
+        console.log('[BookingCreate] Database stored date fields:', {
+            bookingDate: bookingResult.rows[0]?.date,
+            bookingItemDates: bookingData.items.map(item => item.date)
+        });
 
         for (const item of bookingData.items) {
             await client.query(`
@@ -1230,13 +1255,13 @@ async function checkRoomAvailability(startTimeIso, endTimeIso, excludeClassId = 
 
     const dateString = typeof startTimeIso === 'string' && startTimeIso.length >= 10
         ? startTimeIso.slice(0, 10)
-        : start.toISOString().split('T')[0];
+        : formatDateOnly(start);
     const startTimeString = typeof startTimeIso === 'string' && startTimeIso.length >= 16
         ? startTimeIso.slice(11, 16)
-        : start.toISOString().substring(11, 16);
+        : `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
     const endTimeString = typeof endTimeIso === 'string' && endTimeIso.length >= 16
         ? endTimeIso.slice(11, 16)
-        : end.toISOString().substring(11, 16);
+        : `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
 
     const rentalConflicts = await getRoomConflicts(dateString, startTimeString, endTimeString);
     const classConflicts = await getClassConflicts(startTimeIso, endTimeIso, excludeClassId);
