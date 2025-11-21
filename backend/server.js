@@ -52,7 +52,7 @@ const ADMIN_TOKEN_TTL_MS = (() => {
         : 1000 * 60 * 60; // 1 hour default
 })();
 
-const ADMIN_AUTH_DISABLED = true; // Toggle back to false to re-enable admin authentication
+const ADMIN_AUTH_DISABLED = String(process.env.ADMIN_AUTH_DISABLED).toLowerCase() === 'true';
 
 const activeAdminTokens = new Map();
 const bookingCreationLimiter = rateLimit({
