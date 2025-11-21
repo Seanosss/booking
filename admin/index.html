@@ -412,6 +412,16 @@
         let currentClasses = [];
         let currentClassProducts = [];
 
+        function showLoginError(message) {
+            const el = document.getElementById('loginError');
+            if (!el) return;
+            el.textContent = message || '登入失敗，請稍後再試。';
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 3000);
+        }
+
         async function checkApiHealth() {
             const statusEl = document.getElementById('apiStatusMessage');
             if (!statusEl) return;
