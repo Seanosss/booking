@@ -192,6 +192,22 @@
                 ? window.location.origin
                 : fallbackOrigin;
 
+            const ensureApiPath = (value) => {
+                if (!value) return null;
+                try {
+                    const url = new URL(value, baseOrigin);
+                    const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+                    const hasApiSegment = /\/api(?:$|\/)/i.test(normalizedPath);
+                    const resolvedPath = hasApiSegment
+                        ? normalizedPath
+                        : `${normalizedPath === '/' ? '' : normalizedPath}${DEFAULT_API_PATH}`;
+                    return `${url.origin}${resolvedPath}`;
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+
             const normalizeBaseUrl = (value) => {
                 if (!value) return null;
                 try {
@@ -207,37 +223,36 @@
             const params = new URLSearchParams(window.location.search);
             const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
             if (queryOverride) {
-                const resolved = normalizeBaseUrl(queryOverride);
+                const resolved = ensureApiPath(normalizeBaseUrl(queryOverride));
                 if (resolved) {
                     try { localStorage.setItem(storageKey, resolved); } catch (error) {}
                     return resolved;
                 }
             }
             try {
-                const stored = normalizeBaseUrl(localStorage.getItem(storageKey));
+                const stored = ensureApiPath(normalizeBaseUrl(localStorage.getItem(storageKey)));
                 if (stored) return stored;
             } catch (error) {}
 
-            const inlineConfig = normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl);
+            const inlineConfig = ensureApiPath(normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl));
             if (inlineConfig) return inlineConfig;
 
             const metaTag = document.querySelector('meta[name="api-base-url"]');
-            const metaUrl = normalizeBaseUrl(metaTag?.content);
+            const metaUrl = ensureApiPath(normalizeBaseUrl(metaTag?.content));
             if (metaUrl) return metaUrl;
 
-            const appendApiPath = (origin) => `${origin.replace(/\/+$/, '')}${DEFAULT_API_PATH}`;
             const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
             const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
             if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
-                return appendApiPath(normalizedCurrentOrigin);
+                return ensureApiPath(normalizedCurrentOrigin);
             }
             const isLocalhost = normalizedCurrentOrigin
                 ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin)
                 : false;
             if (isLocalhost && normalizedCurrentOrigin) {
-                return appendApiPath(normalizedCurrentOrigin);
+                return ensureApiPath(normalizedCurrentOrigin);
             }
-            return appendApiPath(normalizedRenderOrigin);
+            return ensureApiPath(normalizedRenderOrigin);
         }
 
         const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');

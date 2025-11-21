@@ -98,6 +98,7 @@ The backend uses these environment variables:
 - `DB_SSL_REJECT_UNAUTHORIZED` - When SSL is enabled, set to `false` to allow self-signed certificates
 - `NODE_ENV` - Environment (production/development)
 - `ADMIN_PASSWORD` - Shared admin password used for the dashboard (default: `1234`)
+- `ADMIN_AUTH_DISABLED` - Set to `true` to bypass admin authentication (defaults to `false` for security)
 
 ---
 
