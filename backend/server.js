@@ -619,7 +619,9 @@ app.post('/api/admin/login', async (req, res) => {
         }
 
         const settings = await loadSettings();
-        const storedPassword = settings.adminPassword || DEFAULT_ADMIN_PASSWORD;
+        const storedPassword = (settings && typeof settings.adminPassword === 'string' && settings.adminPassword.length > 0)
+            ? settings.adminPassword
+            : DEFAULT_ADMIN_PASSWORD;
 
         if (password !== storedPassword) {
             console.warn('Admin login failed: incorrect shared password');
