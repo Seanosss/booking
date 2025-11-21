@@ -226,6 +226,7 @@
             weekStart: null,
             selectedDate: null,
             classes: [],
+            classesByDate: {},
             selectedClass: null
         };
 
@@ -286,9 +287,7 @@
                     button.classList.add('active');
                 }
                 button.addEventListener('click', () => {
-                    state.selectedDate = iso;
-                    renderDayButtons();
-                    loadClasses(iso);
+                    renderClassesForDate(iso);
                 });
                 elements.dayButtons.appendChild(button);
             }
@@ -308,8 +307,10 @@
                 wrapper.className = 'class-item';
                 const header = document.createElement('div');
                 header.className = 'class-header';
+                const startLabel = cls.startTime ? cls.startTime.substring(11, 16) : '';
+                const endLabel = cls.endTime ? cls.endTime.substring(11, 16) : '';
                 header.innerHTML = `<div>
-                    <div style="font-weight:600; color:#0f172a;">${cls.startTime.substring(11,16)} - ${cls.endTime.substring(11,16)}</div>
+                    <div style="font-weight:600; color:#0f172a;">${startLabel} - ${endLabel}</div>
                     <div class="class-name">${cls.name}</div>
                 </div>`;
                 const tags = document.createElement('div');
@@ -325,24 +326,28 @@
 
                 const meta = document.createElement('div');
                 meta.className = 'class-meta';
+                const priceLine = cls.specialPriceForTwo != null
+                    ? `HK$ ${Number(cls.price || 0).toFixed(2)} /人 ｜ 兩人同行 HK$ ${Number(cls.specialPriceForTwo).toFixed(2)}`
+                    : `HK$ ${Number(cls.price || 0).toFixed(2)} /人`;
+                const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
                 meta.innerHTML = `
                     <div>講師：${cls.instructor || '待定'}</div>
                     <div>地點：${cls.location || 'Studio'}</div>
-                    <div>名額：剩餘 ${cls.seatsRemaining} / ${cls.capacity}</div>
-                    <div>價格：HK$ ${Number(cls.price || 0).toFixed(2)}</div>
+                    <div>名額：剩餘 ${remaining} / ${cls.capacity}</div>
+                    <div>價格：${priceLine}</div>
                 `;
                 wrapper.appendChild(meta);
 
                 const actions = document.createElement('div');
                 actions.className = 'class-actions';
                 const availability = document.createElement('div');
-                availability.textContent = cls.seatsRemaining > 0 ? '立即預約' : '已滿額';
+                availability.textContent = remaining > 0 ? '立即預約' : '已滿額';
                 availability.style.fontWeight = '600';
-                availability.style.color = cls.seatsRemaining > 0 ? '#0f766e' : '#b91c1c';
+                availability.style.color = remaining > 0 ? '#0f766e' : '#b91c1c';
                 const bookBtn = document.createElement('button');
                 bookBtn.type = 'button';
                 bookBtn.textContent = '預約 / 加入名單';
-                bookBtn.disabled = cls.seatsRemaining <= 0 || cls.isTrialOnly;
+                bookBtn.disabled = remaining <= 0 || cls.isTrialOnly;
                 bookBtn.addEventListener('click', () => openBookingForm(cls));
                 actions.appendChild(availability);
                 actions.appendChild(bookBtn);
@@ -360,20 +365,61 @@
             });
         }
 
-        async function loadClasses(date) {
+        function renderClassesForDate(date) {
+            state.selectedDate = date;
+            state.classes = state.classesByDate[date] || [];
+            renderDayButtons();
+            renderClasses();
+        }
+
+        async function loadWeekClasses() {
             try {
                 elements.classesContainer.innerHTML = '<p style="color:#475569;">載入中...</p>';
-                const response = await fetch(`${API_BASE_URL}/classes?date=${date}&includeTrial=true`);
+                const response = await fetch(`${API_BASE_URL}/classes?weekStart=${formatDate(state.weekStart)}&includeTrial=true`);
                 if (!response.ok) {
                     throw new Error('無法取得課程資料');
                 }
                 const data = await response.json();
-                state.classes = data;
-                renderClasses();
+                state.classesByDate = data.reduce((acc, cls) => {
+                    const key = cls.startTime ? cls.startTime.slice(0, 10) : null;
+                    if (!key) return acc;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(cls);
+                    return acc;
+                }, {});
+                renderClassesForDate(state.selectedDate);
             } catch (error) {
                 console.error(error);
                 elements.classesContainer.innerHTML = `<div class="schedule-empty">${error.message || '載入課程失敗，請稍後再試。'}</div>`;
             }
+        }
+
+        function calculateBookingPrice(cls, peopleCount) {
+            const base = Number(cls.price || 0);
+            const useSpecial = peopleCount === 2 && cls.specialPriceForTwo != null;
+            const total = useSpecial ? Number(cls.specialPriceForTwo) : base * peopleCount;
+            return { total, useSpecial, base, baseTotal: base * peopleCount };
+        }
+
+        function updateBookingSummary() {
+            if (!state.selectedClass) return;
+            const cls = state.selectedClass;
+            const people = Math.max(1, Number(elements.peopleInput.value) || 1);
+            const start = new Date(cls.startTime);
+            const end = new Date(cls.endTime);
+            const { total, useSpecial, baseTotal } = calculateBookingPrice(cls, people);
+            const priceLine = useSpecial
+                ? `兩人同行優惠：HK$ ${total.toFixed(2)}（原價 HK$ ${baseTotal.toFixed(2)}）`
+                : `總價：HK$ ${total.toFixed(2)}（HK$ ${(Number(cls.price || 0)).toFixed(2)} /人）`;
+            const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
+            elements.bookingSummary.innerHTML = `
+                <div><strong>${start.getFullYear()}-${(start.getMonth()+1).toString().padStart(2,'0')}-${start.getDate().toString().padStart(2,'0')}</strong></div>
+                <div>時間：${start.toTimeString().slice(0,5)} - ${end.toTimeString().slice(0,5)}</div>
+                <div>講師：${cls.instructor || '待定'}</div>
+                <div>地點：${cls.location || 'Studio'}</div>
+                <div>剩餘名額：${remaining}</div>
+                <div>${priceLine}</div>
+            `;
         }
 
         function openBookingForm(cls) {
@@ -381,17 +427,11 @@
             elements.bookingCard.style.display = 'block';
             elements.classNameInput.value = `${cls.name}`;
             elements.peopleInput.value = '1';
+            const maxSeats = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
+            elements.peopleInput.max = Math.max(maxSeats || 1, 1);
             elements.successMessage.style.display = 'none';
             elements.errorMessage.style.display = 'none';
-            const start = new Date(cls.startTime);
-            const end = new Date(cls.endTime);
-            elements.bookingSummary.innerHTML = `
-                <div><strong>${start.getFullYear()}-${(start.getMonth()+1).toString().padStart(2,'0')}-${start.getDate().toString().padStart(2,'0')}</strong></div>
-                <div>時間：${start.toTimeString().slice(0,5)} - ${end.toTimeString().slice(0,5)}</div>
-                <div>講師：${cls.instructor || '待定'}</div>
-                <div>地點：${cls.location || 'Studio'}</div>
-                <div>剩餘名額：${cls.seatsRemaining}</div>
-            `;
+            updateBookingSummary();
         }
 
         elements.bookingForm.addEventListener('submit', async (event) => {
@@ -428,31 +468,31 @@
                 elements.successMessage.textContent = '預約提交成功！請留意工作人員確認。';
                 elements.successMessage.style.display = 'block';
                 elements.bookingForm.reset();
-                await loadClasses(state.selectedDate);
+                await loadWeekClasses();
             } catch (error) {
                 elements.errorMessage.textContent = error.message || '預約失敗，請稍後再試。';
                 elements.errorMessage.style.display = 'block';
             }
         });
 
+        elements.peopleInput.addEventListener('input', updateBookingSummary);
+
         elements.prevWeek.addEventListener('click', () => {
             state.weekStart.setDate(state.weekStart.getDate() - 7);
             updateWeekLabel();
-            renderDayButtons();
             if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
                 state.selectedDate = formatDate(state.weekStart);
             }
-            loadClasses(state.selectedDate);
+            loadWeekClasses();
         });
 
         elements.nextWeek.addEventListener('click', () => {
             state.weekStart.setDate(state.weekStart.getDate() + 7);
             updateWeekLabel();
-            renderDayButtons();
             if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
                 state.selectedDate = formatDate(state.weekStart);
             }
-            loadClasses(state.selectedDate);
+            loadWeekClasses();
         });
 
         function init() {
@@ -461,7 +501,7 @@
             state.selectedDate = formatDate(today);
             updateWeekLabel();
             renderDayButtons();
-            loadClasses(state.selectedDate);
+            loadWeekClasses();
         }
 
         init();
