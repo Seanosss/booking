@@ -15,6 +15,7 @@ const {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
+    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     createCatalogItem,
@@ -1506,10 +1507,10 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                     });
                 }
 
-                const conflicts = await getRoomConflicts(date, startTime, endTime);
-                if (conflicts.length > 0) {
+                const isAvailable = await checkRoomAvailability(date, startTime, endTime);
+                if (!isAvailable) {
                     return res.status(400).json({
-                        error: `${itemLabel}: selected time overlaps with an existing booking.`
+                        error: '時間衝突：此時段已有場地租用或課堂安排'
                     });
                 }
             }
