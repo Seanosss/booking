@@ -900,6 +900,24 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
     return [...bookingConflicts, ...classConflicts];
 }
 
+async function checkRoomAvailability(date, startTime, endTime, excludeBookingId = null) {
+    const bookingConflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId);
+    if (bookingConflicts.length > 0) {
+        return false;
+    }
+
+    const classConflicts = await pool.query(`
+        SELECT 1
+        FROM classes
+        WHERE DATE(start_time) = $1
+          AND start_time::time < $2
+          AND end_time::time > $3
+        LIMIT 1
+    `, [date, `${endTime}:00`, `${startTime}:00`]);
+
+    return classConflicts.rowCount === 0;
+}
+
 async function getCatalogItemById(id) {
     const result = await pool.query('SELECT * FROM catalog_items WHERE id = $1', [id]);
     if (result.rows.length === 0) {
@@ -1403,6 +1421,7 @@ module.exports = {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
+    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     getCatalogItemsByIds,
