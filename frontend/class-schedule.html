@@ -617,7 +617,7 @@
             updateWeekLabel();
             renderDayButtons();
             await loadSettings();
-            loadClasses(state.selectedDate);
+            await loadWeekClasses();
         }
 
         init();
