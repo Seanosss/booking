@@ -211,6 +211,74 @@ function determinePeriodType(date, startTime, endTime, settings) {
     return overlapsPeak ? 'peak' : 'normal';
 }
 
+function formatDateTimeForICS(date, time) {
+    const parsed = new Date(`${date}T${time}`);
+    if (Number.isNaN(parsed.getTime())) {
+        return null;
+    }
+
+    const pad = (value) => value.toString().padStart(2, '0');
+    return `${parsed.getUTCFullYear()}${pad(parsed.getUTCMonth() + 1)}${pad(parsed.getUTCDate())}`
+        + `T${pad(parsed.getUTCHours())}${pad(parsed.getUTCMinutes())}${pad(parsed.getUTCSeconds())}Z`;
+}
+
+function escapeIcsText(value = '') {
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n');
+}
+
+function buildIcsForBooking(booking) {
+    if (!booking?.items?.length) {
+        return null;
+    }
+
+    const events = booking.items
+        .map((item, index) => {
+            const dtStart = formatDateTimeForICS(item.date, item.startTime);
+            const dtEnd = formatDateTimeForICS(item.date, item.endTime);
+
+            if (!dtStart || !dtEnd) {
+                return null;
+            }
+
+            const summary = escapeIcsText(`場地預約 ${booking.customerName || ''}`.trim());
+            const descriptionLines = [
+                `預約編號：${booking.id}`,
+                booking.customerName ? `姓名：${booking.customerName}` : null,
+                booking.email ? `Email：${booking.email}` : null,
+                booking.phone ? `電話：${booking.phone}` : null,
+                booking.status ? `狀態：${booking.status}` : null
+            ].filter(Boolean);
+
+            return [
+                'BEGIN:VEVENT',
+                `UID:${booking.id}-${index}@studio-booking`,
+                `SUMMARY:${summary}`,
+                `DTSTART:${dtStart}`,
+                `DTEND:${dtEnd}`,
+                `LOCATION:${escapeIcsText(item.itemType === 'room_rental' ? '場地' : '課程')}`,
+                `DESCRIPTION:${escapeIcsText(descriptionLines.join('\n'))}`,
+                'END:VEVENT'
+            ].join('\n');
+        })
+        .filter(Boolean);
+
+    if (!events.length) {
+        return null;
+    }
+
+    return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Studio Booking//EN',
+        ...events,
+        'END:VCALENDAR'
+    ].join('\n');
+}
+
 function resolveHourlyRate(pricing, peopleCount, periodType) {
     if (peopleCount > 18) {
         throw new Error('Maximum capacity per booking item is 18 people');
@@ -759,6 +827,29 @@ async function deleteBookingHandler(req, res) {
 app.delete('/api/admin/bookings/:id', authenticateAdmin, deleteBookingHandler);
 
 app.delete('/api/bookings/:id', authenticateAdmin, deleteBookingHandler);
+
+app.get('/api/bookings/:id/ics', async (req, res) => {
+    try {
+        const booking = await getBookingById(req.params.id);
+
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        const icsContent = buildIcsForBooking(booking);
+
+        if (!icsContent) {
+            return res.status(400).json({ error: 'Booking has no schedule to export' });
+        }
+
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=booking-${booking.id}.ics`);
+        res.send(icsContent);
+    } catch (error) {
+        console.error('Error generating booking ICS:', error);
+        res.status(500).json({ error: 'Failed to generate calendar file' });
+    }
+});
 
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {

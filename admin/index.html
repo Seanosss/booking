@@ -803,6 +803,7 @@
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','confirmed')">確認</button>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','pending')">待處理</button>
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','cancelled')">取消</button>
+                        <a class="btn btn-secondary" href="${API_BASE_URL}/bookings/${booking.id}/ics" target="_blank" rel="noopener">下載日曆</a>
                         <button class="btn btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
                     </td>
                 `;
