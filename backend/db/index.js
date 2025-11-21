@@ -1509,7 +1509,6 @@ module.exports = {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
-    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     getCatalogItemsByIds,

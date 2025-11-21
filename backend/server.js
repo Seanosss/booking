@@ -15,7 +15,6 @@ const {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
-    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     createCatalogItem,
