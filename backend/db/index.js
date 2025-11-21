@@ -287,8 +287,12 @@ function mapClassRow(row) {
         endTime: row.end_time ? new Date(row.end_time).toISOString() : null,
         capacity: Number(row.capacity || 0),
         price: row.price === null ? null : Number(row.price),
+        specialPriceForTwo: row.special_price_for_two === null
+            ? null
+            : Number(row.special_price_for_two),
         tags,
         isTrialOnly: Boolean(row.is_trial_only),
+        type: 'class',
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
         updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
     };
@@ -454,10 +458,15 @@ async function initializeDatabase() {
             tags JSONB NOT NULL DEFAULT '[]'::jsonb,
             capacity INTEGER NOT NULL,
             price NUMERIC(10, 2) NOT NULL,
+            special_price_for_two NUMERIC(10, 2),
             is_trial_only BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+    `,
+        `
+        ALTER TABLE classes
+        ADD COLUMN IF NOT EXISTS special_price_for_two NUMERIC(10, 2)
     `,
         `
         CREATE TABLE IF NOT EXISTS class_bookings (
@@ -872,8 +881,50 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
         query += ` AND bi.booking_id <> $${params.length}`;
     }
 
-    const result = await pool.query(query, params);
-    return result.rows.map(mapBookingItemRow);
+    const bookingResult = await pool.query(query, params);
+    const bookingConflicts = bookingResult.rows.map(mapBookingItemRow);
+
+    const classParams = [
+        date,
+        `${date}T${endTime}:00`,
+        `${date}T${startTime}:00`
+    ];
+    const classResult = await pool.query(`
+        SELECT id, name, start_time, end_time
+        FROM classes
+        WHERE DATE(start_time) = $1
+          AND start_time < $2::timestamptz
+          AND end_time > $3::timestamptz
+    `, classParams);
+
+    const classConflicts = classResult.rows.map(row => ({
+        id: row.id,
+        itemType: 'class_session',
+        name: row.name,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        date
+    }));
+
+    return [...bookingConflicts, ...classConflicts];
+}
+
+async function checkRoomAvailability(date, startTime, endTime, excludeBookingId = null) {
+    const bookingConflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId);
+    if (bookingConflicts.length > 0) {
+        return false;
+    }
+
+    const classConflicts = await pool.query(`
+        SELECT 1
+        FROM classes
+        WHERE DATE(start_time) = $1
+          AND start_time::time < $2
+          AND end_time::time > $3
+        LIMIT 1
+    `, [date, `${endTime}:00`, `${startTime}:00`]);
+
+    return classConflicts.rowCount === 0;
 }
 
 async function getCatalogItemById(id) {
@@ -1078,9 +1129,10 @@ async function createClass(data) {
             tags,
             capacity,
             price,
+            special_price_for_two,
             is_trial_only
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
+        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11)
         RETURNING *
     `, [
         data.name,
@@ -1092,6 +1144,9 @@ async function createClass(data) {
         tags,
         data.capacity,
         data.price,
+        data.specialPriceForTwo === null || data.specialPriceForTwo === undefined
+            ? null
+            : data.specialPriceForTwo,
         Boolean(data.isTrialOnly)
     ]);
 
@@ -1113,9 +1168,10 @@ async function updateClass(id, data) {
             tags = $7::jsonb,
             capacity = $8,
             price = $9,
-            is_trial_only = $10,
+            special_price_for_two = $10,
+            is_trial_only = $11,
             updated_at = NOW()
-        WHERE id = $11
+        WHERE id = $12
         RETURNING *
     `, [
         data.name,
@@ -1127,6 +1183,9 @@ async function updateClass(id, data) {
         tags,
         data.capacity,
         data.price,
+        data.specialPriceForTwo === null || data.specialPriceForTwo === undefined
+            ? null
+            : data.specialPriceForTwo,
         Boolean(data.isTrialOnly),
         id
     ]);
@@ -1141,6 +1200,52 @@ async function updateClass(id, data) {
 async function deleteClass(id) {
     const result = await pool.query('DELETE FROM classes WHERE id = $1', [id]);
     return result.rowCount > 0;
+}
+
+async function getClassConflicts(startTimeIso, endTimeIso, excludeClassId = null) {
+    const params = [endTimeIso, startTimeIso];
+    let sql = `
+        SELECT *
+        FROM classes
+        WHERE start_time < $1::timestamptz
+          AND end_time > $2::timestamptz
+    `;
+
+    if (excludeClassId) {
+        params.push(excludeClassId);
+        sql += ` AND id <> $${params.length}`;
+    }
+
+    const result = await pool.query(sql, params);
+    return result.rows.map(mapClassRow);
+}
+
+async function checkRoomAvailability(startTimeIso, endTimeIso, excludeClassId = null) {
+    const start = new Date(startTimeIso);
+    const end = new Date(endTimeIso);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        throw new Error('Invalid date range provided');
+    }
+
+    const dateString = typeof startTimeIso === 'string' && startTimeIso.length >= 10
+        ? startTimeIso.slice(0, 10)
+        : start.toISOString().split('T')[0];
+    const startTimeString = typeof startTimeIso === 'string' && startTimeIso.length >= 16
+        ? startTimeIso.slice(11, 16)
+        : start.toISOString().substring(11, 16);
+    const endTimeString = typeof endTimeIso === 'string' && endTimeIso.length >= 16
+        ? endTimeIso.slice(11, 16)
+        : end.toISOString().substring(11, 16);
+
+    const rentalConflicts = await getRoomConflicts(dateString, startTimeString, endTimeString);
+    const classConflicts = await getClassConflicts(startTimeIso, endTimeIso, excludeClassId);
+
+    return {
+        available: rentalConflicts.length === 0 && classConflicts.length === 0,
+        rentalConflicts,
+        classConflicts
+    };
 }
 
 async function getClassCapacityUsage(classId, excludeBookingId = null) {
@@ -1379,6 +1484,7 @@ module.exports = {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
+    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     getCatalogItemsByIds,
@@ -1388,9 +1494,11 @@ module.exports = {
     getCatalogItemCapacityUsage,
     getClasses,
     getClassById,
+    getClassConflicts,
     createClass,
     updateClass,
     deleteClass,
+    checkRoomAvailability,
     getClassCapacityUsage,
     createClassBooking,
     getClassBookings,

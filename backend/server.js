@@ -15,6 +15,7 @@ const {
     getStats,
     getBookingItemsByDate,
     getRoomConflicts,
+    checkRoomAvailability,
     getCatalogItemById,
     getCatalogItems,
     createCatalogItem,
@@ -38,6 +39,7 @@ const {
     createClassProduct,
     updateClassProduct,
     deleteClassProduct,
+    checkRoomAvailability,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -211,6 +213,74 @@ function determinePeriodType(date, startTime, endTime, settings) {
     return overlapsPeak ? 'peak' : 'normal';
 }
 
+function formatDateTimeForICS(date, time) {
+    const parsed = new Date(`${date}T${time}`);
+    if (Number.isNaN(parsed.getTime())) {
+        return null;
+    }
+
+    const pad = (value) => value.toString().padStart(2, '0');
+    return `${parsed.getUTCFullYear()}${pad(parsed.getUTCMonth() + 1)}${pad(parsed.getUTCDate())}`
+        + `T${pad(parsed.getUTCHours())}${pad(parsed.getUTCMinutes())}${pad(parsed.getUTCSeconds())}Z`;
+}
+
+function escapeIcsText(value = '') {
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n');
+}
+
+function buildIcsForBooking(booking) {
+    if (!booking?.items?.length) {
+        return null;
+    }
+
+    const events = booking.items
+        .map((item, index) => {
+            const dtStart = formatDateTimeForICS(item.date, item.startTime);
+            const dtEnd = formatDateTimeForICS(item.date, item.endTime);
+
+            if (!dtStart || !dtEnd) {
+                return null;
+            }
+
+            const summary = escapeIcsText(`場地預約 ${booking.customerName || ''}`.trim());
+            const descriptionLines = [
+                `預約編號：${booking.id}`,
+                booking.customerName ? `姓名：${booking.customerName}` : null,
+                booking.email ? `Email：${booking.email}` : null,
+                booking.phone ? `電話：${booking.phone}` : null,
+                booking.status ? `狀態：${booking.status}` : null
+            ].filter(Boolean);
+
+            return [
+                'BEGIN:VEVENT',
+                `UID:${booking.id}-${index}@studio-booking`,
+                `SUMMARY:${summary}`,
+                `DTSTART:${dtStart}`,
+                `DTEND:${dtEnd}`,
+                `LOCATION:${escapeIcsText(item.itemType === 'room_rental' ? '場地' : '課程')}`,
+                `DESCRIPTION:${escapeIcsText(descriptionLines.join('\n'))}`,
+                'END:VEVENT'
+            ].join('\n');
+        })
+        .filter(Boolean);
+
+    if (!events.length) {
+        return null;
+    }
+
+    return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Studio Booking//EN',
+        ...events,
+        'END:VCALENDAR'
+    ].join('\n');
+}
+
 function resolveHourlyRate(pricing, peopleCount, periodType) {
     if (peopleCount > 18) {
         throw new Error('Maximum capacity per booking item is 18 people');
@@ -318,6 +388,19 @@ async function getRentalAvailability(date) {
         }
     });
 
+    const classes = await getClasses({ onDate: date });
+    classes.forEach(cls => {
+        const startInfo = normalizeIsoToDateTimeStrings(cls.startTime);
+        const endInfo = normalizeIsoToDateTimeStrings(cls.endTime);
+
+        if (!startInfo || !endInfo || startInfo.date !== date || endInfo.date !== date) {
+            return;
+        }
+
+        const classSlots = generateSlotsForRange(startInfo.time, endInfo.time);
+        confirmedSlots.push(...classSlots);
+    });
+
     return {
         date,
         confirmedSlots,
@@ -337,9 +420,16 @@ function validateClassPayload(payload) {
         : null;
     const description = typeof payload.description === 'string' ? payload.description : '';
     const startTime = payload.startTime ? new Date(payload.startTime) : null;
-    const endTime = payload.endTime ? new Date(payload.endTime) : null;
+    const endTimeRaw = payload.endTime ? new Date(payload.endTime) : null;
+    const durationMinutes = payload.duration === null || payload.duration === undefined
+        ? null
+        : Number.parseInt(payload.duration, 10);
     const capacity = Number.parseInt(payload.capacity, 10);
     const price = Number.parseFloat(payload.price);
+    const specialPriceForTwoRaw = payload.specialPriceForTwo;
+    const specialPriceForTwo = specialPriceForTwoRaw === null || specialPriceForTwoRaw === undefined || specialPriceForTwoRaw === ''
+        ? null
+        : Number.parseFloat(specialPriceForTwoRaw);
     const tags = Array.isArray(payload.tags)
         ? payload.tags.map(tag => tag.toString().trim()).filter(Boolean)
         : [];
@@ -351,6 +441,13 @@ function validateClassPayload(payload) {
 
     if (!startTime || Number.isNaN(startTime.getTime())) {
         errors.push('Valid start time is required.');
+    }
+
+    let endTime = endTimeRaw;
+
+    if ((!endTime || Number.isNaN(endTime.getTime())) && Number.isInteger(durationMinutes) && durationMinutes > 0) {
+        endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + durationMinutes);
     }
 
     if (!endTime || Number.isNaN(endTime.getTime())) {
@@ -369,6 +466,10 @@ function validateClassPayload(payload) {
         errors.push('Price must be a positive number.');
     }
 
+    if (specialPriceForTwo !== null && (!Number.isFinite(specialPriceForTwo) || specialPriceForTwo < 0)) {
+        errors.push('Special price for two must be a positive number when provided.');
+    }
+
     if (errors.length > 0) {
         return { errors };
     }
@@ -384,6 +485,7 @@ function validateClassPayload(payload) {
             endTime: endTime.toISOString(),
             capacity,
             price,
+            specialPriceForTwo,
             tags,
             isTrialOnly
         }
@@ -760,6 +862,29 @@ app.delete('/api/admin/bookings/:id', authenticateAdmin, deleteBookingHandler);
 
 app.delete('/api/bookings/:id', authenticateAdmin, deleteBookingHandler);
 
+app.get('/api/bookings/:id/ics', async (req, res) => {
+    try {
+        const booking = await getBookingById(req.params.id);
+
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        const icsContent = buildIcsForBooking(booking);
+
+        if (!icsContent) {
+            return res.status(400).json({ error: 'Booking has no schedule to export' });
+        }
+
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=booking-${booking.id}.ics`);
+        res.send(icsContent);
+    } catch (error) {
+        console.error('Error generating booking ICS:', error);
+        res.status(500).json({ error: 'Failed to generate calendar file' });
+    }
+});
+
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -821,10 +946,19 @@ app.get('/api/items', async (req, res) => {
 
 app.get('/api/classes', async (req, res) => {
     try {
-        const { date, start, end, includeTrial, onlyTrial } = req.query;
+        const { date, start, end, includeTrial, onlyTrial, weekStart } = req.query;
         const filters = { includePast: false };
         if (date) {
             filters.onDate = date;
+        } else if (weekStart) {
+            const startDate = new Date(`${weekStart}T00:00:00`);
+            if (!Number.isNaN(startDate.getTime())) {
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 6);
+                endDate.setHours(23, 59, 59, 999);
+                filters.startDate = startDate.toISOString();
+                filters.endDate = endDate.toISOString();
+            }
         } else {
             if (start) {
                 filters.startDate = start;
@@ -967,6 +1101,11 @@ app.post('/api/admin/classes', authenticateAdmin, async (req, res) => {
             return res.status(400).json({ error: errors.join(' ') });
         }
 
+        const availability = await checkRoomAvailability(data.startTime, data.endTime);
+        if (!availability.available) {
+            return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
+        }
+
         const cls = await createClass(data);
         const [enriched] = await buildClassResponse([cls]);
         res.status(201).json(enriched);
@@ -981,6 +1120,11 @@ app.put('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
         const { errors, data } = validateClassPayload(req.body || {});
         if (errors) {
             return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const availability = await checkRoomAvailability(data.startTime, data.endTime, req.params.id);
+        if (!availability.available) {
+            return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
         }
 
         const updated = await updateClass(req.params.id, data);
@@ -1506,10 +1650,10 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                     });
                 }
 
-                const conflicts = await getRoomConflicts(date, startTime, endTime);
-                if (conflicts.length > 0) {
+                const isAvailable = await checkRoomAvailability(date, startTime, endTime);
+                if (!isAvailable) {
                     return res.status(400).json({
-                        error: `${itemLabel}: selected time overlaps with an existing booking.`
+                        error: '時間衝突：此時段已有場地租用或課堂安排'
                     });
                 }
             }
@@ -1545,7 +1689,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             phone,
             notes: notes || '',
             status,
-            totalPeople: normalizedSharedPeopleCount,
+            totalPeople: normalizedSharedPeopleCount ?? 1,
             items: normalizedItems
         };
 
