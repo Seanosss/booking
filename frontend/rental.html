@@ -318,12 +318,6 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-        footer {
-            text-align: center;
-            padding: 24px;
-            color: #64748b;
-            font-size: 0.9rem;
-        }
     </style>
 </head>
 <body>
@@ -398,7 +392,6 @@
             </form>
         </div>
     </main>
-    <footer>營業時間由後台設定自動套用 · 請於確認前勿付款</footer>
     <div class="payment-reminder-modal" id="payment-reminder-modal" aria-hidden="true">
         <div class="payment-reminder-content">
             <button type="button" class="payment-reminder-close" id="payment-reminder-close" aria-label="關閉提醒">×</button>
@@ -1048,6 +1041,18 @@
         renderSummary();
         calculateTotals();
         init();
+
+        // Remove any legacy footer note that might persist from cached assets
+        document.querySelectorAll('footer').forEach((footer) => {
+            const text = footer.textContent.trim();
+            if (
+                text.includes('營業時間由後台設定自動套用') ||
+                text.includes('課堂資料與方案皆由後台設定') ||
+                text.includes('Powered by the Studio Booking backend API')
+            ) {
+                footer.remove();
+            }
+        });
     </script>
 </body>
 </html>
