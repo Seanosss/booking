@@ -32,7 +32,7 @@ const DEFAULT_PAYMENT_METHODS = {
     fps: {
         enabled: false,
         fpsNumber: '',
-        displayName: 'FPS 轉數快'
+        displayName: ''
     }
 };
 

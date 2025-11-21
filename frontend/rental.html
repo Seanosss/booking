@@ -243,6 +243,81 @@
             border: 1px solid #dbe2ed;
             padding: 20px;
         }
+
+        .payment-reminder-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .payment-reminder-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .payment-reminder-content {
+            background: #fff;
+            width: min(480px, 100%);
+            border-radius: 18px;
+            padding: 24px 24px 20px;
+            box-shadow: 0 24px 50px rgba(15, 23, 42, 0.2);
+            position: relative;
+        }
+
+        .payment-reminder-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            border: none;
+            background: #e2e8f0;
+            color: #0f172a;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .payment-reminder-content h3 {
+            margin-top: 0;
+            color: var(--brand-secondary);
+            margin-bottom: 10px;
+        }
+
+        .payment-reminder-content p {
+            color: #1f2937;
+            line-height: 1.6;
+            margin: 0 0 16px;
+        }
+
+        .whatsapp-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #25d366;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 12px 24px rgba(37, 211, 102, 0.25);
+        }
+
+        .whatsapp-button[aria-disabled="true"] {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         footer {
             text-align: center;
             padding: 24px;
@@ -324,6 +399,14 @@
         </div>
     </main>
     <footer>營業時間由後台設定自動套用 · 請於確認前勿付款</footer>
+    <div class="payment-reminder-modal" id="payment-reminder-modal" aria-hidden="true">
+        <div class="payment-reminder-content">
+            <button type="button" class="payment-reminder-close" id="payment-reminder-close" aria-label="關閉提醒">×</button>
+            <h3>預約已提交</h3>
+            <p>預約已提交，請在 30 分鐘內完成付款，並將付款截圖 send 到 WhatsApp。</p>
+            <a id="payment-reminder-whatsapp" class="whatsapp-button" href="#" target="_blank" rel="noopener">打開 WhatsApp</a>
+        </div>
+    </div>
     <script>
         function resolveApiBaseUrl(storageKey) {
             const DEFAULT_API_PATH = '/api';
@@ -421,7 +504,10 @@
             contactCard: document.getElementById('contact-card'),
             instructionCard: document.getElementById('instruction-card'),
             paymentInfo: document.getElementById('payment-info'),
-            heroSubtitle: document.getElementById('hero-subtitle')
+            heroSubtitle: document.getElementById('hero-subtitle'),
+            paymentReminderModal: document.getElementById('payment-reminder-modal'),
+            paymentReminderWhatsapp: document.getElementById('payment-reminder-whatsapp'),
+            paymentReminderClose: document.getElementById('payment-reminder-close')
         };
 
         function timeToMinutes(value) {
@@ -763,6 +849,36 @@
             }
         }
 
+        function getWhatsappNumber() {
+            return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+        }
+
+        function buildWhatsappLink() {
+            const number = getWhatsappNumber();
+            if (!number) return null;
+            return `https://wa.me/${number}?text=${encodeURIComponent('付款證明')}`;
+        }
+
+        function openPaymentReminderModal() {
+            if (!elements.paymentReminderModal) return;
+            const link = buildWhatsappLink();
+            if (link) {
+                elements.paymentReminderWhatsapp.href = link;
+                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+            } else {
+                elements.paymentReminderWhatsapp.href = '#';
+                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+            }
+            elements.paymentReminderModal.classList.add('active');
+            elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closePaymentReminderModal() {
+            if (!elements.paymentReminderModal) return;
+            elements.paymentReminderModal.classList.remove('active');
+            elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
+        }
+
         async function loadSettings() {
             const response = await fetch(`${API_BASE_URL}/settings`);
             if (!response.ok) {
@@ -825,6 +941,18 @@
             calculateTotals();
         });
 
+        elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
+        elements.paymentReminderModal?.addEventListener('click', (event) => {
+            if (event.target === elements.paymentReminderModal) {
+                closePaymentReminderModal();
+            }
+        });
+        elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
+            if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
+                event.preventDefault();
+            }
+        });
+
         document.getElementById('booking-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             elements.successMessage.style.display = 'none';
@@ -869,6 +997,7 @@
                 }
                 elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
                 elements.successMessage.style.display = 'block';
+                openPaymentReminderModal();
                 const affectedDates = Array.from(new Set(groups.map(group => group.date)));
                 state.selectedSlotsByDate.clear();
                 affectedDates.forEach(date => state.availabilityByDate.delete(date));
