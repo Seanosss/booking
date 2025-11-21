@@ -872,8 +872,32 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
         query += ` AND bi.booking_id <> $${params.length}`;
     }
 
-    const result = await pool.query(query, params);
-    return result.rows.map(mapBookingItemRow);
+    const bookingResult = await pool.query(query, params);
+    const bookingConflicts = bookingResult.rows.map(mapBookingItemRow);
+
+    const classParams = [
+        date,
+        `${date}T${endTime}:00`,
+        `${date}T${startTime}:00`
+    ];
+    const classResult = await pool.query(`
+        SELECT id, name, start_time, end_time
+        FROM classes
+        WHERE DATE(start_time) = $1
+          AND start_time < $2::timestamptz
+          AND end_time > $3::timestamptz
+    `, classParams);
+
+    const classConflicts = classResult.rows.map(row => ({
+        id: row.id,
+        itemType: 'class_session',
+        name: row.name,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        date
+    }));
+
+    return [...bookingConflicts, ...classConflicts];
 }
 
 async function getCatalogItemById(id) {

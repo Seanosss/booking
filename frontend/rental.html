@@ -401,6 +401,7 @@
             selectedDate: '',
             availabilityByDate: new Map(),
             selectedSlotsByDate: new Map(),
+            selectedRanges: [],
             slotInterval: 30
         };
 
@@ -508,6 +509,7 @@
                     aggregated.push({ date, ...group });
                 });
             });
+            state.selectedRanges = aggregated;
             return aggregated;
         }
 
@@ -844,13 +846,9 @@
                     date: group.date,
                     startTime: group.start,
                     endTime: group.end
-                }))
+                })),
+                peopleCount: resolvePeopleCountInput() ?? 1
             };
-
-            const sharedPeopleCount = resolvePeopleCountInput();
-            if (sharedPeopleCount) {
-                payload.peopleCount = sharedPeopleCount;
-            }
 
             if (!payload.customerName || !payload.email || !payload.phone) {
                 elements.errorMessage.textContent = '請填寫完整聯絡資料。';
