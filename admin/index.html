@@ -402,7 +402,7 @@
         const API_BASE_URL = resolveApiBaseUrl('admin.apiBaseUrl');
         console.log('Using API_BASE_URL:', API_BASE_URL);
 
-        const DEV_AUTH_DISABLED = true; // Toggle to false to restore admin authentication
+        const DEV_AUTH_DISABLED = false; // Toggle to true to disable admin authentication (development only)
         function isAuthDisabled() { return DEV_AUTH_DISABLED; }
 
         const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
@@ -650,11 +650,10 @@
 
         async function performAdminLogin(password = '') {
             try {
-                const payload = isAuthDisabled() ? {} : { password };
                 const response = await fetch(`${API_BASE_URL}/admin/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ password })
                 });
                 const result = await response.json().catch(() => ({}));
 
