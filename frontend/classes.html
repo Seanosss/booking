@@ -86,5 +86,17 @@
             </a>
         </div>
     </main>
+    <script>
+        // Ensure any legacy footer note injected by cached assets is removed
+        document.querySelectorAll('footer').forEach((footer) => {
+            const text = footer.textContent.trim();
+            const shouldRemove =
+                text.includes('課堂資料與方案皆由後台設定') ||
+                text.includes('Powered by the Studio Booking backend API');
+            if (shouldRemove) {
+                footer.remove();
+            }
+        });
+    </script>
 </body>
 </html>

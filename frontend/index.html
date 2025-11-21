@@ -104,5 +104,17 @@
             </a>
         </div>
     </main>
+    <script>
+        // Safety net: remove any lingering footer notes that may be present in cached deployments
+        document.querySelectorAll('footer').forEach((footer) => {
+            const text = footer.textContent.trim();
+            const shouldRemove =
+                text.includes('Powered by the Studio Booking backend API') ||
+                text.includes('課堂資料與方案皆由後台設定');
+            if (shouldRemove) {
+                footer.remove();
+            }
+        });
+    </script>
 </body>
 </html>
