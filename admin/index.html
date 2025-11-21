@@ -273,6 +273,7 @@
                         <div class="input-group"><label>開始時間</label><input id="classStart" type="datetime-local" required></div>
                         <div class="input-group"><label>結束時間</label><input id="classEnd" type="datetime-local" required></div>
                         <div class="input-group"><label>價格 (每人)</label><input id="classPrice" type="number" min="0" step="1" required></div>
+                        <div class="input-group"><label>兩人同行優惠價 (選填)</label><input id="classSpecialPriceForTwo" type="number" min="0" step="1" placeholder="填寫兩人合計價"></div>
                         <div class="input-group"><label>人數上限</label><input id="classCapacity" type="number" min="1" required></div>
                         <div class="input-group"><label>是否為體驗限定</label><select id="classIsTrialOnly"><option value="false">否</option><option value="true">是</option></select></div>
                         <div class="input-group"><label>標籤 (逗號分隔)</label><input id="classTags" type="text" placeholder="例如 beginner,evening"></div>
@@ -1302,6 +1303,9 @@
                     ? cls.seatsRemaining
                     : Math.max(capacity - (cls.usedCapacity || 0), 0);
                 const tags = Array.isArray(cls.tags) ? cls.tags.filter(Boolean) : [];
+                const priceLine = cls.specialPriceForTwo != null
+                    ? `價格：HK$${Number(cls.price || 0).toFixed(2)} /人｜兩人同行 HK$${Number(cls.specialPriceForTwo).toFixed(2)}`
+                    : `價格：HK$${Number(cls.price || 0).toFixed(2)}`;
                 const tagsRow = tags.length ? `<small>標籤：${tags.map(tag => escapeHtml(tag)).join(', ')}</small>` : '';
                 const trialLabel = cls.isTrialOnly ? '<small style="color:#f2545b;">體驗限定</small>' : '';
 
@@ -1310,7 +1314,7 @@
                     <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
                     <small>地點：${escapeHtml(cls.location || '—')}</small>
                     <small>導師：${escapeHtml(cls.instructor || '—')}</small>
-                    <small>價格：HK$${Number(cls.price || 0).toFixed(2)}</small>
+                    <small>${priceLine}</small>
                     <small>人數：${escapeHtml(String(capacity))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
                     ${tagsRow}
                 `;
@@ -1340,6 +1344,7 @@
             document.getElementById('classStart').value = cls.startTime ? cls.startTime.slice(0, 16) : '';
             document.getElementById('classEnd').value = cls.endTime ? cls.endTime.slice(0, 16) : '';
             document.getElementById('classPrice').value = cls.price != null ? cls.price : '';
+            document.getElementById('classSpecialPriceForTwo').value = cls.specialPriceForTwo != null ? cls.specialPriceForTwo : '';
             document.getElementById('classCapacity').value = cls.capacity != null ? cls.capacity : '';
             document.getElementById('classDescription').value = cls.description || '';
             document.getElementById('classTags').value = Array.isArray(cls.tags) ? cls.tags.join(',') : '';
@@ -1350,6 +1355,7 @@
             const form = document.getElementById('classForm');
             if (form) form.reset();
             document.getElementById('classId').value = '';
+            document.getElementById('classSpecialPriceForTwo').value = '';
             document.getElementById('classIsTrialOnly').value = 'false';
         }
 
@@ -1360,6 +1366,10 @@
             const startValue = document.getElementById('classStart').value;
             const endValue = document.getElementById('classEnd').value;
             const priceValue = Number.parseFloat(document.getElementById('classPrice').value);
+            const specialPriceValueRaw = document.getElementById('classSpecialPriceForTwo').value;
+            const specialPriceValue = specialPriceValueRaw === ''
+                ? null
+                : Number.parseFloat(specialPriceValueRaw);
             const capacityValue = Number.parseInt(document.getElementById('classCapacity').value, 10);
 
             if (!name) {
@@ -1384,6 +1394,10 @@
                 showMessage('classesMessage', 'error', '請輸入有效的價格');
                 return;
             }
+            if (specialPriceValue !== null && (!Number.isFinite(specialPriceValue) || specialPriceValue < 0)) {
+                showMessage('classesMessage', 'error', '兩人同行價需為有效數字');
+                return;
+            }
             if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
                 showMessage('classesMessage', 'error', '請輸入有效的人數上限');
                 return;
@@ -1397,6 +1411,7 @@
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
                 price: priceValue,
+                specialPriceForTwo: specialPriceValue,
                 capacity: capacityValue,
                 tags: document.getElementById('classTags').value.split(',').map(tag => tag.trim()).filter(Boolean),
                 isTrialOnly: document.getElementById('classIsTrialOnly').value === 'true'

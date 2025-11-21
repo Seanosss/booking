@@ -39,6 +39,7 @@ const {
     createClassProduct,
     updateClassProduct,
     deleteClassProduct,
+    checkRoomAvailability,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -351,9 +352,16 @@ function validateClassPayload(payload) {
         : null;
     const description = typeof payload.description === 'string' ? payload.description : '';
     const startTime = payload.startTime ? new Date(payload.startTime) : null;
-    const endTime = payload.endTime ? new Date(payload.endTime) : null;
+    const endTimeRaw = payload.endTime ? new Date(payload.endTime) : null;
+    const durationMinutes = payload.duration === null || payload.duration === undefined
+        ? null
+        : Number.parseInt(payload.duration, 10);
     const capacity = Number.parseInt(payload.capacity, 10);
     const price = Number.parseFloat(payload.price);
+    const specialPriceForTwoRaw = payload.specialPriceForTwo;
+    const specialPriceForTwo = specialPriceForTwoRaw === null || specialPriceForTwoRaw === undefined || specialPriceForTwoRaw === ''
+        ? null
+        : Number.parseFloat(specialPriceForTwoRaw);
     const tags = Array.isArray(payload.tags)
         ? payload.tags.map(tag => tag.toString().trim()).filter(Boolean)
         : [];
@@ -365,6 +373,13 @@ function validateClassPayload(payload) {
 
     if (!startTime || Number.isNaN(startTime.getTime())) {
         errors.push('Valid start time is required.');
+    }
+
+    let endTime = endTimeRaw;
+
+    if ((!endTime || Number.isNaN(endTime.getTime())) && Number.isInteger(durationMinutes) && durationMinutes > 0) {
+        endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + durationMinutes);
     }
 
     if (!endTime || Number.isNaN(endTime.getTime())) {
@@ -383,6 +398,10 @@ function validateClassPayload(payload) {
         errors.push('Price must be a positive number.');
     }
 
+    if (specialPriceForTwo !== null && (!Number.isFinite(specialPriceForTwo) || specialPriceForTwo < 0)) {
+        errors.push('Special price for two must be a positive number when provided.');
+    }
+
     if (errors.length > 0) {
         return { errors };
     }
@@ -398,6 +417,7 @@ function validateClassPayload(payload) {
             endTime: endTime.toISOString(),
             capacity,
             price,
+            specialPriceForTwo,
             tags,
             isTrialOnly
         }
@@ -835,10 +855,19 @@ app.get('/api/items', async (req, res) => {
 
 app.get('/api/classes', async (req, res) => {
     try {
-        const { date, start, end, includeTrial, onlyTrial } = req.query;
+        const { date, start, end, includeTrial, onlyTrial, weekStart } = req.query;
         const filters = { includePast: false };
         if (date) {
             filters.onDate = date;
+        } else if (weekStart) {
+            const startDate = new Date(`${weekStart}T00:00:00`);
+            if (!Number.isNaN(startDate.getTime())) {
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 6);
+                endDate.setHours(23, 59, 59, 999);
+                filters.startDate = startDate.toISOString();
+                filters.endDate = endDate.toISOString();
+            }
         } else {
             if (start) {
                 filters.startDate = start;
@@ -981,6 +1010,11 @@ app.post('/api/admin/classes', authenticateAdmin, async (req, res) => {
             return res.status(400).json({ error: errors.join(' ') });
         }
 
+        const availability = await checkRoomAvailability(data.startTime, data.endTime);
+        if (!availability.available) {
+            return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
+        }
+
         const cls = await createClass(data);
         const [enriched] = await buildClassResponse([cls]);
         res.status(201).json(enriched);
@@ -995,6 +1029,11 @@ app.put('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
         const { errors, data } = validateClassPayload(req.body || {});
         if (errors) {
             return res.status(400).json({ error: errors.join(' ') });
+        }
+
+        const availability = await checkRoomAvailability(data.startTime, data.endTime, req.params.id);
+        if (!availability.available) {
+            return res.status(400).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
         }
 
         const updated = await updateClass(req.params.id, data);
