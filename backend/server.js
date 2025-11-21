@@ -318,6 +318,19 @@ async function getRentalAvailability(date) {
         }
     });
 
+    const classes = await getClasses({ onDate: date });
+    classes.forEach(cls => {
+        const startInfo = normalizeIsoToDateTimeStrings(cls.startTime);
+        const endInfo = normalizeIsoToDateTimeStrings(cls.endTime);
+
+        if (!startInfo || !endInfo || startInfo.date !== date || endInfo.date !== date) {
+            return;
+        }
+
+        const classSlots = generateSlotsForRange(startInfo.time, endInfo.time);
+        confirmedSlots.push(...classSlots);
+    });
+
     return {
         date,
         confirmedSlots,
@@ -1545,7 +1558,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             phone,
             notes: notes || '',
             status,
-            totalPeople: normalizedSharedPeopleCount,
+            totalPeople: normalizedSharedPeopleCount ?? 1,
             items: normalizedItems
         };
 
