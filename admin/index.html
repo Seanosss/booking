@@ -1,66 +1,364 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Studio Booking</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background: #EDEDE9; min-height: 100vh; padding: 24px; color: #1f2933; }
-        a { color: #145da0; }
-        .admin-container { max-width: 1280px; margin: 0 auto; display: block; }
-        .admin-header { background: #fff; border-radius: 18px; padding: 28px; margin-bottom: 24px; box-shadow: 0 24px 50px rgba(0,0,0,0.12); position: relative; }
-        .logout-btn { position: absolute; top: 24px; right: 24px; padding: 10px 18px; background: #f2545b; color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; }
-        .logout-btn:hover { opacity: 0.8; }
-        .tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid #d6dde6; flex-wrap: wrap; }
-        .tab-btn { padding: 10px 18px; background: transparent; border: none; color: #52606d; font-size: 1em; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: #0b4f6c; border-bottom-color: #145da0; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .section-card { background: #fff; border-radius: 18px; padding: 24px; margin-bottom: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.08); }
-        .section-card h3 { color: #145da0; margin-bottom: 18px; font-size: 1.4em; }
-        .form-grid { display: grid; gap: 18px; }
-        @media (min-width: 860px) { .form-grid.two-columns { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-        .input-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #364152; }
-        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 2px solid #d6dde6; border-radius: 12px; font-size: 1em; background: #fdfdfd; color: #1f2933; }
-        .input-group textarea { resize: vertical; min-height: 60px; }
-        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: #145da0; outline: none; box-shadow: 0 0 0 4px rgba(20,93,160,0.12); }
-        .btn { padding: 12px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; letter-spacing: 0.3px; }
-        .btn-primary { background: linear-gradient(135deg,#0b4f6c 0%,#145da0 100%); color: #fff; }
-        .btn-secondary { background: #e4ebf5; color: #1f2933; }
-        .btn-danger { background: #f2545b; color: #fff; }
-        .btn + .btn { margin-left: 10px; }
-        .status-chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; text-transform: uppercase; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-confirmed { background: #d4edda; color: #155724; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 14px; border-bottom: 1px solid #e4ebf5; text-align: left; vertical-align: top; }
-        th { background: #f0f4fa; color: #145da0; font-weight: 600; }
-        .message { padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: none; }
-        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .item-list { display: grid; gap: 16px; }
-        @media (min-width: 900px) { .item-list { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-        .item-card { border: 1px solid #dce3ef; border-radius: 16px; padding: 18px; background: #f8faff; display: flex; flex-direction: column; gap: 8px; }
-        .item-card h4 { color: #0b4f6c; font-size: 1.1em; }
-        .item-card small { color: #516273; }
-        .item-actions { margin-top: 12px; display: flex; gap: 8px; }
-        .stat-grid { display: grid; gap: 16px; margin-bottom: 16px; }
-        @media (min-width: 720px) { .stat-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
-        .stat-card { background: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%); color: #fff; padding: 18px; border-radius: 14px; box-shadow: 0 12px 30px rgba(79,172,254,0.35); }
-        .stat-card h4 { font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
-        .stat-card p { font-size: 1.8em; font-weight: 700; }
-        .overview-grid { display: grid; gap: 18px; margin-top: 18px; }
-        @media (min-width: 900px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-        .overview-list { display: flex; flex-direction: column; gap: 12px; }
-        .overview-card { background: #fff; border: 1px solid #dce3ef; border-radius: 14px; padding: 16px; box-shadow: 0 8px 18px rgba(0,0,0,0.05); }
-        .overview-card h4 { color: #0b4f6c; margin-bottom: 6px; }
-        .overview-meta { color: #52606d; font-size: 0.9em; line-height: 1.6; }
-        .overview-attendees { margin-top: 10px; padding-left: 16px; color: #52606d; font-size: 0.88em; }
-        .overview-empty { padding: 14px; border: 1px dashed #d6dde6; border-radius: 12px; color: #52606d; background: #f8faff; font-size: 0.9em; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif;
+            background: #EDEDE9;
+            min-height: 100vh;
+            padding: 24px;
+            color: #1f2933;
+        }
+
+        a {
+            color: #145da0;
+        }
+
+        .admin-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .admin-header {
+            background: #fff;
+            border-radius: 18px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.12);
+            position: relative;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            padding: 10px 18px;
+            background: #f2545b;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .logout-btn:hover {
+            opacity: 0.8;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #d6dde6;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 18px;
+            background: transparent;
+            border: none;
+            color: #52606d;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: #0b4f6c;
+            border-bottom-color: #145da0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-card {
+            background: #fff;
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-card h3 {
+            color: #145da0;
+            margin-bottom: 18px;
+            font-size: 1.4em;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        @media (min-width: 860px) {
+            .form-grid.two-columns {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #364152;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #d6dde6;
+            border-radius: 12px;
+            font-size: 1em;
+            background: #fdfdfd;
+            color: #1f2933;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            border-color: #145da0;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(20, 93, 160, 0.12);
+        }
+
+        .btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0b4f6c 0%, #145da0 100%);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #e4ebf5;
+            color: #1f2933;
+        }
+
+        .btn-danger {
+            background: #f2545b;
+            color: #fff;
+        }
+
+        .btn+.btn {
+            margin-left: 10px;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            border-bottom: 1px solid #e4ebf5;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f4fa;
+            color: #145da0;
+            font-weight: 600;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .item-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        @media (min-width: 900px) {
+            .item-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .item-card {
+            border: 1px solid #dce3ef;
+            border-radius: 16px;
+            padding: 18px;
+            background: #f8faff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item-card h4 {
+            color: #0b4f6c;
+            font-size: 1.1em;
+        }
+
+        .item-card small {
+            color: #516273;
+        }
+
+        .item-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (min-width: 720px) {
+            .stat-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #fff;
+            padding: 18px;
+            border-radius: 14px;
+            box-shadow: 0 12px 30px rgba(79, 172, 254, 0.35);
+        }
+
+        .stat-card h4 {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card p {
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+
+        .overview-grid {
+            display: grid;
+            gap: 18px;
+            margin-top: 18px;
+        }
+
+        @media (min-width: 900px) {
+            .overview-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .overview-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .overview-card {
+            background: #fff;
+            border: 1px solid #dce3ef;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+        }
+
+        .overview-card h4 {
+            color: #0b4f6c;
+            margin-bottom: 6px;
+        }
+
+        .overview-meta {
+            color: #52606d;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .overview-attendees {
+            margin-top: 10px;
+            padding-left: 16px;
+            color: #52606d;
+            font-size: 0.88em;
+        }
+
+        .overview-empty {
+            padding: 14px;
+            border: 1px dashed #d6dde6;
+            border-radius: 12px;
+            color: #52606d;
+            background: #f8faff;
+            font-size: 0.9em;
+        }
     </style>
 </head>
+
 <body>
     <div id="adminContainer" class="admin-container">
         <div class="admin-header">
@@ -70,9 +368,20 @@
             <div id="apiStatusMessage" class="message" style="margin-top:12px;"></div>
             <button class="logout-btn" onclick="logout()">登出</button>
             <div class="stat-grid">
-                <div class="stat-card" id="stat-total"><h4>總預約數</h4><p>0</p></div>
-                <div class="stat-card" style="background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);" id="stat-confirmed"><h4>已確認</h4><p>0</p></div>
-                <div class="stat-card" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);" id="stat-pending"><h4>待處理</h4><p>0</p></div>
+                <div class="stat-card" id="stat-total">
+                    <h4>總預約數</h4>
+                    <p>0</p>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);"
+                    id="stat-confirmed">
+                    <h4>已確認</h4>
+                    <p>0</p>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);"
+                    id="stat-pending">
+                    <h4>待處理</h4>
+                    <p>0</p>
+                </div>
             </div>
         </div>
         <div class="tabs">
@@ -178,12 +487,16 @@
                     <div class="input-group"><label>中文名稱</label><input id="businessNameZh" type="text"></div>
                     <div class="input-group"><label>營業時間開始</label><input id="startTime" type="time"></div>
                     <div class="input-group"><label>營業時間結束</label><input id="endTime" type="time"></div>
-                    <div class="input-group"><label>營業資訊 (中文)</label><input id="daysLabelZh" type="text" placeholder="每日營業"></div>
-                    <div class="input-group"><label>營業資訊 (英文)</label><input id="daysLabelEn" type="text" placeholder="Open Daily"></div>
+                    <div class="input-group"><label>營業資訊 (中文)</label><input id="daysLabelZh" type="text"
+                            placeholder="每日營業"></div>
+                    <div class="input-group"><label>營業資訊 (英文)</label><input id="daysLabelEn" type="text"
+                            placeholder="Open Daily"></div>
                 </div>
                 <div class="form-grid two-columns" style="margin-top:18px;">
-                    <div class="input-group"><label>英文介紹</label><textarea id="businessDescription" rows="3"></textarea></div>
-                    <div class="input-group"><label>中文介紹</label><textarea id="businessDescriptionZh" rows="3"></textarea></div>
+                    <div class="input-group"><label>英文介紹</label><textarea id="businessDescription" rows="3"></textarea>
+                    </div>
+                    <div class="input-group"><label>中文介紹</label><textarea id="businessDescriptionZh"
+                            rows="3"></textarea></div>
                 </div>
             </div>
             <div class="section-card">
@@ -197,42 +510,113 @@
             <div class="section-card">
                 <h3>付款方式</h3>
                 <div class="form-grid two-columns">
-                    <div class="input-group"><label>銀行轉帳啟用</label><select id="paymentBankEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
-                    <div class="input-group"><label>PayMe 啟用</label><select id="paymentPaymeEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
+                    <div class="input-group"><label>銀行轉帳啟用</label><select id="paymentBankEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>PayMe 啟用</label><select id="paymentPaymeEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
                     <div class="input-group"><label>銀行名稱</label><input id="paymentBankName" type="text"></div>
                     <div class="input-group"><label>銀行戶口號碼</label><input id="paymentBankAccount" type="text"></div>
                     <div class="input-group"><label>戶口名稱</label><input id="paymentBankAccountName" type="text"></div>
-                    <div class="input-group"><label>PayMe 顯示名稱</label><input id="paymentPaymeDisplayName" type="text"></div>
+                    <div class="input-group"><label>PayMe 顯示名稱</label><input id="paymentPaymeDisplayName" type="text">
+                    </div>
                     <div class="input-group"><label>PayMe 電話</label><input id="paymentPaymePhone" type="text"></div>
-                    <div class="input-group"><label>FPS 啟用</label><select id="paymentFpsEnabled"><option value="true">啟用</option><option value="false">停用</option></select></div>
+                    <div class="input-group"><label>FPS 啟用</label><select id="paymentFpsEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
                     <div class="input-group"><label>FPS 號碼</label><input id="paymentFpsNumber" type="text"></div>
-                    <div class="input-group"><label>FPS 顯示名稱</label><input id="paymentFpsDisplayName" type="text" placeholder="例如 FPS 轉數快"></div>
+                    <div class="input-group"><label>FPS 顯示名稱</label><input id="paymentFpsDisplayName" type="text"
+                            placeholder="例如 FPS 轉數快"></div>
                 </div>
             </div>
             <div class="section-card">
                 <h3>預約規則</h3>
                 <div class="form-grid two-columns">
-                    <div class="input-group"><label>最少提前天數</label><input id="bookingMinAdvance" type="number" min="0"></div>
-                    <div class="input-group"><label>最多提前天數</label><input id="bookingMaxAdvance" type="number" min="0"></div>
-                    <div class="input-group"><label>時段間隔 (分鐘)</label><input id="bookingSlotInterval" type="number" min="5" step="5"></div>
-                    <div class="input-group"><label>自動確認預約</label><select id="bookingAutoConfirm"><option value="true">是</option><option value="false">否</option></select></div>
-                    <div class="input-group"><label>需要付款證明</label><select id="bookingRequirePaymentProof"><option value="true">是</option><option value="false">否</option></select></div>
+                    <div class="input-group"><label>最少提前天數</label><input id="bookingMinAdvance" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>最多提前天數</label><input id="bookingMaxAdvance" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>時段間隔 (分鐘)</label><input id="bookingSlotInterval" type="number"
+                            min="5" step="5"></div>
+                    <div class="input-group"><label>自動確認預約</label><select id="bookingAutoConfirm">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select></div>
+                    <div class="input-group"><label>需要付款證明</label><select id="bookingRequirePaymentProof">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select></div>
                 </div>
             </div>
             <div class="section-card">
                 <h3>價格設定</h3>
                 <div class="form-grid two-columns">
-                    <div class="input-group"><label>一般時段 (≤10人)</label><input id="normalUpTo10" type="number" min="0"></div>
-                    <div class="input-group"><label>一般時段 (11-18人)</label><input id="normalUpTo18" type="number" min="0"></div>
-                    <div class="input-group"><label>高峰時段 (≤10人)</label><input id="peakUpTo10" type="number" min="0"></div>
-                    <div class="input-group"><label>高峰時段 (11-18人)</label><input id="peakUpTo18" type="number" min="0"></div>
-                    <div class="input-group"><label>高峰時段適用星期 (以逗號分隔，例如 fri,sat,sun)</label><input id="peakDays" type="text"></div>
+                    <div class="input-group"><label>一般時段 (≤10人)</label><input id="normalUpTo10" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>一般時段 (11-18人)</label><input id="normalUpTo18" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段 (≤10人)</label><input id="peakUpTo10" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段 (11-18人)</label><input id="peakUpTo18" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段適用星期 (以逗號分隔，例如 fri,sat,sun)</label><input id="peakDays"
+                            type="text"></div>
                     <div class="input-group"><label>高峰開始時間</label><input id="peakStart" type="time"></div>
                     <div class="input-group"><label>高峰結束時間</label><input id="peakEnd" type="time"></div>
                 </div>
             </div>
+            <div id="userManagementSection" class="section-card" style="display:none;">
+                <h3>使用者管理</h3>
+                <div id="userMessage" class="message"></div>
+                <form id="userForm" class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>使用者名稱</label>
+                        <input id="newUsername" type="text" placeholder="例如：receptionist1">
+                    </div>
+                    <div class="input-group">
+                        <label>密碼</label>
+                        <input id="newUserPassword" type="password" placeholder="請設定密碼">
+                    </div>
+                    <div class="input-group">
+                        <label>角色</label>
+                        <select id="newUserRole">
+                            <option value="receptionist">接待員 (Receptionist)</option>
+                            <option value="super_admin">超級管理員 (Super Admin)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="display:flex;align-items:flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="createNewUser()">建立使用者</button>
+                    </div>
+                </form>
+            </div>
             <div style="margin:18px 0 24px;">
                 <button class="btn btn-primary" type="button" onclick="saveSettings()">儲存設定</button>
+            </div>
+        </div>
+
+        <!-- Login Modal -->
+        <div id="loginModal"
+            style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+            <div
+                style="background:#fff; padding:32px; border-radius:16px; width:100%; max-width:400px; box-shadow:0 24px 50px rgba(0,0,0,0.2);">
+                <h2 style="color:#0b4f6c; margin-bottom:24px; text-align:center;">管理員登入</h2>
+                <div id="loginError" class="message error" style="display:none; margin-bottom:16px;"></div>
+                <form onsubmit="handleLogin(event)">
+                    <div class="input-group" style="margin-bottom:16px;">
+                        <label>使用者名稱</label>
+                        <input type="text" id="loginUsername" required placeholder="admin" autofocus>
+                    </div>
+                    <div class="input-group" style="margin-bottom:24px;">
+                        <label>密碼</label>
+                        <input type="password" id="loginPassword" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-primary"
+                        style="width:100%; padding:14px; font-size:1.1em;">登入</button>
+                </form>
             </div>
         </div>
         <div id="instructionsTab" class="tab-content">
@@ -257,7 +641,8 @@
                     <div class="input-group"><label>步驟 6 (中文)</label><textarea id="instruction6Zh"></textarea></div>
                     <div class="input-group"><label>步驟 6 (英文)</label><textarea id="instruction6En"></textarea></div>
                 </div>
-                <div style="margin-top:18px;"><button class="btn btn-primary" onclick="saveInstructions()">儲存須知</button></div>
+                <div style="margin-top:18px;"><button class="btn btn-primary" onclick="saveInstructions()">儲存須知</button>
+                </div>
             </div>
         </div>
         <div id="itemsTab" class="tab-content">
@@ -270,13 +655,22 @@
                         <div class="input-group"><label>課程名稱</label><input id="className" type="text" required></div>
                         <div class="input-group"><label>導師</label><input id="classInstructor" type="text"></div>
                         <div class="input-group"><label>地點</label><input id="classLocation" type="text"></div>
-                        <div class="input-group"><label>開始時間</label><input id="classStart" type="datetime-local" required></div>
-                        <div class="input-group"><label>結束時間</label><input id="classEnd" type="datetime-local" required></div>
-                        <div class="input-group"><label>價格 (每人)</label><input id="classPrice" type="number" min="0" step="1" required></div>
-                        <div class="input-group"><label>兩人同行優惠價 (選填)</label><input id="classSpecialPriceForTwo" type="number" min="0" step="1" placeholder="填寫兩人合計價"></div>
-                        <div class="input-group"><label>人數上限</label><input id="classCapacity" type="number" min="1" required></div>
-                        <div class="input-group"><label>是否為體驗限定</label><select id="classIsTrialOnly"><option value="false">否</option><option value="true">是</option></select></div>
-                        <div class="input-group"><label>標籤 (逗號分隔)</label><input id="classTags" type="text" placeholder="例如 beginner,evening"></div>
+                        <div class="input-group"><label>開始時間</label><input id="classStart" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>結束時間</label><input id="classEnd" type="datetime-local" required>
+                        </div>
+                        <div class="input-group"><label>價格 (每人)</label><input id="classPrice" type="number" min="0"
+                                step="1" required></div>
+                        <div class="input-group"><label>兩人同行優惠價 (選填)</label><input id="classSpecialPriceForTwo"
+                                type="number" min="0" step="1" placeholder="填寫兩人合計價"></div>
+                        <div class="input-group"><label>人數上限</label><input id="classCapacity" type="number" min="1"
+                                required></div>
+                        <div class="input-group"><label>是否為體驗限定</label><select id="classIsTrialOnly">
+                                <option value="false">否</option>
+                                <option value="true">是</option>
+                            </select></div>
+                        <div class="input-group"><label>標籤 (逗號分隔)</label><input id="classTags" type="text"
+                                placeholder="例如 beginner,evening"></div>
                     </div>
                     <div class="form-grid" style="margin-top:18px;">
                         <div class="input-group"><label>課程介紹</label><textarea id="classDescription"></textarea></div>
@@ -295,14 +689,22 @@
                 <form id="classProductForm">
                     <input type="hidden" id="classProductId">
                     <div class="form-grid two-columns">
-                        <div class="input-group"><label>類型</label><select id="classProductType"><option value="package">課程方案</option><option value="trial">體驗方案</option></select></div>
-                        <div class="input-group"><label>名稱</label><input id="classProductName" type="text" required></div>
-                        <div class="input-group"><label>價格</label><input id="classProductPrice" type="number" min="0" step="1" required></div>
-                        <div class="input-group"><label>堂數</label><input id="classProductCount" type="number" min="1" required></div>
-                        <div class="input-group"><label>有效期 (天)</label><input id="classProductValidity" type="number" min="1"></div>
+                        <div class="input-group"><label>類型</label><select id="classProductType">
+                                <option value="package">課程方案</option>
+                                <option value="trial">體驗方案</option>
+                            </select></div>
+                        <div class="input-group"><label>名稱</label><input id="classProductName" type="text" required>
+                        </div>
+                        <div class="input-group"><label>價格</label><input id="classProductPrice" type="number" min="0"
+                                step="1" required></div>
+                        <div class="input-group"><label>堂數</label><input id="classProductCount" type="number" min="1"
+                                required></div>
+                        <div class="input-group"><label>有效期 (天)</label><input id="classProductValidity" type="number"
+                                min="1"></div>
                     </div>
                     <div class="form-grid" style="margin-top:18px;">
-                        <div class="input-group"><label>方案介紹</label><textarea id="classProductDescription"></textarea></div>
+                        <div class="input-group"><label>方案介紹</label><textarea id="classProductDescription"></textarea>
+                        </div>
                     </div>
                     <div style="margin-top:18px;">
                         <button type="submit" class="btn btn-primary">儲存方案</button>
@@ -319,12 +721,18 @@
                     <input type="hidden" id="rentalItemId">
                     <div class="form-grid two-columns">
                         <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
-                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local" required></div>
-                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local" required></div>
-                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number" min="1" required></div>
-                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number" min="0" step="1" required></div>
-                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text"></div>
-                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1" required></div>
+                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number"
+                                min="1" required></div>
+                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number"
+                                min="0" step="1" required></div>
+                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
+                        </div>
+                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
+                                required></div>
                     </div>
                     <div style="margin-top:18px;">
                         <button type="submit" class="btn btn-primary">儲存場地項目</button>
@@ -419,22 +827,13 @@
         const DEV_AUTH_DISABLED = false; // Toggle to true to disable admin authentication (development only)
         function isAuthDisabled() { return DEV_AUTH_DISABLED; }
 
-        const LOGIN_ERROR_DEFAULT = '登入失敗，請檢查管理密碼。';
+
+
         let refreshIntervalId = null;
         let currentSettings = {};
         let currentRentalItems = [];
         let currentClasses = [];
         let currentClassProducts = [];
-
-        function showLoginError(message) {
-            const el = document.getElementById('loginError');
-            if (!el) return;
-            el.textContent = message || '登入失敗，請稍後再試。';
-            el.style.display = 'block';
-            setTimeout(() => {
-                el.style.display = 'none';
-            }, 3000);
-        }
 
         async function checkApiHealth() {
             const statusEl = document.getElementById('apiStatusMessage');
@@ -456,20 +855,6 @@
                 statusEl.className = 'message error';
                 statusEl.textContent = '後端 API 無法連線，請檢查 API_BASE_URL 設定或 Render 服務是否正常。';
                 statusEl.style.display = 'block';
-            }
-        }
-
-        function updateAdminIdentity(isLoggedIn) {
-            const el = document.getElementById('adminIdentity');
-            if (!el) return;
-            if (isLoggedIn) {
-                el.textContent = isAuthDisabled()
-                    ? '開發模式：已停用管理員驗證'
-                    : '已使用共享管理密碼登入';
-                el.style.display = 'block';
-            } else {
-                el.textContent = '';
-                el.style.display = 'none';
             }
         }
 
@@ -619,143 +1004,39 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await checkApiHealth();
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', handleLogin);
-            }
 
+            // Event Listeners for Tabs
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
+
+            // Event Listeners for Forms
             const classForm = document.getElementById('classForm');
             if (classForm) classForm.addEventListener('submit', submitClassForm);
+
             const classProductForm = document.getElementById('classProductForm');
             if (classProductForm) classProductForm.addEventListener('submit', submitClassProductForm);
+
             const rentalItemForm = document.getElementById('rentalItemForm');
             if (rentalItemForm) rentalItemForm.addEventListener('submit', submitRentalItemForm);
-            const passwordForm = document.getElementById('passwordForm');
-            if (passwordForm) {
-                passwordForm.addEventListener('submit', handlePasswordChange);
-            }
 
-            setOverviewDateToToday();
+            const passwordForm = document.getElementById('passwordForm');
+            if (passwordForm) passwordForm.addEventListener('submit', handlePasswordChange);
+
+            // User Management Form (New)
+            // Note: createNewUser is called via onclick in the HTML, so no listener needed here, 
+            // but if we change to onsubmit in future, add it here.
+
+            // Date Input Listeners
             const overviewDateInput = document.getElementById('overviewDate');
             if (overviewDateInput) {
                 overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
             }
 
-            if (isAuthDisabled()) {
-                const loginResult = await performAdminLogin();
-                if (!loginResult.success) {
-                    showLoginError(loginResult.error || LOGIN_ERROR_DEFAULT);
-                }
-                return;
-            }
-
-            const token = sessionStorage.getItem('adminToken');
-            const expiry = sessionStorage.getItem('adminTokenExpiry');
-            if (token && (!expiry || new Date(expiry) > new Date())) {
-                showAdminPanel();
-            }
+            // Initial Auth Check is triggered by script end, or we can trigger here if preferred.
+            // checkAuthentication() is already called at the end of the script.
         });
 
-        function authHeaders() {
-            const token = sessionStorage.getItem('adminToken');
-            return token ? { 'Authorization': `Bearer ${token}` } : {};
-        }
+        // Removed legacy auth functions (performAdminLogin, showAdminPanel, old logout, old authHeaders)
 
-        async function performAdminLogin(password = '') {
-            try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                const result = await response.json().catch(() => ({}));
-
-                if (response.ok && result.success) {
-                    if (result.token) {
-                        sessionStorage.setItem('adminToken', result.token);
-                    }
-                    if (result.expiresAt) {
-                        sessionStorage.setItem('adminTokenExpiry', result.expiresAt);
-                    } else {
-                        sessionStorage.removeItem('adminTokenExpiry');
-                    }
-                    showAdminPanel();
-                    return { success: true, result };
-                }
-
-                return {
-                    success: false,
-                    error: (result && result.error) || LOGIN_ERROR_DEFAULT
-                };
-            } catch (error) {
-                console.error('Login error:', error);
-                return {
-                    success: false,
-                    error: '無法登入，請稍後再試。'
-                };
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const passwordInput = document.getElementById('passwordInput');
-            const password = passwordInput ? passwordInput.value : '';
-            if (!isAuthDisabled() && !password) {
-                showLoginError('請輸入管理密碼。');
-                return;
-            }
-            const loginAttempt = await performAdminLogin(password);
-            if (!loginAttempt.success) {
-                showLoginError(loginAttempt.error || LOGIN_ERROR_DEFAULT);
-            }
-        }
-
-        function showAdminPanel() {
-            document.getElementById('adminContainer').style.display = 'block';
-            updateAdminIdentity(true);
-            const passwordMsg = document.getElementById('passwordMessage');
-            if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
-            const passwordForm = document.getElementById('passwordForm');
-            if (passwordForm) passwordForm.reset();
-            setOverviewDateToToday();
-            loadBookingOverview(document.getElementById('overviewDate')?.value);
-            loadStats();
-            loadBookings();
-            loadSettings();
-            loadInstructions();
-            loadClasses();
-            loadClassProducts();
-            loadRentalItems();
-            if (refreshIntervalId) clearInterval(refreshIntervalId);
-            refreshIntervalId = setInterval(() => {
-                loadStats();
-                loadBookings();
-                loadBookingOverview(document.getElementById('overviewDate')?.value);
-            }, 30000);
-        }
-
-        function logout() {
-            sessionStorage.removeItem('adminToken');
-            sessionStorage.removeItem('adminTokenExpiry');
-            if (refreshIntervalId) clearInterval(refreshIntervalId);
-            const adminContainer = document.getElementById('adminContainer');
-            if (adminContainer) adminContainer.style.display = 'none';
-            const studioList = document.getElementById('overviewStudioList');
-            const classList = document.getElementById('overviewClassList');
-            const overviewMsg = document.getElementById('overviewMessage');
-            if (studioList) studioList.innerHTML = '';
-            if (classList) classList.innerHTML = '';
-            if (overviewMsg) { overviewMsg.style.display = 'none'; overviewMsg.textContent = ''; }
-            const passwordForm = document.getElementById('passwordForm');
-            if (passwordForm) passwordForm.reset();
-            const passwordMsg = document.getElementById('passwordMessage');
-            if (passwordMsg) { passwordMsg.style.display = 'none'; passwordMsg.textContent = ''; }
-            updateAdminIdentity(false);
-            if (isAuthDisabled()) {
-                performAdminLogin();
-            }
-        }
 
         async function loadStats() {
             try {
@@ -982,221 +1263,213 @@
             }
         }
 
-        async function loadSettings() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/settings`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
-                if (!response.ok) {
-                    const errorPayload = await response.json().catch(() => ({}));
-                    console.error('Failed to load settings:', response.status, errorPayload);
-                    showMessage('settingsMessage', 'error', errorPayload.error || '無法載入設定，請稍後再試。');
-                    return;
-                }
-                currentSettings = await response.json();
-                populateSettings();
-                hideMessage('settingsMessage');
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                showMessage('settingsMessage', 'error', '無法載入設定，請稍後再試。');
-            }
+        function authHeaders() {
+            const token = localStorage.getItem('adminToken');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
         }
 
-        function populateSettings() {
-            const operatingHours = currentSettings.operatingHours || {};
-            const pricing = currentSettings.pricing || {};
-            const peakSchedule = pricing.peakSchedule || {};
-            const contactInfo = currentSettings.contactInfo || {};
-            const paymentMethods = currentSettings.paymentMethods || {};
-            const bankTransfer = paymentMethods.bankTransfer || {};
-            const payme = paymentMethods.payme || {};
-            const fps = paymentMethods.fps || {};
-            const bookingRules = currentSettings.bookingRules || {};
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
 
-            document.getElementById('businessName').value = currentSettings.businessName || '';
-            document.getElementById('businessNameZh').value = currentSettings.businessNameZh || '';
-            document.getElementById('businessDescription').value = currentSettings.businessDescription || '';
-            document.getElementById('businessDescriptionZh').value = currentSettings.businessDescriptionZh || '';
-            document.getElementById('startTime').value = operatingHours.startTime || '07:00';
-            document.getElementById('endTime').value = operatingHours.endTime || '22:00';
-            document.getElementById('daysLabelZh').value = operatingHours.daysLabelZh || '';
-            document.getElementById('daysLabelEn').value = operatingHours.daysLabelEn || '';
-            document.getElementById('normalUpTo10').value = pricing.normalUpTo10 ?? '';
-            document.getElementById('normalUpTo18').value = pricing.normalUpTo18 ?? '';
-            document.getElementById('peakUpTo10').value = pricing.peakUpTo10 ?? '';
-            document.getElementById('peakUpTo18').value = pricing.peakUpTo18 ?? '';
-            document.getElementById('peakDays').value = Array.isArray(peakSchedule.days) ? peakSchedule.days.join(',') : '';
-            document.getElementById('peakStart').value = peakSchedule.startTime || '';
-            document.getElementById('peakEnd').value = peakSchedule.endTime || '';
-            document.getElementById('contactWhatsapp').value = contactInfo.whatsapp || '';
-            document.getElementById('contactPhone').value = contactInfo.phone || '';
-            document.getElementById('contactEmail').value = contactInfo.email || '';
-            document.getElementById('paymentBankEnabled').value = bankTransfer.enabled ? 'true' : 'false';
-            document.getElementById('paymentBankName').value = bankTransfer.bankName || '';
-            document.getElementById('paymentBankAccount').value = bankTransfer.accountNumber || '';
-            document.getElementById('paymentBankAccountName').value = bankTransfer.accountName || '';
-            document.getElementById('paymentPaymeEnabled').value = payme.enabled ? 'true' : 'false';
-            document.getElementById('paymentPaymeDisplayName').value = payme.displayName || '';
-            document.getElementById('paymentPaymePhone').value = payme.phoneNumber || '';
-            document.getElementById('paymentFpsEnabled').value = fps.enabled ? 'true' : 'false';
-            document.getElementById('paymentFpsNumber').value = fps.fpsNumber || '';
-            document.getElementById('paymentFpsDisplayName').value = fps.displayName || '';
-            document.getElementById('bookingMinAdvance').value = bookingRules.minAdvanceBooking ?? '';
-            document.getElementById('bookingMaxAdvance').value = bookingRules.maxAdvanceBooking ?? '';
-            document.getElementById('bookingSlotInterval').value = bookingRules.slotInterval ?? '';
-            document.getElementById('bookingAutoConfirm').value = bookingRules.autoConfirm ? 'true' : 'false';
-            document.getElementById('bookingRequirePaymentProof').value = bookingRules.requirePaymentProof === false ? 'false' : 'true';
-        }
+            errorEl.style.display = 'none';
 
-        async function saveSettings() {
-            const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-            const parseTimeToMinutes = (value) => {
-                if (!timePattern.test(value)) return null;
-                const [hours, minutes] = value.split(':').map(Number);
-                return (hours * 60) + minutes;
-            };
-
-            const startTimeValue = document.getElementById('startTime').value.trim();
-            const endTimeValue = document.getElementById('endTime').value.trim();
-            if (!startTimeValue || !endTimeValue || !timePattern.test(startTimeValue) || !timePattern.test(endTimeValue)) {
-                showMessage('settingsMessage', 'error', '請輸入有效的營業開始與結束時間（格式：HH:MM）');
-                return;
-            }
-
-            const startMinutes = parseTimeToMinutes(startTimeValue);
-            const endMinutes = parseTimeToMinutes(endTimeValue);
-            if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
-                showMessage('settingsMessage', 'error', '營業開始時間需早於結束時間');
-                return;
-            }
-
-            const peakStartValue = document.getElementById('peakStart').value.trim();
-            const peakEndValue = document.getElementById('peakEnd').value.trim();
-            if (peakStartValue && !timePattern.test(peakStartValue)) {
-                showMessage('settingsMessage', 'error', '請輸入有效的繁忙時段開始時間（格式：HH:MM）');
-                return;
-            }
-            if (peakEndValue && !timePattern.test(peakEndValue)) {
-                showMessage('settingsMessage', 'error', '請輸入有效的繁忙時段結束時間（格式：HH:MM）');
-                return;
-            }
-            if (peakStartValue && peakEndValue) {
-                const peakStartMinutes = parseTimeToMinutes(peakStartValue);
-                const peakEndMinutes = parseTimeToMinutes(peakEndValue);
-                if (peakStartMinutes !== null && peakEndMinutes !== null && peakStartMinutes >= peakEndMinutes) {
-                    showMessage('settingsMessage', 'error', '繁忙時段開始時間需早於結束時間');
-                    return;
-                }
-            }
-
-            const toFloat = (value) => {
-                const parsed = Number.parseFloat(value);
-                return Number.isFinite(parsed) ? parsed : null;
-            };
-            const toInt = (value) => {
-                const parsed = Number.parseInt(value, 10);
-                return Number.isFinite(parsed) ? parsed : null;
-            };
-
-            const currentPricing = currentSettings.pricing || {};
-            const normalUpTo10Value = toFloat(document.getElementById('normalUpTo10').value);
-            const normalUpTo18Value = toFloat(document.getElementById('normalUpTo18').value);
-            const peakUpTo10Value = toFloat(document.getElementById('peakUpTo10').value);
-            const peakUpTo18Value = toFloat(document.getElementById('peakUpTo18').value);
-            const peakDays = document.getElementById('peakDays').value
-                .split(',')
-                .map(v => v.trim().toLowerCase())
-                .filter(Boolean);
-
-            const pricing = {
-                ...currentPricing,
-                normalUpTo10: normalUpTo10Value !== null ? normalUpTo10Value : currentPricing.normalUpTo10 ?? null,
-                normalUpTo18: normalUpTo18Value !== null ? normalUpTo18Value : currentPricing.normalUpTo18 ?? null,
-                peakUpTo10: peakUpTo10Value !== null ? peakUpTo10Value : currentPricing.peakUpTo10 ?? null,
-                peakUpTo18: peakUpTo18Value !== null ? peakUpTo18Value : currentPricing.peakUpTo18 ?? null,
-                peakSchedule: {
-                    ...(currentPricing.peakSchedule || {}),
-                    days: peakDays,
-                    startTime: peakStartValue || null,
-                    endTime: peakEndValue || null
-                }
-            };
-
-            const currentRules = currentSettings.bookingRules || {};
-            const minAdvanceInput = toInt(document.getElementById('bookingMinAdvance').value);
-            const maxAdvanceInput = toInt(document.getElementById('bookingMaxAdvance').value);
-            const slotIntervalInput = toInt(document.getElementById('bookingSlotInterval').value);
-
-            const bookingRules = {
-                ...currentRules,
-                minAdvanceBooking: minAdvanceInput !== null ? minAdvanceInput : currentRules.minAdvanceBooking ?? null,
-                maxAdvanceBooking: maxAdvanceInput !== null ? maxAdvanceInput : currentRules.maxAdvanceBooking ?? null,
-                slotInterval: slotIntervalInput !== null ? slotIntervalInput : currentRules.slotInterval ?? null,
-                autoConfirm: document.getElementById('bookingAutoConfirm').value === 'true',
-                requirePaymentProof: document.getElementById('bookingRequirePaymentProof').value === 'true'
-            };
-
-            const payload = {
-                ...currentSettings,
-                businessName: document.getElementById('businessName').value,
-                businessNameZh: document.getElementById('businessNameZh').value,
-                businessDescription: document.getElementById('businessDescription').value,
-                businessDescriptionZh: document.getElementById('businessDescriptionZh').value,
-                operatingHours: {
-                    ...(currentSettings.operatingHours || {}),
-                    startTime: startTimeValue,
-                    endTime: endTimeValue,
-                    daysLabelZh: document.getElementById('daysLabelZh').value,
-                    daysLabelEn: document.getElementById('daysLabelEn').value
-                },
-                pricing,
-                contactInfo: {
-                    ...(currentSettings.contactInfo || {}),
-                    whatsapp: document.getElementById('contactWhatsapp').value,
-                    phone: document.getElementById('contactPhone').value,
-                    email: document.getElementById('contactEmail').value
-                },
-                paymentMethods: {
-                    ...(currentSettings.paymentMethods || {}),
-                    bankTransfer: {
-                        ...(currentSettings.paymentMethods?.bankTransfer || {}),
-                        enabled: document.getElementById('paymentBankEnabled').value === 'true',
-                        bankName: document.getElementById('paymentBankName').value,
-                        accountNumber: document.getElementById('paymentBankAccount').value,
-                        accountName: document.getElementById('paymentBankAccountName').value
-                    },
-                    payme: {
-                        ...(currentSettings.paymentMethods?.payme || {}),
-                        enabled: document.getElementById('paymentPaymeEnabled').value === 'true',
-                        displayName: document.getElementById('paymentPaymeDisplayName').value,
-                        phoneNumber: document.getElementById('paymentPaymePhone').value
-                    },
-                    fps: {
-                        ...(currentSettings.paymentMethods?.fps || {}),
-                        enabled: document.getElementById('paymentFpsEnabled').value === 'true',
-                        fpsNumber: document.getElementById('paymentFpsNumber').value,
-                        displayName: document.getElementById('paymentFpsDisplayName').value
-                    }
-                },
-                bookingRules
-            };
             try {
-                const response = await fetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-                if (response.status === 401) return logout();
-                if (response.ok) {
-                    const result = await response.json().catch(() => ({}));
-                    currentSettings = result.settings || payload;
-                    populateSettings();
-                    showMessage('settingsMessage', 'success', result.message || '設定已更新');
+                const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    localStorage.setItem('adminToken', result.token);
+                    localStorage.setItem('adminRole', result.role || 'super_admin');
+                    localStorage.setItem('adminUsername', result.username || username);
+                    document.getElementById('loginModal').style.display = 'none';
+                    initializeAdminPanel();
                 } else {
-                    const result = await response.json().catch(() => ({}));
-                    console.error('Failed to save settings:', response.status, result);
-                    showMessage('settingsMessage', 'error', result.error || '儲存失敗');
+                    errorEl.textContent = result.error || '登入失敗';
+                    errorEl.style.display = 'block';
                 }
             } catch (error) {
-                console.error('Error saving settings:', error);
-                showMessage('settingsMessage', 'error', '儲存失敗，請稍後再試');
+                console.error('Login error:', error);
+                errorEl.textContent = '登入連線失敗';
+                errorEl.style.display = 'block';
             }
         }
+
+        function checkAuthentication() {
+            if (isAuthDisabled()) {
+                initializeAdminPanel();
+                return;
+            }
+
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                showLoginModal();
+            } else {
+                // Verify token validity by calling a protected endpoint (e.g., stats)
+                fetch(`${API_BASE_URL}/stats`, { headers: authHeaders() })
+                    .then(response => {
+                        if (response.status === 401) {
+                            throw new Error('Token expired');
+                        }
+                        return response.json();
+                    })
+                    .then(() => initializeAdminPanel())
+                    .catch(() => {
+                        logout();
+                    });
+            }
+        }
+
+        function showLoginModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+            document.getElementById('adminContainer').style.display = 'none';
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRole');
+            localStorage.removeItem('adminUsername');
+            document.getElementById('adminContainer').style.display = 'none';
+            showLoginModal();
+        }
+
+        function applyRolePermissions() {
+            const role = localStorage.getItem('adminRole');
+            const username = localStorage.getItem('adminUsername');
+
+            const identityEl = document.getElementById('adminIdentity');
+            if (identityEl) {
+                identityEl.textContent = `已登入: ${username} (${role === 'super_admin' ? '超級管理員' : '接待員'})`;
+                identityEl.style.display = 'block';
+            }
+
+            // Elements to hide/show based on role
+            const settingsTabBtn = document.querySelector('button[data-tab="settingsTab"]');
+            const totalRevenueCard = document.getElementById('stat-total-revenue'); // Need to ID this if exists, or just hide specific stats
+            const userManagementSection = document.getElementById('userManagementSection');
+
+            // Receptionist Restrictions
+            if (role === 'receptionist') {
+                if (settingsTabBtn) settingsTabBtn.style.display = 'none';
+                if (userManagementSection) userManagementSection.style.display = 'none';
+
+                // Hide Create/Edit/Delete actions in Lists (CSS or DOM removal)
+                document.body.classList.add('role-receptionist');
+                // We'll handle this by checking role in render functions or adding CSS
+                const style = document.createElement('style');
+                style.id = 'rbac-style';
+                style.innerHTML = `
+                    .role-receptionist .btn-danger, 
+                    .role-receptionist button[onclick*="delete"],
+                    .role-receptionist button[onclick*="edit"],
+                    .role-receptionist button[type="submit"], 
+                    .role-receptionist #classForm button,
+                    .role-receptionist #rentalItemForm button,
+                    .role-receptionist #classProductForm button { display: none !important; }
+                    
+                    /* Exception: Allow updating status? User said "Allow receptionist to access Bookings (GET, PATCH status)" */
+                    /* So we should NOT hide booking status buttons. But Classes/Items are "View Only" */
+                    
+                    .role-receptionist #itemsTab .btn { display: none !important; }
+                    .role-receptionist #itemsTab form { pointer-events: none; opacity: 0.6; }
+                `;
+                if (!document.getElementById('rbac-style')) document.head.appendChild(style);
+
+            } else {
+                // Super Admin
+                if (settingsTabBtn) settingsTabBtn.style.display = 'block';
+                if (userManagementSection) userManagementSection.style.display = 'block';
+                document.body.classList.remove('role-receptionist');
+                const style = document.getElementById('rbac-style');
+                if (style) style.remove();
+            }
+        }
+
+        async function createNewUser() {
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            const msgEl = document.getElementById('userMessage');
+
+            if (!username || !password) {
+                msgEl.className = 'message error';
+                msgEl.textContent = '請填寫使用者名稱與密碼';
+                msgEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    msgEl.className = 'message success';
+                    msgEl.textContent = `使用者 ${username} 建立成功`;
+                    msgEl.style.display = 'block';
+                    document.getElementById('userForm').reset();
+                    setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+                } else {
+                    msgEl.className = 'message error';
+                    msgEl.textContent = result.error || '建立失敗';
+                    msgEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Create user error:', error);
+                msgEl.className = 'message error';
+                msgEl.textContent = '建立失敗';
+                msgEl.style.display = 'block';
+            }
+        }
+
+        function initializeAdminPanel() {
+            document.getElementById('adminContainer').style.display = 'block';
+            applyRolePermissions();
+            checkApiHealth();
+            setOverviewDateToToday();
+
+            // Load initial data
+            loadStats();
+            loadRentalBookings();
+            loadBookingOverview(document.getElementById('overviewDate')?.value);
+
+            // Only load settings if allowed
+            if (localStorage.getItem('adminRole') === 'super_admin') {
+                loadSettings();
+            }
+
+            // Load other data
+            // Permissions for "View Only" are handled by CSS/Disabled forms for receptionists
+            loadClasses();
+            loadClassProducts();
+            loadRentalItems();
+            loadClassBookings();
+
+            if (refreshIntervalId) clearInterval(refreshIntervalId);
+            refreshIntervalId = setInterval(() => {
+                loadStats();
+                loadRentalBookings();
+                loadClassBookings();
+                loadBookingOverview(document.getElementById('overviewDate')?.value);
+            }, 30000);
+        }
+
+        // Initial check only
+        checkAuthentication();
+
+
+
+
 
         async function handlePasswordChange(event) {
             event.preventDefault();
@@ -1823,8 +2096,8 @@
             }
         }
 
-        function formatDateTime(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${formatTime(date)}`; }
-        function formatTime(date) { return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`; }
+        function formatDateTime(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${formatTime(date)}`; }
+        function formatTime(date) { return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
 
         function hideMessage(elementId) {
             const el = document.getElementById(elementId);
@@ -1858,4 +2131,5 @@
         }
     </script>
 </body>
+
 </html>

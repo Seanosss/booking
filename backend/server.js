@@ -40,7 +40,11 @@ const {
     updateClassProduct,
     deleteClassProduct,
     checkClassScheduleAvailability,
+    checkClassScheduleAvailability,
     checkRentalAvailability,
+    getPool,
+    hashPassword,
+    verifyPassword,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -81,64 +85,158 @@ function cleanupExpiredTokens() {
     }
 }
 
-function issueAdminToken() {
+function issueAdminToken(user) {
     const token = crypto.randomBytes(32).toString('hex');
     const issuedAt = Date.now();
     const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
 
     activeAdminTokens.set(token, {
         issuedAt,
-        expiresAt
+        expiresAt,
+        id: user.id || null,
+        username: user.username || 'admin',
+        role: user.role || 'super_admin'
     });
 
     return {
         token,
         issuedAt,
-        expiresAt
+        expiresAt,
+        role: user.role || 'super_admin',
+        username: user.username || 'admin'
     };
 }
 
-function authenticateAdmin(req, res, next) {
+async function authenticateAdmin(req, res, next) {
     if (ADMIN_AUTH_DISABLED) {
-        const issuedAt = Date.now();
-        req.admin = {
-            token: 'dev-admin-token',
-            issuedAt: new Date(issuedAt).toISOString(),
-            expiresAt: new Date(issuedAt + ADMIN_TOKEN_TTL_MS).toISOString()
-        };
+        req.admin = { role: 'super_admin', username: 'dev' };
         return next();
     }
 
-    cleanupExpiredTokens();
-
-    const authHeader = req.headers['authorization'];
+    const authHeader = req.headers.authorization;
     if (!authHeader) {
-        return res.status(401).json({ error: 'Authorization header required' });
+        return res.status(401).json({ error: 'Missing Authorization header' });
     }
 
-    const [scheme, token] = authHeader.split(' ');
-    if (scheme !== 'Bearer' || !token) {
-        return res.status(401).json({ error: 'Invalid authorization header format' });
-    }
+    const token = authHeader.replace('Bearer ', '');
+    const metadata = activeAdminTokens.get(token);
 
-    const tokenMetadata = activeAdminTokens.get(token);
-    if (!tokenMetadata) {
+    // Support legacy shared password if present (fallback) usually via login endpoint logic, 
+    // but here we check active tokens.
+    if (!metadata) {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    if (tokenMetadata.expiresAt <= Date.now()) {
+    if (Date.now() > metadata.expiresAt) {
         activeAdminTokens.delete(token);
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ error: 'Token expired' });
     }
 
     req.admin = {
-        token,
-        issuedAt: new Date(tokenMetadata.issuedAt).toISOString(),
         expiresAt: new Date(tokenMetadata.expiresAt).toISOString()
     };
 
     next();
 }
+
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Check for Admin Users in DB
+        if (username && password) {
+            const pool = getPool();
+            const result = await pool.query('SELECT * FROM admin_users WHERE username = $1', [username]);
+            const user = result.rows[0];
+
+            if (user && verifyPassword(password, user.password_hash)) {
+                const tokenData = issueAdminToken(user);
+                return res.json({
+                    success: true,
+                    token: tokenData.token,
+                    expiresAt: new Date(tokenData.expiresAt).toISOString(),
+                    role: user.role,
+                    username: user.username
+                });
+            }
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Fallback for old shared password if username is missing
+        if (!username && password) {
+            const settings = await loadSettings();
+            if (password === settings.adminPassword) {
+                const tokenData = issueAdminToken({ username: 'legacy_admin', role: 'super_admin' });
+                return res.json({
+                    success: true,
+                    token: tokenData.token,
+                    expiresAt: new Date(tokenData.expiresAt).toISOString(),
+                    role: 'super_admin',
+                    username: 'legacy_admin'
+                });
+            }
+        }
+
+        return res.status(401).json({ error: 'Invalid credentials' });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+function requireRole(requiredRole) {
+    return (req, res, next) => {
+        if (!req.admin) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // super_admin can do anything
+        if (req.admin.role === 'super_admin') {
+            return next();
+        }
+
+        if (req.admin.role !== requiredRole) {
+            return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+        }
+
+        next();
+    };
+}
+
+// Create Admin User (Super Admin only)
+app.post('/api/admin/users', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
+    try {
+        const { username, password, role } = req.body;
+
+        if (!username || !password || !role) {
+            return res.status(400).json({ error: 'Username, password, and role are required' });
+        }
+
+        if (!['super_admin', 'receptionist'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+
+        const pool = getPool();
+
+        // Check if username exists
+        const existing = await pool.query('SELECT id FROM admin_users WHERE username = $1', [username]);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: 'Username already exists' });
+        }
+
+        const passwordHash = hashPassword(password);
+
+        await pool.query(
+            'INSERT INTO admin_users (username, password_hash, role) VALUES ($1, $2, $3)',
+            [username, passwordHash, role]
+        );
+
+        res.status(201).json({ success: true, message: 'User created' });
+    } catch (error) {
+        console.error('Create user error:', error);
+        res.status(500).json({ error: 'Failed to create user' });
+    }
+});
 
 function parseTimeToMinutes(timeString) {
     const [hour, minute] = timeString.split(':').map(Number);
@@ -1484,7 +1582,7 @@ function validateCatalogItemPayload(payload) {
     };
 }
 
-app.post('/api/admin/items', authenticateAdmin, async (req, res) => {
+app.post('/api/admin/items', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const { errors, data } = validateCatalogItemPayload(req.body);
         if (errors) {
@@ -1500,7 +1598,7 @@ app.post('/api/admin/items', authenticateAdmin, async (req, res) => {
     }
 });
 
-app.put('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
+app.put('/api/admin/items/:id', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const { errors, data } = validateCatalogItemPayload(req.body);
         if (errors) {
@@ -1520,7 +1618,7 @@ app.put('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
     }
 });
 
-app.delete('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
+app.delete('/api/admin/items/:id', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const deleted = await deleteCatalogItem(req.params.id);
         if (!deleted) {

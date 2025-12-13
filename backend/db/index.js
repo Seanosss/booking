@@ -525,6 +525,15 @@ async function initializeDatabase() {
     `,
         `
         CREATE INDEX IF NOT EXISTS idx_class_bookings_class_id ON class_bookings(class_id)
+    `,
+        `
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL CHECK (role IN ('super_admin', 'receptionist')),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
     `
     ];
 
@@ -565,10 +574,36 @@ async function initializeDatabase() {
             defaultSettings.bookingInstructions,
             DEFAULT_ADMIN_PASSWORD
         ]);
-        console.log('Initialized settings with default admin password. Please change it as soon as possible.');
+        console.log('Initialized settings with default admin password.');
+    }
+
+    // Ensure default super admin exists
+    const adminCount = await pool.query('SELECT COUNT(*)::int AS count FROM admin_users');
+    if (adminCount.rows[0].count === 0) {
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = crypto.pbkdf2Sync('admin123', salt, 1000, 64, 'sha512').toString('hex');
+        const passwordHash = `${salt}:${hash}`;
+
+        await pool.query(`
+            INSERT INTO admin_users (username, password_hash, role)
+            VALUES ($1, $2, $3)
+        `, ['admin', passwordHash, 'super_admin']);
+        console.log('Initialized default super admin user (admin / admin123).');
     }
 
     console.log('Database initialization complete.');
+}
+
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+    const [salt, originalHash] = storedHash.split(':');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return hash === originalHash;
 }
 
 async function loadSettings() {
@@ -1514,6 +1549,8 @@ module.exports = {
     deleteClass,
     checkClassScheduleAvailability,
     checkRentalAvailability,
+    hashPassword,
+    verifyPassword,
     getClassCapacityUsage,
     createClassBooking,
     getClassBookings,
