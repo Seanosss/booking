@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const path = require('path');
+
 const {
     initializeDatabase,
     loadSettings,
@@ -66,6 +67,8 @@ const bookingCreationLimiter = rateLimit({
     max: 5,
     message: { error: 'Too many booking attempts. Please try again shortly.' }
 });
+
+
 
 app.use(cors());
 app.use(express.json());
@@ -475,7 +478,7 @@ async function buildClassResponse(classes) {
     return enriched;
 }
 
-async function getRentalAvailability(date) {
+async function getRentalAvailability(date, itemId = null) {
     const settings = await loadSettings();
     const items = await getBookingItemsByDate(date);
     const confirmedSlots = [];
@@ -489,6 +492,15 @@ async function getRentalAvailability(date) {
 
     items.forEach(item => {
         if (item.itemType !== 'room_rental') {
+            return;
+        }
+
+        // If filtering by specific item, and this item has a specific ID (is not null), check match
+        // If item.catalogItemId is null? Assume it applies to all? Or none?
+        // Legacy: null usually means "General Studio".
+        // If user selects specific room, do we show General bookings? Yes, safer to block.
+        // But if user selects Room A, and existing booking is Room B, we should NOT block.
+        if (itemId && item.catalogItemId && String(item.catalogItemId) !== String(itemId)) {
             return;
         }
 
@@ -509,6 +521,7 @@ async function getRentalAvailability(date) {
             return;
         }
 
+        // Classes block everything by default for safety unless we have room mapping
         const classSlots = generateSlotsForRange(startInfo.time, endInfo.time);
         confirmedSlots.push(...classSlots);
     });
@@ -801,7 +814,7 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-app.put('/api/settings', authenticateAdmin, async (req, res) => {
+app.put('/api/settings', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const currentSettings = await loadSettings();
         if (req.body.operatingHours) {
@@ -972,9 +985,9 @@ async function deleteBookingHandler(req, res) {
     }
 }
 
-app.delete('/api/admin/bookings/:id', authenticateAdmin, deleteBookingHandler);
+app.delete('/api/admin/bookings/:id', authenticateAdmin, requireRole('super_admin'), deleteBookingHandler);
 
-app.delete('/api/bookings/:id', authenticateAdmin, deleteBookingHandler);
+app.delete('/api/bookings/:id', authenticateAdmin, requireRole('super_admin'), deleteBookingHandler);
 
 app.get('/api/bookings/:id/ics', async (req, res) => {
     try {
@@ -999,7 +1012,7 @@ app.get('/api/bookings/:id/ics', async (req, res) => {
     }
 });
 
-app.get('/api/stats', authenticateAdmin, async (req, res) => {
+app.get('/api/stats', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const today = formatDateOnly(new Date());
         const stats = await getStats(today);
@@ -1618,6 +1631,63 @@ app.put('/api/admin/items/:id', authenticateAdmin, requireRole('super_admin'), a
     }
 });
 
+// Update Booking (Status & Notes)
+app.put('/api/bookings/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, adminNotes } = req.body;
+
+        if (!status && adminNotes === undefined) {
+            return res.status(400).json({ error: 'Nothing to update' });
+        }
+
+        // We need to fetch current status if not provided, because updateBookingStatus expects it?
+        // Actually updateBookingStatus(id, status, adminNotes) uses status as primary.
+        // If status is undefined, we might need a different DB function or fetch current first.
+
+        const currentBooking = await getBookingById(id);
+        if (!currentBooking) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        const newStatus = status || currentBooking.status;
+        const updated = await updateBookingStatus(id, newStatus, adminNotes);
+
+        res.json(updated);
+    } catch (error) {
+        console.error('Update booking error:', error);
+        res.status(500).json({ error: 'Failed to update booking' });
+    }
+});
+
+// CSV Report
+app.get('/api/admin/reports/csv', authenticateAdmin, async (req, res) => {
+    try {
+        const bookings = await getBookings(); // Fetch all
+        // Ideally filter by query params ?month=YYYY-MM
+
+        // Simple CSV generation
+        const header = 'ID,Date,Time,Customer,Email,Phone,Amount,Status,Notes\n';
+        const rows = bookings.map(b => {
+            // Flatten items for time/amount? Or just summary?
+            // Lets take first item date/time or summary
+            const date = b.items?.[0]?.date || '';
+            const time = b.items?.[0]?.startTime || '';
+            const amount = b.totalAmount || 0;
+            const notes = (b.adminNotes || '').replace(/,/g, ' '); // simple escape
+
+            return `${b.id},${date},${time},${b.customerName},${b.email},${b.phone},${amount},${b.status},${notes}`;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="bookings_report.csv"');
+        res.send('\ufeff' + header + rows); // Add BOM for Excel
+    } catch (error) {
+        console.error('CSV generation error:', error);
+        res.status(500).json({ error: 'Failed to generate report' });
+    }
+});
+
 app.delete('/api/admin/items/:id', authenticateAdmin, requireRole('super_admin'), async (req, res) => {
     try {
         const deleted = await deleteCatalogItem(req.params.id);
@@ -1770,7 +1840,7 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
                     return respondValidationError(`${itemLabel}: selected time overlaps with another session in your booking.`);
                 }
 
-                const availability = await checkRentalAvailability(date, startTime, endTime);
+                const availability = await checkRentalAvailability(date, startTime, endTime, null, item.catalogItemId);
                 if (!availability.available) {
                     console.warn('[BookingCreate] Availability conflict detected:', {
                         itemLabel,

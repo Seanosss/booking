@@ -923,7 +923,15 @@ async function getBookingItemsByDate(date) {
     }));
 }
 
-async function getRoomConflicts(date, startTime, endTime, excludeBookingId = null) {
+async function checkRentalAvailability(date, startTime, endTime, excludeBookingId = null, catalogItemId = null) {
+    const conflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId, catalogItemId);
+    return {
+        available: conflicts.length === 0,
+        conflicts
+    };
+}
+
+async function getRoomConflicts(date, startTime, endTime, excludeBookingId = null, catalogItemId = null) {
     const params = [date, `${endTime}:00`, `${startTime}:00`];
     let query = `
         SELECT bi.*, b.status
@@ -941,6 +949,12 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
         query += ` AND bi.booking_id <> $${params.length}`;
     }
 
+    if (catalogItemId) {
+        params.push(catalogItemId);
+        // Conflict if existing booking is for the SAME room OR is a General booking (NULL)
+        query += ` AND (bi.catalog_item_id = $${params.length} OR bi.catalog_item_id IS NULL)`;
+    }
+
     const bookingResult = await pool.query(query, params);
     const bookingConflicts = bookingResult.rows.map(mapBookingItemRow);
 
@@ -949,6 +963,8 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
         `${date}T${endTime}:00`,
         `${date}T${startTime}:00`
     ];
+    // Classes block everything by default (as they assume full studio usage usually)
+    // If classes had room allocation, we would filter here too.
     const classResult = await pool.query(`
         SELECT id, name, start_time, end_time
         FROM classes
@@ -967,14 +983,6 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
     }));
 
     return [...bookingConflicts, ...classConflicts];
-}
-
-async function checkRentalAvailability(date, startTime, endTime, excludeBookingId = null) {
-    const conflicts = await getRoomConflicts(date, startTime, endTime, excludeBookingId);
-    return {
-        available: conflicts.length === 0,
-        conflicts
-    };
 }
 
 async function getCatalogItemById(id) {
