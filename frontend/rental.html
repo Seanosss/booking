@@ -858,6 +858,28 @@
             calculateTotals();
         }
 
+        function toggleSlotSelection(slot) {
+            const { time, status } = slot;
+            if (status !== 'available') return;
+
+            const date = state.selectedDate;
+            if (!date) return;
+
+            const selectedSet = state.selectedSlotsByDate.get(date) || new Set();
+            if (!state.selectedSlotsByDate.has(date)) {
+                state.selectedSlotsByDate.set(date, selectedSet);
+            }
+
+            if (selectedSet.has(time)) {
+                selectedSet.delete(time);
+            } else {
+                selectedSet.add(time);
+            }
+
+            renderSlots();
+            renderSummary();
+        }
+
         function renderSlots() {
             const date = state.selectedDate;
             if (!date) {
