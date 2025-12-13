@@ -486,18 +486,7 @@
         </div>
     </div>
     <script>
-        function resolveApiBaseUrl() {
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:3000';
-            }
-            if (hostname.includes('onrender.com')) {
-                return window.location.origin;
-            }
-            return 'https://booking-ub69.onrender.com';
-        }
-
-        const API_BASE_URL = resolveApiBaseUrl();
+        const API_BASE_URL = '/api';
 
         const state = {
 
@@ -586,9 +575,15 @@
             }
         }
         function startOfWeek(date) {
-            const d = new Date(date); const day = d.getDay(); const diff = d.getDate() - day; // start from
-        Sunday d.setDate(diff); d.setHours(0, 0, 0, 0); return d;
-        } function formatDate(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day; // start from Sunday
+            d.setDate(diff);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function formatDate(date) {
             if (!(date instanceof
                 Date) || Number.isNaN(date.getTime())) { return ''; } const year = date.getFullYear(); const
                     month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0'); return

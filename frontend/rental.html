@@ -517,18 +517,7 @@
         </div>
     </div>
     <script>
-        function resolveApiBaseUrl() {
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:3000';
-            }
-            if (hostname.includes('onrender.com')) {
-                return window.location.origin;
-            }
-            return 'https://booking-ub69.onrender.com';
-        }
-
-        const API_BASE_URL = resolveApiBaseUrl();
+        const API_BASE_URL = '/api';
 
         const state = {
             settings: null,

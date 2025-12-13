@@ -338,7 +338,7 @@ app.patch('/api/bookings/:id/status', authenticateAdmin, async (req, res) => {
             }
         }
 
-        const updated = await updateBookingStatus(req.params.id, status);
+        const updated = await updateBookingStatus(req.params.id, status, req.body.adminNotes);
         res.json({ success: true, booking: updated });
     } catch (e) {
         res.status(500).json({ error: 'Update failed' });
@@ -467,7 +467,7 @@ app.get('/api/admin/class-bookings', authenticateAdmin, async (req, res) => {
 
 app.patch('/api/admin/class-bookings/:id/status', authenticateAdmin, async (req, res) => {
     try {
-        const updated = await updateClassBookingStatus(req.params.id, req.body.status);
+        const updated = await updateClassBookingStatus(req.params.id, req.body.status, req.body.adminNotes);
         res.json({ success: true, booking: updated });
     } catch (e) {
         res.status(500).json({ error: 'Update failed' });
