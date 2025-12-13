@@ -493,15 +493,15 @@
                 <form id="passwordForm" class="form-grid">
                     <div class="input-group">
                         <label>目前密碼</label>
-                        <input type="password" id="currentAdminPassword" required>
+                        <input type="password" id="currentAdminPassword" autocomplete="current-password" required>
                     </div>
                     <div class="input-group">
                         <label>新密碼</label>
-                        <input type="password" id="newAdminPassword" required>
+                        <input type="password" id="newAdminPassword" autocomplete="new-password" required>
                     </div>
                     <div class="input-group">
                         <label>確認新密碼</label>
-                        <input type="password" id="confirmAdminPassword" required>
+                        <input type="password" id="confirmAdminPassword" autocomplete="new-password" required>
                     </div>
                     <div>
                         <button type="submit" class="btn btn-primary">更新密碼</button>
@@ -603,11 +603,11 @@
                 <form id="userForm" class="form-grid two-columns">
                     <div class="input-group">
                         <label>使用者名稱</label>
-                        <input id="newUsername" type="text" placeholder="例如：receptionist1">
+                        <input id="newUsername" type="text" autocomplete="off" placeholder="例如：receptionist1">
                     </div>
                     <div class="input-group">
                         <label>密碼</label>
-                        <input id="newUserPassword" type="password" placeholder="請設定密碼">
+                        <input id="newUserPassword" type="password" autocomplete="new-password" placeholder="請設定密碼">
                     </div>
                     <div class="input-group">
                         <label>角色</label>
@@ -636,11 +636,13 @@
                 <form onsubmit="handleLogin(event)">
                     <div class="input-group" style="margin-bottom:16px;">
                         <label>使用者名稱</label>
-                        <input type="text" id="loginUsername" required placeholder="admin" autofocus>
+                        <input type="text" id="loginUsername" autocomplete="username" required placeholder="admin"
+                            autofocus>
                     </div>
                     <div class="input-group" style="margin-bottom:24px;">
                         <label>密碼</label>
-                        <input type="password" id="loginPassword" required placeholder="••••••••">
+                        <input type="password" id="loginPassword" autocomplete="current-password" required
+                            placeholder="••••••••">
                     </div>
                     <button type="submit" class="btn btn-primary"
                         style="width:100%; padding:14px; font-size:1.1em;">登入</button>
