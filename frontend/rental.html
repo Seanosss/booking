@@ -302,333 +302,331 @@
                 opacity: 1;
             }
 
-            50% {
-                transform: scale(1.05);
-                opacity: 0.9;
+            .hot-tag {
+                display: inline-block;
+                margin-left: 6px;
+                font-size: 0.75rem;
+                color: #e11d48;
+                font-weight: 700;
+                animation: pulse-red 2s infinite;
             }
 
-            100% {
-                transform: scale(1);
-                opacity: 1;
+            @keyframes pulse-red {
+                0% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.6;
+                }
+
+                100% {
+                    opacity: 1;
+                }
             }
-        }
 
-        .hot-tag {
-            font-size: 0.75rem;
-            color: #ef4444;
-            font-weight: 700;
-            margin-left: 6px;
-            display: inline-flex;
-            align-items: center;
-            animation: pulse-red 2s infinite;
-            background: rgba(254, 226, 226, 0.5);
-            padding: 2px 6px;
-            border-radius: 99px;
-            border: 1px solid rgba(252, 165, 165, 0.4);
-        }
+            .summary-list {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
 
-        .summary-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+            .summary-item {
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 16px;
+                background: rgba(255, 255, 255, 0.6);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.2s;
+            }
 
-        .summary-item {
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.6);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            transition: all 0.2s;
-        }
+            .summary-item:hover {
+                border-color: var(--brand-secondary);
+                transform: translateX(4px);
+                background: #fff;
+            }
 
-        .summary-item:hover {
-            border-color: var(--brand-secondary);
-            transform: translateX(4px);
-            background: #fff;
-        }
+            .summary-date {
+                font-weight: 600;
+                color: var(--brand-primary);
+                font-size: 0.9rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin-bottom: 4px;
+            }
 
-        .summary-date {
-            font-weight: 600;
-            color: var(--brand-primary);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 4px;
-        }
+            .summary-item button {
+                border: none;
+                background: #fee2e2;
+                color: #ef4444;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.2rem;
+                line-height: 1;
+                transition: all 0.2s;
+            }
 
-        .summary-item button {
-            border: none;
-            background: #fee2e2;
-            color: #ef4444;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            line-height: 1;
-            transition: all 0.2s;
-        }
+            .summary-item button:hover {
+                background: #ef4444;
+                color: #fff;
+                transform: rotate(90deg);
+            }
 
-        .summary-item button:hover {
-            background: #ef4444;
-            color: #fff;
-            transform: rotate(90deg);
-        }
+            .summary-totals {
+                margin-top: 24px;
+                border-top: 1px dashed var(--border);
+                padding-top: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
 
-        .summary-totals {
-            margin-top: 24px;
-            border-top: 1px dashed var(--border);
-            padding-top: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+            .totals-row {
+                display: flex;
+                justify-content: space-between;
+                color: var(--text-muted);
+                font-size: 0.95rem;
+            }
 
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
+            .totals-row.total {
+                font-weight: 800;
+                font-size: 1.25rem;
+                color: var(--brand-primary);
+                margin-top: 8px;
+            }
 
-        .totals-row.total {
-            font-weight: 800;
-            font-size: 1.25rem;
-            color: var(--brand-primary);
-            margin-top: 8px;
-        }
+            .btn-primary {
+                width: 100%;
+                background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+                color: #fff;
+                font-weight: 600;
+                border: none;
+                border-radius: 12px;
+                padding: 16px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
+                position: relative;
+                overflow: hidden;
+            }
 
-        .btn-primary {
-            width: 100%;
-            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-            color: #fff;
-            font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            padding: 16px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .btn-primary:not(:disabled):hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
-        }
-
-        .btn-primary:not(:disabled):hover::after {
-            opacity: 1;
-        }
-
-        .btn-primary:active {
-            transform: translateY(0) scale(1);
-        }
-
-        .btn-primary:disabled {
-            background: #cbd5e1;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        /* Toasts */
-        .toast-container {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            pointer-events: none;
-        }
-
-        .toast {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 16px 24px;
-            border-radius: 99px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-            pointer-events: auto;
-            min-width: 300px;
-            justify-content: center;
-            font-size: 0.95rem;
-        }
-
-        .toast.success {
-            color: #059669;
-            border: 1px solid #34d399;
-        }
-
-        .toast.error {
-            color: #dc2626;
-            border: 1px solid #f87171;
-        }
-
-        @keyframes slideDown {
-            from {
+            .btn-primary::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
                 opacity: 0;
-                transform: translateY(-20px) scale(0.95);
+                transition: opacity 0.2s;
             }
 
-            to {
+            .btn-primary:not(:disabled):hover {
+                transform: translateY(-2px) scale(1.02);
+                box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+            }
+
+            .btn-primary:not(:disabled):hover::after {
                 opacity: 1;
+            }
+
+            .btn-primary:active {
                 transform: translateY(0) scale(1);
             }
-        }
 
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-                transform: translateY(0);
+            .btn-primary:disabled {
+                background: #cbd5e1;
+                cursor: not-allowed;
+                box-shadow: none;
             }
 
-            to {
+            /* Toasts */
+            .toast-container {
+                position: fixed;
+                top: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                pointer-events: none;
+            }
+
+            .toast {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                padding: 16px 24px;
+                border-radius: 99px;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+                pointer-events: auto;
+                min-width: 300px;
+                justify-content: center;
+                font-size: 0.95rem;
+            }
+
+            .toast.success {
+                color: #059669;
+                border: 1px solid #34d399;
+            }
+
+            .toast.error {
+                color: #dc2626;
+                border: 1px solid #f87171;
+            }
+
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-20px) scale(0.95);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+
+                to {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+            }
+
+            .instruction-list {
+                background: #fffbeb;
+                border-radius: 16px;
+                padding: 24px;
+                border: 1px solid #fde68a;
+            }
+
+            .instruction-list h3 {
+                margin-top: 0;
+                margin-bottom: 12px;
+                color: #92400e;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .payment-panel {
+                background: var(--surface);
+                border-radius: 16px;
+                padding: 24px;
+                border: 1px solid var(--border);
+            }
+
+            .payment-info-title {
+                font-weight: 700;
+                color: var(--brand-primary);
+                margin-bottom: 12px;
+                font-size: 1.05rem;
+            }
+
+            /* Modal Styles */
+            .payment-reminder-modal {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+                z-index: 1000;
                 opacity: 0;
-                transform: translateY(-10px);
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+                backdrop-filter: blur(4px);
             }
-        }
 
-        .instruction-list {
-            background: #fffbeb;
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid #fde68a;
-        }
+            .payment-reminder-modal.active {
+                opacity: 1;
+                pointer-events: auto;
+            }
 
-        .instruction-list h3 {
-            margin-top: 0;
-            margin-bottom: 12px;
-            color: #92400e;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+            .payment-reminder-content {
+                background: #fff;
+                width: min(420px, 100%);
+                border-radius: 24px;
+                padding: 32px;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                position: relative;
+                text-align: center;
+            }
 
-        .payment-panel {
-            background: var(--surface);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid var(--border);
-        }
+            .payment-reminder-close {
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                border: none;
+                background: var(--surface);
+                color: var(--text-muted);
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                font-size: 1.2rem;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
 
-        .payment-info-title {
-            font-weight: 700;
-            color: var(--brand-primary);
-            margin-bottom: 12px;
-            font-size: 1.05rem;
-        }
+            .payment-reminder-close:hover {
+                background: #e2e8f0;
+                color: var(--text-main);
+            }
 
-        /* Modal Styles */
-        .payment-reminder-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            backdrop-filter: blur(4px);
-        }
+            .whatsapp-button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 14px 24px;
+                background: #25d366;
+                color: #fff;
+                border-radius: 12px;
+                font-weight: 700;
+                text-decoration: none;
+                box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.2);
+                transition: all 0.2s;
+                width: 100%;
+            }
 
-        .payment-reminder-modal.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
+            .whatsapp-button:hover {
+                background: #1faf53;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 15px -3px rgba(37, 211, 102, 0.3);
+            }
 
-        .payment-reminder-content {
-            background: #fff;
-            width: min(420px, 100%);
-            border-radius: 24px;
-            padding: 32px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            position: relative;
-            text-align: center;
-        }
-
-        .payment-reminder-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            border: none;
-            background: var(--surface);
-            color: var(--text-muted);
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .payment-reminder-close:hover {
-            background: #e2e8f0;
-            color: var(--text-main);
-        }
-
-        .whatsapp-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 14px 24px;
-            background: #25d366;
-            color: #fff;
-            border-radius: 12px;
-            font-weight: 700;
-            text-decoration: none;
-            box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.2);
-            transition: all 0.2s;
-            width: 100%;
-        }
-
-        .whatsapp-button:hover {
-            background: #1faf53;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(37, 211, 102, 0.3);
-        }
-
-        .skeleton {
-            background: #e2e8f0;
-            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 8px;
-        }
+            .skeleton {
+                background: #e2e8f0;
+                background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+                border-radius: 8px;
+            }
     </style>
 </head>
 
@@ -1095,81 +1093,54 @@
             }
 
             const availability = state.availabilityByDate.get(date);
-            if (!availability) {
-                return;
-            }
+            if (!availability) return;
 
             const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
             const interval = state.slotInterval;
             const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
             const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
-            const isSelected = (time) => currentSelected.has(time);
 
-            // Marketing Settings
-            const marketing = state.settings?.bookingRules?.marketing;
-            const isHotEnabled = marketing?.hotTagsEnabled === true;
-            const hotText = marketing?.hotTagText || '🔥 熱門';
-            // Simple string comparison for HH:MM works if format is consistent
-            const isHotTime = (time) => {
-                if (!isHotEnabled) return false;
-                const start = marketing.hotTagStartTime || '18:00';
-                const end = marketing.hotTagEndTime || '23:00';
-                return time >= start && time <= end;
+            // Marketing Logic
+            const marketing = state.settings?.bookingRules?.marketing || {};
+            const showHotTags = marketing.enableHotTags;
+            const hotText = marketing.hotTagText || '🔥 熱門';
+
+            const isHotTime = (timeStr) => {
+                if (!showHotTags || !marketing.startTime || !marketing.endTime) return false;
+                return timeStr >= marketing.startTime && timeStr < marketing.endTime;
             };
 
-            // Map generated slots to objects with status
-            const slots = generatedSlots.map(time => {
-                if (confirmedSlots.includes(time)) {
-                    return { time, status: 'booked' };
-                } else if (pendingSlots.includes(time)) {
-                    return { time, status: 'pending' };
-                } else {
-                    return { time, status: 'available' };
-                }
-            });
-
             elements.slotGrid.innerHTML = '';
-            slots.forEach(slot => {
+
+            generatedSlots.forEach(time => {
                 const button = document.createElement('div');
                 button.className = 'slot-button';
 
-                // Content construction
-                const timeSpan = document.createElement('span');
-                timeSpan.textContent = slot.time;
-                button.appendChild(timeSpan);
+                // Base Content
+                let contentHtml = `<span>${time}</span>`;
 
-                let tooltip = '';
-
-                if (slot.status === 'booked' || slot.status === 'unavailable') {
-                    button.classList.add('disabled');
-                    button.classList.add('unavailable');
-                    tooltip = '此時段已被預約或不開放';
-                } else if (slot.status === 'pending') {
+                // Status Logic
+                if (confirmedSlots.includes(time)) {
+                    button.classList.add('disabled', 'unavailable');
+                    button.title = '已預約';
+                } else if (pendingSlots.includes(time)) {
                     button.classList.add('pending');
-                    tooltip = '此時段正在等待確認';
+                    button.title = '待確認';
                 } else {
                     button.classList.add('available');
-                    tooltip = '可預約';
-                    button.addEventListener('click', () => toggleSlotSelection(slot));
+                    button.addEventListener('click', () => toggleSlotSelection({ time, status: 'available' }));
 
                     // Add Hot Tag if applicable
-                    if (isHotTime(slot.time)) {
-                        const hotSpan = document.createElement('span');
-                        hotSpan.className = 'hot-tag';
-                        hotSpan.textContent = hotText;
-                        button.appendChild(hotSpan);
+                    if (isHotTime(time)) {
+                        contentHtml += `<span class="hot-tag">${hotText}</span>`;
                     }
                 }
 
-                if (isSelected(slot.time)) {
+                if (currentSelected.has(time)) {
                     button.classList.add('selected');
                 }
 
-                if (tooltip) {
-                    button.title = tooltip;
-                    button.setAttribute('aria-label', `${slot.time} ${tooltip}`);
-                }
-
+                button.innerHTML = contentHtml;
                 elements.slotGrid.appendChild(button);
             });
         }

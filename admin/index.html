@@ -708,6 +708,19 @@
                     <div class="input-group"><label>高峰結束時間</label><input id="peakEnd" type="time"></div>
                 </div>
             </div>
+            <div class="section-card">
+                <h3>行銷與顯示設定 (Marketing)</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>啟用熱門時段標籤</label><select id="marketingEnableHotTags">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>標籤文字</label><input id="marketingHotTagText" type="text"
+                            placeholder="🔥 熱門"></div>
+                    <div class="input-group"><label>熱門時段開始</label><input id="marketingHotStartTime" type="time"></div>
+                    <div class="input-group"><label>熱門時段結束</label><input id="marketingHotEndTime" type="time"></div>
+                </div>
+            </div>
             <div id="userManagementSection" class="section-card" style="display:none;">
                 <h3>使用者管理</h3>
                 <div id="userMessage" class="message"></div>
@@ -1696,9 +1709,8 @@
         async function loadSettings() {
             try {
                 const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
-                if (!response.ok) {
-                    throw new Error('Failed to load settings');
-                }
+                if (!response.ok) throw new Error('Failed to load settings');
+
                 const settings = await response.json();
                 currentSettings = settings;
 
@@ -1734,7 +1746,7 @@
                     if (pm.payme) {
                         document.getElementById('paymentPaymeEnabled').value = pm.payme.enabled ? 'true' : 'false';
                         document.getElementById('paymentPaymeDisplayName').value = pm.payme.displayName || '';
-                        document.getElementById('paymentPaymePhone').value = pm.payme.phoneNumber || ''; // Note: HTML id implies 'phone', check schema compatibility
+                        document.getElementById('paymentPaymePhone').value = pm.payme.phoneNumber || '';
                     }
                     if (pm.fps) {
                         document.getElementById('paymentFpsEnabled').value = pm.fps.enabled ? 'true' : 'false';
@@ -1752,12 +1764,14 @@
                     document.getElementById('bookingAutoConfirm').value = br.autoConfirm ? 'true' : 'false';
                     document.getElementById('bookingRequirePaymentProof').value = br.requirePaymentProof ? 'true' : 'false';
 
-                    // Marketing
-                    const mkt = br.marketing || {};
-                    document.getElementById('marketingHotTagsEnabled').value = mkt.hotTagsEnabled ? 'true' : 'false';
-                    document.getElementById('marketingHotTagText').value = mkt.hotTagText || '🔥 熱門';
-                    document.getElementById('marketingHotTagStart').value = mkt.hotTagStartTime || '18:00';
-                    document.getElementById('marketingHotTagEnd').value = mkt.hotTagEndTime || '23:00';
+                    // Marketing Settings Mappings
+                    const marketing = br.marketing || {};
+                    if (document.getElementById('marketingEnableHotTags')) {
+                        document.getElementById('marketingEnableHotTags').value = marketing.enableHotTags ? 'true' : 'false';
+                        document.getElementById('marketingHotTagText').value = marketing.hotTagText || '🔥 熱門';
+                        document.getElementById('marketingHotStartTime').value = marketing.startTime || '18:00';
+                        document.getElementById('marketingHotEndTime').value = marketing.endTime || '22:00';
+                    }
                 }
 
                 // Pricing
@@ -1776,13 +1790,32 @@
 
                 hideMessage('settingsMessage');
             } catch (error) {
-                console.error('Error loading settings:', error);
-                showMessage('settingsMessage', 'error', '無法載入系統設定');
+                console.error(error);
+                showMessage('settingsMessage', 'error', '無法載入設定');
             }
         }
 
         async function saveSettings() {
-            const settings = {
+            // Gather existing settings
+            const marketingSettings = {
+                enableHotTags: document.getElementById('marketingEnableHotTags').value === 'true',
+                hotTagText: document.getElementById('marketingHotTagText').value,
+                startTime: document.getElementById('marketingHotStartTime').value,
+                endTime: document.getElementById('marketingHotEndTime').value
+            };
+
+            // Merge into bookingRules
+            const updatedBookingRules = {
+                ...(currentSettings.bookingRules || {}),
+                marketing: marketingSettings,
+                minAdvanceBooking: Number(document.getElementById('bookingMinAdvance')?.value),
+                maxAdvanceBooking: Number(document.getElementById('bookingMaxAdvance')?.value),
+                slotInterval: Number(document.getElementById('bookingSlotInterval')?.value),
+                autoConfirm: document.getElementById('bookingAutoConfirm')?.value === 'true',
+                requirePaymentProof: document.getElementById('bookingRequirePaymentProof')?.value === 'true'
+            };
+
+            const payload = {
                 ...currentSettings,
                 businessName: document.getElementById('businessName').value,
                 businessNameZh: document.getElementById('businessNameZh').value,
@@ -1817,19 +1850,7 @@
                         displayName: document.getElementById('paymentFpsDisplayName').value
                     }
                 },
-                bookingRules: {
-                    minAdvanceBooking: Number(document.getElementById('bookingMinAdvance').value),
-                    maxAdvanceBooking: Number(document.getElementById('bookingMaxAdvance').value),
-                    slotInterval: Number(document.getElementById('bookingSlotInterval').value),
-                    autoConfirm: document.getElementById('bookingAutoConfirm').value === 'true',
-                    requirePaymentProof: document.getElementById('bookingRequirePaymentProof').value === 'true',
-                    marketing: {
-                        hotTagsEnabled: document.getElementById('marketingHotTagsEnabled').value === 'true',
-                        hotTagText: document.getElementById('marketingHotTagText').value,
-                        hotTagStartTime: document.getElementById('marketingHotTagStart').value,
-                        hotTagEndTime: document.getElementById('marketingHotTagEnd').value
-                    }
-                },
+                bookingRules: updatedBookingRules,
                 pricing: {
                     normalUpTo10: Number(document.getElementById('normalUpTo10').value),
                     normalUpTo18: Number(document.getElementById('normalUpTo18').value),
@@ -1847,19 +1868,19 @@
                 const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(settings)
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    currentSettings = (await response.json()).settings;
-                    showMessage('settingsMessage', 'success', '系統設定已儲存');
+                    const data = await response.json();
+                    currentSettings = data.settings;
+                    showMessage('settingsMessage', 'success', '設定已儲存');
                 } else {
-                    const result = await response.json().catch(() => ({}));
-                    showMessage('settingsMessage', 'error', result.error || '儲存失敗');
+                    showMessage('settingsMessage', 'error', '儲存失敗');
                 }
-            } catch (error) {
-                console.error('Error saving settings:', error);
-                showMessage('settingsMessage', 'error', '儲存失敗，請稍後再試');
+            } catch (e) {
+                console.error(e);
+                showMessage('settingsMessage', 'error', '儲存錯誤');
             }
         }
 
