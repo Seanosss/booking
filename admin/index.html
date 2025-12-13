@@ -881,39 +881,39 @@
                         <button type="button" class="btn btn-secondary" onclick="resetClassProductForm()">清除</button>
                     </div>
                 </form>
-                <h4 style="margin-top:24px;color:#145da0;'>現有方案</h4>
-                <div id=" classProductsList" class="item-list">
+                <h4 style="margin-top:24px;color:#145da0;">現有方案</h4>
+                <div id="classProductsList" class="item-list">
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>場地租用項目</h3>
+                <div id="rentalItemsMessage" class="message"></div>
+                <form id="rentalItemForm">
+                    <input type="hidden" id="rentalItemId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
+                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number"
+                                min="1" required></div>
+                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number"
+                                min="0" step="1" required></div>
+                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
+                        </div>
+                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
+                                required></div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存場地項目</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;'>現有場地項目</h4>
+                <div id=" rentalItemsList" class="item-list">
             </div>
         </div>
-        <div class="section-card">
-            <h3>場地租用項目</h3>
-            <div id="rentalItemsMessage" class="message"></div>
-            <form id="rentalItemForm">
-                <input type="hidden" id="rentalItemId">
-                <div class="form-grid two-columns">
-                    <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
-                    <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
-                            required></div>
-                    <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
-                            required></div>
-                    <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number" min="1"
-                            required></div>
-                    <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number" min="0"
-                            step="1" required></div>
-                    <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
-                    </div>
-                    <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
-                            required></div>
-                </div>
-                <div style="margin-top:18px;">
-                    <button type="submit" class="btn btn-primary">儲存場地項目</button>
-                    <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
-                </div>
-            </form>
-            <h4 style="margin-top:24px;color:#145da0;'>現有場地項目</h4>
-                <div id=" rentalItemsList" class="item-list">
-        </div>
-    </div>
     </div>
     </div>
     <script>
@@ -1620,55 +1620,61 @@
             }
         }
 
-        // Elements
-        const loginModal = document.getElementById('loginModal');
-        const adminContainer = document.getElementById('adminContainer');
-        const apiStatusMessage = document.getElementById('apiStatusMessage');
+        // Use relative path for Render compatibility
+        // const API_BASE_URL = '/api'; // Already defined at top of script
 
-        // Initialization
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Admin Panel Loading...');
+            console.log('Admin Panel Initializing...');
 
-            // 1. Check API Health (Non-blocking)
+            // 1. Immediately show Loading or default state if needed
+            // But crucially, run auth check immediately
+            checkAuthentication();
+
+            // 2. Check API Health in the background (Non-blocking)
+            checkApiHealth();
+        });
+
+        async function checkApiHealth() {
+            const statusEl = document.getElementById('apiStatusMessage');
+            if (!statusEl) return;
             try {
-                const res = await fetch(`${API_BASE_URL}/health`); // Assuming /health exists, otherwise this might fail. User code assumes it.
-                // If /health doesn't exist, we might get 404. Let's assume standard /api check if /health fails or just trust user.
-                // Actually, earlier code might not have had /health. I'll blindly trust user but maybe fail gracefully.
+                const res = await fetch(`${API_BASE_URL}/health`);
                 if (res.ok) {
-                    if (apiStatusMessage) {
-                        apiStatusMessage.textContent = 'API Status: Online';
-                        apiStatusMessage.className = 'status-ok';
-                    }
+                    statusEl.textContent = 'System Online';
+                    statusEl.className = 'message success';
+                    statusEl.style.display = 'block';
+                    setTimeout(() => statusEl.style.display = 'none', 3000);
                 }
             } catch (e) {
-                console.warn('API Check Failed or Offline:', e);
-                if (apiStatusMessage) {
-                    apiStatusMessage.textContent = 'API Status: Offline (Check Server)';
-                    apiStatusMessage.className = 'status-error';
-                }
+                console.error('API Check Failed:', e);
+                // Don't block the UI, just show a warning
+                statusEl.textContent = '⚠️ API 連線失敗 (Offline)';
+                statusEl.className = 'message error';
+                statusEl.style.display = 'block';
             }
-
-            // 2. Auth Check & Render UI
-            checkAuthentication();
-        });
+        }
 
         function checkAuthentication() {
             const token = localStorage.getItem('adminToken');
-            const tokenExpires = localStorage.getItem('adminTokenExpires');
-            const now = Date.now();
+            const loginModal = document.getElementById('loginModal');
+            const adminContainer = document.getElementById('adminContainer');
 
-            if (token && tokenExpires && now < parseInt(tokenExpires)) {
-                // Valid Token -> Show Panel
+            if (!token) {
+                // No token? Force show Login Modal
+                if (loginModal) loginModal.style.display = 'flex';
+                if (adminContainer) adminContainer.style.display = 'none'; // Hide content behind modal
+            } else {
+                // Has token? Show Admin Panel
                 if (loginModal) loginModal.style.display = 'none';
                 if (adminContainer) {
                     adminContainer.style.display = 'block';
-                    loadDashboardData();
+                    // Safe to load data now
+                    if (typeof loadDashboardData === 'function') {
+                        loadDashboardData();
+                    } else if (typeof loadStats === 'function') {
+                        loadStats();
+                    }
                 }
-            } else {
-                // No Token -> Show Login
-                console.log('No valid token, showing login modal');
-                if (adminContainer) adminContainer.style.display = 'none';
-                if (loginModal) loginModal.style.display = 'flex';
             }
         }
 
