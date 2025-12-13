@@ -1515,31 +1515,47 @@
 
         // Initialize
         (async function init() {
-            setTodayAsMinDate();
-            loadUserDetails(); // Load saved user info
+            try {
+                setTodayAsMinDate();
+                loadUserDetails(); // Load saved user info
 
-            // Parallel fetch
-            const [settings, rentalItems] = await Promise.all([
-                loadSettings(),
-                fetchRentalItems()
-            ]);
+                // Parallel fetch
+                const [settings, rentalItems] = await Promise.all([
+                    loadSettings().catch(e => {
+                        console.error('Settings load failed:', e);
+                        return null; // Fallback
+                    }),
+                    fetchRentalItems().catch(e => {
+                        console.error('Rental items load failed:', e);
+                        return [];
+                    })
+                ]);
 
-            if (rentalItems && rentalItems.length > 0) {
-                populateRoomSelect(rentalItems);
+                if (rentalItems && rentalItems.length > 0) {
+                    populateRoomSelect(rentalItems);
+                }
+                
+                // Use settings if available, else defaults
+                const minAdvance = Number(settings?.bookingRules?.minAdvanceBooking || 0);
+                const maxAdvance = Number(settings?.bookingRules?.maxAdvanceBooking || 30);
+
+                // Set default date logic
+                const today = new Date();
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() + minAdvance);
+    
+                const maxDate = new Date();
+                maxDate.setDate(maxDate.getDate() + maxAdvance);
+    
+                // Initialize Flatpickr with bounds
+                initFlatpickr(minDate, maxDate);
+            } catch (err) {
+                console.error('Initialization error:', err);
+                showToast('系統初始化失敗，請重新整理頁面', 'error');
+                // Ensure Flatpickr still inits even if everything else explodes
+                try { initFlatpickr(new Date(), new Date(Date.now() + 86400000 * 30)); } catch(e){}
             }
-            // loadSettings already applies rules/state.settings internally if checks passed?
-            // Actually loadSettings implementation (visible in file?) assigns to state.settings
 
-            // Set default date logic
-            const today = new Date();
-            const minDate = new Date();
-            minDate.setDate(minDate.getDate() + Number(state.settings?.bookingRules?.minAdvanceBooking || 0));
-
-            const maxDate = new Date();
-            maxDate.setDate(maxDate.getDate() + Number(state.settings?.bookingRules?.maxAdvanceBooking || 30));
-
-            // Initialize Flatpickr with bounds
-            initFlatpickr(minDate, maxDate);
 
             // Default select today/minDate if valid
             // const dateStr = formatDateInputValue(minDate);

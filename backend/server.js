@@ -52,7 +52,8 @@ const ADMIN_TOKEN_TTL_MS = (() => {
     const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
     return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0 ? ttlFromEnv : 1000 * 60 * 60;
 })();
-const ADMIN_AUTH_DISABLED = String(process.env.ADMIN_AUTH_DISABLED).toLowerCase() === 'true';
+const ADMIN_AUTH_DISABLED = true; // Forced disabled as per user request
+// const ADMIN_AUTH_DISABLED = String(process.env.ADMIN_AUTH_DISABLED).toLowerCase() === 'true';
 const activeAdminTokens = new Map();
 
 // Rate Limiter
