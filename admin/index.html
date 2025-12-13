@@ -973,6 +973,9 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await checkApiHealth();
+            if (typeof checkAuthentication === 'function') {
+                checkAuthentication();
+            }
 
             // Event Listeners for Tabs
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
