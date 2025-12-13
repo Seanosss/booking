@@ -64,13 +64,14 @@
         }
 
         .logout-btn {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            padding: 10px 18px;
-            background: transparent;
-            color: var(--danger);
-            border: 1px solid var(--border);
+            display: none;
+            /* position: absolute; */
+            /* top: 24px; */
+            /* right: 24px; */
+            /* padding: 10px 18px; */
+            /* background: transparent; */
+            /* color: var(--danger); */
+            /* border: 1px solid var(--border); */
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s;
@@ -1656,25 +1657,22 @@
         }
 
         function checkAuthentication() {
-            const token = localStorage.getItem('adminToken');
+            // AUTH REMOVED: Auto-login
             const loginModal = document.getElementById('loginModal');
             const adminContainer = document.getElementById('adminContainer');
 
-            if (!token) {
-                // No token? Force show Login Modal
-                if (loginModal) loginModal.style.display = 'flex';
-                if (adminContainer) adminContainer.style.display = 'none'; // Hide content behind modal
-            } else {
-                // Has token? Show Admin Panel
-                if (loginModal) loginModal.style.display = 'none';
-                if (adminContainer) {
-                    adminContainer.style.display = 'block';
-                    // Safe to load data now
-                    if (typeof loadDashboardData === 'function') {
-                        loadDashboardData();
-                    } else if (typeof loadStats === 'function') {
-                        loadStats();
-                    }
+            if (loginModal) loginModal.style.display = 'none';
+            if (adminContainer) {
+                adminContainer.style.display = 'block';
+
+                // Set fake "super_admin" role to ensure UI features are visible
+                localStorage.setItem('adminRole', 'super_admin');
+
+                // Safe to load data now
+                if (typeof loadDashboardData === 'function') {
+                    loadDashboardData();
+                } else if (typeof loadStats === 'function') {
+                    loadStats();
                 }
             }
         }

@@ -1353,6 +1353,9 @@
                 state.weekStart = startOfWeek(today).toISOString().split('T')[0];
                 updateWeekLabel();
 
+                // Load Settings (Payment Info, etc.)
+                loadSettings();
+
                 // Load User Details
                 loadUserDetails();
 
