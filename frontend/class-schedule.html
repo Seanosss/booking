@@ -486,7 +486,7 @@
         </div>
     </div>
     <script>
-        const API_BASE_URL = '/api';
+        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
 
         const state = {
 
@@ -977,255 +977,228 @@
                 const name = payments.payme.displayName || 'PayMe';
                 const phone = payments.payme.phoneNumber || '';
 
-                parts.push(`PayMe：$ {
-                `$ {
-                    name
+                if (payments.payme?.enabled) {
+                    const name = payments.payme.displayName || 'PayMe';
+                    const phone = payments.payme.phone || '';
+                    parts.push(`${name}：${phone}`.trim());
                 }
 
-                $ {
-                    phone
+                if (payments.fps?.enabled) {
+                    const label = payments.fps.displayName || 'FPS 轉數快';
+                    const number = payments.fps.fpsNumber || '';
+                    parts.push(`${label}：${number}`.trim());
                 }
 
-                    `.trim()
+                if (parts.length === 0) {
+                    elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
+                } else {
+                    elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>` +
+                        parts.map(text => `<div>• ${text}</div>`).join('');
                 }
-
-                `);
             }
 
-            if (payments.fps?.enabled) {
-                const label = payments.fps.displayName || 'FPS 轉數快';
-                const number = payments.fps.fpsNumber || '';
-
-                parts.push(`$ {
-                label
-                }
-
-                ：$ {
-                number
-                }
-
-                `.trim());
+            function getWhatsappNumber() {
+                return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
             }
 
-            if (parts.length === 0) {
-                elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
-            }
+            function buildWhatsappLink(bookingId) {
+                const number = getWhatsappNumber();
+                if (!number) return null;
 
-            else {
-                elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>$ {
-                parts.map(text=> `< div >• $ {
-                    text
-                }
-
-                    </div > `).join('')
-                    }
-
-                    `;
-            }
-        }
-
-        function getWhatsappNumber() {
-            return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
-        }
-
-        function buildWhatsappLink(bookingId) {
-            const number = getWhatsappNumber();
-            if (!number) return null;
-
-            const message = bookingId ? `你好，我剛提交了課程預約 ($ {
+                const message = bookingId ? `你好，我剛提交了課程預約 ($ {
                     bookingId
                     })，這是我的付款證明。` : '付款證明';
-            return `https: //wa.me/${number}?text=${encodeURIComponent(message)}`;
-        }
-
-        function openPaymentReminderModal(bookingId) {
-            if (!elements.paymentReminderModal) return;
-            const link = buildWhatsappLink(bookingId);
-
-            if (link) {
-                elements.paymentReminderWhatsapp.href = link;
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+                return `https: //wa.me/${number}?text=${encodeURIComponent(message)}`;
             }
 
-            else {
-                elements.paymentReminderWhatsapp.href = '#';
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+            function openPaymentReminderModal(bookingId) {
+                if (!elements.paymentReminderModal) return;
+                const link = buildWhatsappLink(bookingId);
+
+                if (link) {
+                    elements.paymentReminderWhatsapp.href = link;
+                    elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+                }
+
+                else {
+                    elements.paymentReminderWhatsapp.href = '#';
+                    elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+                }
+
+                elements.paymentReminderModal.classList.add('active');
+                elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
             }
 
-            elements.paymentReminderModal.classList.add('active');
-            elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
-        }
+            function closePaymentReminderModal() {
+                if (!elements.paymentReminderModal) return;
+                elements.paymentReminderModal.classList.remove('active');
+                elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
+            }
 
-        function closePaymentReminderModal() {
-            if (!elements.paymentReminderModal) return;
-            elements.paymentReminderModal.classList.remove('active');
-            elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
-        }
-
-        async function loadSettings() {
-            try {
-                const response = await fetch(`$ {
+            async function loadSettings() {
+                try {
+                    const response = await fetch(`$ {
                     API_BASE_URL
                     }
 
                     /settings`);
-                if (!response.ok) {
-                    throw new Error('無法載入設定');
+                    if (!response.ok) {
+                        throw new Error('無法載入設定');
+                    }
+
+                    state.settings = await response.json();
+                    renderPaymentInfo();
                 }
 
-                state.settings = await response.json();
-                renderPaymentInfo();
-            }
+                catch (error) {
+                    console.error('Unable to load settings:', error);
 
-            catch (error) {
-                console.error('Unable to load settings:', error);
-
-                if (elements.paymentInfo) {
-                    elements.paymentInfo.textContent = '暫時無法載入付款資訊。';
+                    if (elements.paymentInfo) {
+                        elements.paymentInfo.textContent = '暫時無法載入付款資訊。';
+                    }
                 }
             }
-        }
 
-        elements.bookingForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            elements.successMessage.style.display = 'none';
-            elements.errorMessage.style.display = 'none';
+            elements.bookingForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                elements.successMessage.style.display = 'none';
+                elements.errorMessage.style.display = 'none';
 
-            if (!state.selectedClass) {
-                elements.errorMessage.textContent = '請先選擇課堂。';
-                elements.errorMessage.style.display = 'block';
-                return;
-            }
+                if (!state.selectedClass) {
+                    elements.errorMessage.textContent = '請先選擇課堂。';
+                    elements.errorMessage.style.display = 'block';
+                    return;
+                }
 
-            const payload = {
-                classId: state.selectedClass.id,
-                customerName: elements.customerInput.value.trim(),
-                email: elements.emailInput.value.trim(),
-                phone: elements.phoneInput.value.trim(),
-                peopleCount: Number(elements.peopleInput.value) || 1
-            }
+                const payload = {
+                    classId: state.selectedClass.id,
+                    customerName: elements.customerInput.value.trim(),
+                    email: elements.emailInput.value.trim(),
+                    phone: elements.phoneInput.value.trim(),
+                    peopleCount: Number(elements.peopleInput.value) || 1
+                }
 
-                ;
+                    ;
 
-            if (!payload.customerName || !payload.email || !payload.phone) {
-                elements.errorMessage.textContent = '請填寫完整聯絡資訊。';
-                elements.errorMessage.style.display = 'block';
-                return;
-            }
+                if (!payload.customerName || !payload.email || !payload.phone) {
+                    elements.errorMessage.textContent = '請填寫完整聯絡資訊。';
+                    elements.errorMessage.style.display = 'block';
+                    return;
+                }
 
-            try {
-                const response = await fetch(`$ {
+                try {
+                    const response = await fetch(`$ {
                     API_BASE_URL
                     }
 
                     /class-bookings`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
 
-                    ,
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
+                        ,
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
 
-                if (response.ok) {
-                    saveUserDetails(); // Save user info
+                    if (response.ok) {
+                        saveUserDetails(); // Save user info
 
-                    // Update WhatsApp link and show payment reminder modal
-                    openPaymentReminderModal(result.bookingId);
+                        // Update WhatsApp link and show payment reminder modal
+                        openPaymentReminderModal(result.bookingId);
 
-                    // Clear form
-                    elements.bookingForm.reset();
-                    elements.bookingCard.style.display = 'none';
+                        // Clear form
+                        elements.bookingForm.reset();
+                        elements.bookingCard.style.display = 'none';
 
-                    elements.successMessage.textContent = `預約成功！編號：$ {
+                        elements.successMessage.textContent = `預約成功！編號：$ {
                     result.bookingId
                     }
 
                     。請查看付款提示。`;
-                    elements.successMessage.style.display = 'block';
+                        elements.successMessage.style.display = 'block';
 
-                    window.scrollTo({
-                        top: 0, behavior: 'smooth'
-                    });
+                        window.scrollTo({
+                            top: 0, behavior: 'smooth'
+                        });
 
-                    // Reload class list to update remaining spots
-                    state.classesByDate = {}
+                        // Reload class list to update remaining spots
+                        state.classesByDate = {}
 
-                        ; // Clear cache to force refresh
-                    renderClassesForDate(state.selectedDate);
+                            ; // Clear cache to force refresh
+                        renderClassesForDate(state.selectedDate);
+                    }
+
+                    else {
+                        throw new Error(result.error || '預約失敗');
+                    }
                 }
 
-                else {
-                    throw new Error(result.error || '預約失敗');
+                catch (error) {
+                    console.error(error);
+                    elements.errorMessage.textContent = error.message || '預約失敗，請稍後再試。';
+                    elements.errorMessage.style.display = 'block';
                 }
-            }
+            });
 
-            catch (error) {
-                console.error(error);
-                elements.errorMessage.textContent = error.message || '預約失敗，請稍後再試。';
-                elements.errorMessage.style.display = 'block';
-            }
-        });
+            elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
 
-        elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
+            elements.paymentReminderModal?.addEventListener('click', (event) => {
+                if (event.target === elements.paymentReminderModal) {
+                    closePaymentReminderModal();
+                }
+            });
 
-        elements.paymentReminderModal?.addEventListener('click', (event) => {
-            if (event.target === elements.paymentReminderModal) {
-                closePaymentReminderModal();
-            }
-        });
+            elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
+                if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
+                    event.preventDefault();
+                }
+            });
 
-        elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
-            if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
-                event.preventDefault();
-            }
-        });
+            elements.prevWeek.addEventListener('click', () => {
+                state.weekStart.setDate(state.weekStart.getDate() - 7);
+                updateWeekLabel();
 
-        elements.prevWeek.addEventListener('click', () => {
-            state.weekStart.setDate(state.weekStart.getDate() - 7);
-            updateWeekLabel();
+                if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
+                    Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                    state.selectedDate = formatDate(state.weekStart);
+                }
 
-            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                state.selectedDate = formatDate(state.weekStart);
-            }
+                loadWeekClasses();
+            });
 
-            loadWeekClasses();
-        });
+            elements.nextWeek.addEventListener('click', () => {
+                state.weekStart.setDate(state.weekStart.getDate() + 7);
+                updateWeekLabel();
 
-        elements.nextWeek.addEventListener('click', () => {
-            state.weekStart.setDate(state.weekStart.getDate() + 7);
-            updateWeekLabel();
+                if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
+                    Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                    state.selectedDate = formatDate(state.weekStart);
+                }
 
-            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                state.selectedDate = formatDate(state.weekStart);
-            }
+                loadWeekClasses();
+            });
 
-            loadWeekClasses();
-        });
+            // Initialize
+            (function init() {
+                const today = new Date();
+                state.weekStart = startOfWeek(today).toISOString().split('T')[0];
+                updateWeekLabel();
 
-        // Initialize
-        (function init() {
-            const today = new Date();
-            state.weekStart = startOfWeek(today).toISOString().split('T')[0];
-            updateWeekLabel();
+                // Load User Details
+                loadUserDetails();
 
-            // Load User Details
-            loadUserDetails();
+                // Initial Render
+                renderDayButtons();
 
-            // Initial Render
-            renderDayButtons();
+                // Auto Select Today if within view, else Select Start of Week
+                const todayIso = formatDate(today);
+                state.selectedDate = todayIso;
 
-            // Auto Select Today if within view, else Select Start of Week
-            const todayIso = formatDate(today);
-            state.selectedDate = todayIso;
-
-            // Trigger fetch for selected date (default today)
-            renderClassesForDate(todayIso);
-        })();
+                // Trigger fetch for selected date (default today)
+                renderClassesForDate(todayIso);
+            })();
     </script>
 </body>
 

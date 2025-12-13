@@ -791,7 +791,12 @@
     </div>
     </div>
     <script>
-        const API_BASE_URL = '/api';
+        window.onerror = function (msg, url, line, col, error) {
+            // Note: Alerts are annoying but effective for "blank page" debugging
+            // console.error(msg, url, line);
+            // alert('Error: ' + msg + ' at ' + line);
+        };
+        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
 
         const DEV_AUTH_DISABLED = false; // Toggle to true to disable admin authentication (development only)
         function isAuthDisabled() { return DEV_AUTH_DISABLED; }
