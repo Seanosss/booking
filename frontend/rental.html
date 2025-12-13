@@ -874,6 +874,8 @@
             const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
             const interval = state.slotInterval;
             const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
+            const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
+            const isSelected = (time) => currentSelected.has(time);
 
             // Map generated slots to objects with status
             const slots = generatedSlots.map(time => {
