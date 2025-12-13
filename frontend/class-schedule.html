@@ -5,21 +5,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>課堂時間表 | Studio Booking</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
     <style>
         :root {
             --brand-primary: #0f172a;
+            /* Deep Slate Navy */
             --brand-secondary: #3b82f6;
+            /* Bright Blue */
             --brand-secondary-hover: #2563eb;
             --surface: #f8fafc;
-            --surface-alt: #ffffff;
+            /* Very light cool gray */
+            --surface-alt: rgba(255, 255, 255, 0.85);
+            /* Glassmorphism base */
             --text-main: #1e293b;
             --text-muted: #64748b;
             --accent: #10b981;
+            /* Emerald */
             --danger: #ef4444;
+            /* Red */
             --border: #e2e8f0;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+            --glass-backdrop: blur(12px);
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
 
         * {
@@ -28,20 +44,37 @@
 
         body {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--surface);
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
             color: var(--text-main);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* Background decoration */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            filter: blur(60px);
+            z-index: -1;
         }
 
         header {
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
             color: var(--text-main);
             padding: 24px 24px 60px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
             position: relative;
             overflow: hidden;
+            z-index: 20;
         }
 
         header::before {
@@ -93,10 +126,12 @@
 
         .card {
             background: var(--surface-alt);
-            border-radius: 20px;
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            border: var(--glass-border);
+            border-radius: 24px;
             box-shadow: var(--shadow);
             padding: 32px;
-            border: 1px solid var(--border);
             margin-bottom: 24px;
         }
 
