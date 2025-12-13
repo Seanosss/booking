@@ -391,34 +391,68 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }
 
-        .status-message {
-            display: none;
-            border-radius: 12px;
-            padding: 16px;
-            font-weight: 500;
-            animation: fadeIn 0.3s;
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
         }
 
-        @keyframes fadeIn {
+        .toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 99px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: auto;
+            min-width: 300px;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+
+        .toast.success {
+            color: #059669;
+            border: 1px solid #34d399;
+        }
+
+        .toast.error {
+            color: #dc2626;
+            border: 1px solid #f87171;
+        }
+
+        @keyframes slideDown {
             from {
                 opacity: 0;
+                transform: translateY(-20px) scale(0.95);
             }
 
             to {
                 opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
-        .status-message.success {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
 
-        .status-message.error {
-            background: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
         }
 
         .booking-summary {
@@ -592,8 +626,7 @@
             <div class="card booking-card" id="booking-card" style="display:none;">
                 <h2>預約課堂</h2>
                 <div class="booking-summary" id="booking-summary"></div>
-                <div id="class-success" class="status-message success"></div>
-                <div id="class-error" class="status-message error"></div>
+
                 <form id="class-booking-form">
                     <div><label for="class-name">課堂</label><input type="text" id="class-name" disabled></div>
                     <div><label for="class-customer">姓名 *</label><input type="text" id="class-customer" required></div>
@@ -1189,14 +1222,40 @@
                 }
             }
 
+            function showToast(message, type = 'success') {
+                let container = document.querySelector('.toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'toast-container';
+                    document.body.appendChild(container);
+                }
+
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+
+                // Icon
+                const icon = type === 'success'
+                    ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                    : '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+
+                toast.innerHTML = `${icon}<span>${message}</span>`;
+
+                container.appendChild(toast);
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    toast.style.animation = 'fadeOut 0.3s forwards';
+                    toast.addEventListener('animationend', () => {
+                        toast.remove();
+                    });
+                }, 3000);
+            }
+
             elements.bookingForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
-                elements.successMessage.style.display = 'none';
-                elements.errorMessage.style.display = 'none';
 
                 if (!state.selectedClass) {
-                    elements.errorMessage.textContent = '請先選擇課堂。';
-                    elements.errorMessage.style.display = 'block';
+                    showToast('請先選擇課堂', 'error');
                     return;
                 }
 
@@ -1206,28 +1265,17 @@
                     email: elements.emailInput.value.trim(),
                     phone: elements.phoneInput.value.trim(),
                     peopleCount: Number(elements.peopleInput.value) || 1
-                }
-
-                    ;
+                };
 
                 if (!payload.customerName || !payload.email || !payload.phone) {
-                    elements.errorMessage.textContent = '請填寫完整聯絡資訊。';
-                    elements.errorMessage.style.display = 'block';
+                    showToast('請填寫完整聯絡資訊', 'error');
                     return;
                 }
 
                 try {
-                    const response = await fetch(`$ {
-                    API_BASE_URL
-                    }
-
-                    /class-bookings`, {
+                    const response = await fetch(`${API_BASE_URL}/class-bookings`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-
-                        ,
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                     const result = await response.json();
@@ -1242,33 +1290,21 @@
                         elements.bookingForm.reset();
                         elements.bookingCard.style.display = 'none';
 
-                        elements.successMessage.textContent = `預約成功！編號：$ {
-                    result.bookingId
-                    }
-
-                    。請查看付款提示。`;
-                        elements.successMessage.style.display = 'block';
+                        showToast(`預約成功！編號：${result.bookingId}`, 'success');
 
                         window.scrollTo({
                             top: 0, behavior: 'smooth'
                         });
 
                         // Reload class list to update remaining spots
-                        state.classesByDate = {}
-
-                            ; // Clear cache to force refresh
+                        state.classesByDate = {}; // Clear cache to force refresh
                         renderClassesForDate(state.selectedDate);
-                    }
-
-                    else {
+                    } else {
                         throw new Error(result.error || '預約失敗');
                     }
-                }
-
-                catch (error) {
+                } catch (error) {
                     console.error(error);
-                    elements.errorMessage.textContent = error.message || '預約失敗，請稍後再試。';
-                    elements.errorMessage.style.display = 'block';
+                    showToast(error.message || '預約失敗，請稍後再試', 'error');
                 }
             });
 

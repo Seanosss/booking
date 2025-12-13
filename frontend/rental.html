@@ -421,37 +421,68 @@
             box-shadow: none;
         }
 
-        .status-message {
-            padding: 16px;
-            border-radius: 12px;
-            font-weight: 500;
-            margin-bottom: 24px;
-            display: none;
-            animation: fadeIn 0.3s ease;
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
         }
 
-        @keyframes fadeIn {
+        .toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 99px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: auto;
+            min-width: 300px;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+
+        .toast.success {
+            color: #059669;
+            border: 1px solid #34d399;
+        }
+
+        .toast.error {
+            color: #dc2626;
+            border: 1px solid #f87171;
+        }
+
+        @keyframes slideDown {
             from {
                 opacity: 0;
-                transform: translateY(-10px);
+                transform: translateY(-20px) scale(0.95);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
             }
         }
 
-        .status-message.success {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
 
-        .status-message.error {
-            background: #fef2f2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
         }
 
         .instruction-list {
@@ -607,8 +638,7 @@
             </div>
             <div class="card">
                 <h2>🛒 已選擇的時段</h2>
-                <div id="status-success" class="status-message success"></div>
-                <div id="status-error" class="status-message error"></div>
+
                 <div id="summary-list" class="summary-list"></div>
                 <div class="summary-totals">
                     <div class="totals-row"><span>已選時段</span><span id="total-blocks">0</span></div>
@@ -1284,15 +1314,41 @@
             }
         });
 
+        function showToast(message, type = 'success') {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            // Icon
+            const icon = type === 'success'
+                ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                toast.addEventListener('animationend', () => {
+                    toast.remove();
+                });
+            }, 3000);
+        }
+
         document.getElementById('booking-form').addEventListener('submit', async (event) => {
             event.preventDefault();
-            elements.successMessage.style.display = 'none';
-            elements.errorMessage.style.display = 'none';
 
             const groups = getAllSelectedGroups();
             if (groups.length === 0) {
-                elements.errorMessage.textContent = '請先選擇預約時段。';
-                elements.errorMessage.style.display = 'block';
+                showToast('請先選擇預約時段', 'error');
                 return;
             }
 
@@ -1305,14 +1361,13 @@
                     date: group.date,
                     startTime: group.start,
                     endTime: group.end,
-                    catalogItemId: state.activeRoomId || null // Pass selected room ID
+                    catalogItemId: state.activeRoomId || null
                 })),
                 peopleCount: resolvePeopleCountInput() ?? 1
             };
 
             if (!payload.customerName || !payload.email || !payload.phone) {
-                elements.errorMessage.textContent = '請填寫完整聯絡資料。';
-                elements.errorMessage.style.display = 'block';
+                showToast('請填寫完整聯絡資料', 'error');
                 return;
             }
 
@@ -1328,16 +1383,17 @@
                 const result = await response.json().catch(() => ({}));
 
                 if (response.ok) {
-                    saveUserDetails(); // Remember user
-                    elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
-                    elements.successMessage.style.display = 'block';
+                    saveUserDetails();
+                    showToast(result.message || '預約已提交！', 'success');
+
                     openPaymentReminderModal(result.bookingId);
+
                     const affectedDates = Array.from(new Set(groups.map(group => group.date)));
                     state.selectedSlotsByDate.clear();
                     affectedDates.forEach(date => state.availabilityByDate.delete(date));
                     renderSummary();
                     calculateTotals();
-                    elements.notes.value = ''; // clear notes
+                    elements.notes.value = '';
                     if (state.selectedDate) {
                         fetchAvailability(state.selectedDate);
                     }
@@ -1348,8 +1404,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                elements.errorMessage.textContent = error.message || '提交失敗，請稍後再試。';
-                elements.errorMessage.style.display = 'block';
+                showToast(error.message || '提交失敗，請稍後再試', 'error');
             } finally {
                 elements.submitButton.disabled = false;
                 elements.submitButton.textContent = '提交預約申請';
