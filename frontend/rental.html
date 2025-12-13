@@ -10,6 +10,11 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap"
         rel="stylesheet">
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
 
     <style>
         :root {
@@ -627,6 +632,57 @@
                 animation: shimmer 1.5s infinite;
                 border-radius: 8px;
             }
+
+            /* Flatpickr Customization */
+            .flatpickr-calendar {
+                background: rgba(255, 255, 255, 0.95) !important;
+                backdrop-filter: blur(12px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.5) !important;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+                border-radius: 16px !important;
+                font-family: 'Inter', sans-serif !important;
+            }
+
+            .flatpickr-day.selected,
+            .flatpickr-day.startRange,
+            .flatpickr-day.endRange,
+            .flatpickr-day.selected.inRange,
+            .flatpickr-day.startRange.inRange,
+            .flatpickr-day.endRange.inRange,
+            .flatpickr-day.selected:focus,
+            .flatpickr-day.startRange:focus,
+            .flatpickr-day.endRange:focus,
+            .flatpickr-day.selected:hover,
+            .flatpickr-day.startRange:hover,
+            .flatpickr-day.endRange:hover,
+            .flatpickr-day.selected.prevMonthDay,
+            .flatpickr-day.startRange.prevMonthDay,
+            .flatpickr-day.endRange.prevMonthDay,
+            .flatpickr-day.selected.nextMonthDay,
+            .flatpickr-day.startRange.nextMonthDay,
+            .flatpickr-day.endRange.nextMonthDay {
+                background: var(--brand-secondary) !important;
+                border-color: var(--brand-secondary) !important;
+            }
+
+            .flatpickr-day.today {
+                border-color: var(--brand-secondary) !important;
+            }
+
+            .flatpickr-months .flatpickr-month {
+                background: transparent !important;
+                color: var(--brand-primary) !important;
+                fill: var(--brand-primary) !important;
+            }
+
+            .flatpickr-current-month .flatpickr-monthDropdown-months {
+                background: transparent !important;
+            }
+
+            span.flatpickr-weekday {
+                background: transparent !important;
+                color: var(--text-muted) !important;
+            }
     </style>
 </head>
 
@@ -654,7 +710,7 @@
                 </div>
                 <div class="form-group">
                     <label for="date-input">預約日期</label>
-                    <input type="date" id="date-input" min="" max="">
+                    <input type="text" id="date-input" placeholder="點擊選擇日期..." readonly style="background: white;">
                 </div>
                 <div id="slots-section" style="display:none;">
                     <div class="slot-grid" id="slot-grid"></div>
@@ -719,7 +775,8 @@
         </div>
     </div>
     <script>
-        const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
+        // const API_BASE_URL = 'https://booking-ub69.onrender.com/api'; // OLD
+        const API_BASE_URL = '/api'; // Relative path for local/prod compatibility
 
         const state = {
             settings: null,
@@ -1290,22 +1347,26 @@
             today.setDate(today.getDate() + minDays);
             const maxDate = new Date();
             maxDate.setDate(maxDate.getDate() + maxDays);
-            elements.dateInput.min = formatDateInputValue(today);
-            elements.dateInput.max = formatDateInputValue(maxDate);
+            elements.dateInput.placeholder = `請選擇 ${formatDateInputValue(today)} 至 ${formatDateInputValue(maxDate)}`;
+            if (fpInstance) {
+                fpInstance.set('minDate', today);
+                fpInstance.set('maxDate', maxDate);
+            }
         }
 
         function setTodayAsMinDate() {
-            const today = new Date();
-            elements.dateInput.min = formatDateInputValue(today);
+            // Deprecated for Flatpickr - logic moved to init/loadSettings
         }
 
-        async function handleDateChange(event) {
-            const value = event.target.value;
-            state.selectedDate = value;
-            if (value) {
+        // Flatpickr Instance
+        let fpInstance;
+
+        async function handleDateChange(selectedDates, dateStr, instance) {
+            state.selectedDate = dateStr;
+            if (dateStr) {
                 elements.slotsSection.style.display = 'block';
-                renderSkeletonSlots(); // Show skeleton immediately
-                await fetchAvailability(value); // Await fetchAvailability
+                renderSkeletonSlots();
+                await fetchAvailability(dateStr);
             } else {
                 elements.slotsSection.style.display = 'none';
                 elements.slotGrid.innerHTML = '';
@@ -1313,7 +1374,23 @@
             renderSummary();
         }
 
-        elements.dateInput.addEventListener('change', handleDateChange);
+        // Initialize Flatpickr
+        function initFlatpickr(minDate, maxDate) {
+            if (fpInstance) fpInstance.destroy();
+
+            fpInstance = flatpickr(elements.dateInput, {
+                locale: "zh_tw",
+                minDate: minDate,
+                maxDate: maxDate,
+                dateFormat: "Y-m-d",
+                disableMobile: "true", // Force custom picker on mobile for consistency
+                altInput: true,
+                altFormat: "Y 年 m 月 d 日 (D)",
+                onChange: handleDateChange
+            });
+        }
+
+        // elements.dateInput.addEventListener('change', handleDateChange); // Removed native listener
 
         elements.peopleInput.addEventListener('input', () => {
             const parsed = resolvePeopleCountInput();
@@ -1453,11 +1530,21 @@
             // loadSettings already applies rules/state.settings internally if checks passed?
             // Actually loadSettings implementation (visible in file?) assigns to state.settings
 
-            // Set default date to today
+            // Set default date logic
             const today = new Date();
-            const dateStr = formatDateInputValue(today);
-            elements.dateInput.value = dateStr;
-            handleDateChange({ target: { value: dateStr } });
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + Number(state.settings?.bookingRules?.minAdvanceBooking || 0));
+
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + Number(state.settings?.bookingRules?.maxAdvanceBooking || 30));
+
+            // Initialize Flatpickr with bounds
+            initFlatpickr(minDate, maxDate);
+
+            // Default select today/minDate if valid
+            // const dateStr = formatDateInputValue(minDate);
+            // fpInstance.setDate(dateStr, true); // Trigger change
+
         })();
 
         // Remove any legacy footer note that might persist from cached assets
