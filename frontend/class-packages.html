@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,39 +11,132 @@
             --brand-secondary: #145da0;
             --surface: #f8f9fb;
         }
-        * { box-sizing: border-box; }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f1f5f9;
             color: #1f2933;
         }
-        header { padding: 48px 24px 30px; text-align: center; background: linear-gradient(135deg,#145da0,#0b4f6c); color:#fff; }
-        header h1 { margin: 0 0 12px; font-size: 2.3rem; }
-        header p { margin: 0; opacity: 0.92; }
-        main { max-width: 960px; margin: 0 auto; padding: 0 24px 60px; margin-top: -30px; }
-        nav { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 30px; }
-        nav a { padding: 10px 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.6); color:#fff; text-decoration:none; font-weight:600; }
-        section { background: #fff; border-radius: 24px; padding: 30px; box-shadow: 0 30px 50px rgba(15,55,98,0.14); border:1px solid rgba(20,93,160,0.08); }
-        .product-grid { display: grid; gap: 24px; }
-        @media(min-width: 768px){ .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+        header {
+            padding: 48px 24px 30px;
+            text-align: center;
+            background: linear-gradient(135deg, #145da0, #0b4f6c);
+            color: #fff;
+        }
+
+        header h1 {
+            margin: 0 0 12px;
+            font-size: 2.3rem;
+        }
+
+        header p {
+            margin: 0;
+            opacity: 0.92;
+        }
+
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px 60px;
+            margin-top: -30px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        nav a {
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        section {
+            background: #fff;
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 30px 50px rgba(15, 55, 98, 0.14);
+            border: 1px solid rgba(20, 93, 160, 0.08);
+        }
+
+        .product-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media(min-width: 768px) {
+            .product-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         .product-card {
             border: 1px solid #dbe2ed;
             border-radius: 18px;
             padding: 22px;
-            background: linear-gradient(135deg, rgba(20,93,160,0.08), rgba(255,255,255,0.9));
+            background: linear-gradient(135deg, rgba(20, 93, 160, 0.08), rgba(255, 255, 255, 0.9));
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-        .product-card h2 { margin: 0; color: var(--brand-primary); }
-        .product-card p { margin: 0; color: #475569; line-height: 1.6; }
-        .product-meta { display: flex; flex-direction: column; gap: 6px; color: #334155; font-size: 0.95rem; }
-        .status { padding: 6px 12px; background: rgba(20,93,160,0.12); color: var(--brand-secondary); border-radius: 999px; font-weight:600; display:inline-block; }
-        .cta { margin-top: auto; font-weight:600; color: var(--brand-primary); }
-        .empty { text-align:center; color:#64748b; padding:24px; border:1px dashed #cbd5e1; border-radius:16px; }
+
+        .product-card h2 {
+            margin: 0;
+            color: var(--brand-primary);
+        }
+
+        .product-card p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .product-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            color: #334155;
+            font-size: 0.95rem;
+        }
+
+        .status {
+            padding: 6px 12px;
+            background: rgba(20, 93, 160, 0.12);
+            color: var(--brand-secondary);
+            border-radius: 999px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .cta {
+            margin-top: auto;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+
+        .empty {
+            text-align: center;
+            color: #64748b;
+            padding: 24px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 16px;
+        }
     </style>
 </head>
+
 <body>
     <header>
         <h1>課程套票 / 月費</h1>
@@ -63,7 +157,10 @@
             const DEFAULT_API_PATH = '/api';
             const RENDER_API_ORIGIN = 'https://booking-ub69.onrender.com';
             const fallbackOrigin = RENDER_API_ORIGIN;
-            const baseOrigin = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : fallbackOrigin;
+            const baseOrigin = (window.location.origin && window.location.origin !== 'null')
+                ? window.location.origin
+                : fallbackOrigin;
+
             const ensureApiPath = (value) => {
                 if (!value) return null;
                 try {
@@ -79,6 +176,7 @@
                     return null;
                 }
             };
+
             const normalizeBaseUrl = (value) => {
                 if (!value) return null;
                 try {
@@ -90,34 +188,36 @@
                     return null;
                 }
             };
+
             const params = new URLSearchParams(window.location.search);
             const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
             if (queryOverride) {
                 const resolved = ensureApiPath(normalizeBaseUrl(queryOverride));
                 if (resolved) {
-                    try { localStorage.setItem(storageKey, resolved); } catch (error) {}
+                    try { localStorage.setItem(storageKey, resolved); } catch (error) { }
                     return resolved;
                 }
             }
+
             try {
                 const stored = ensureApiPath(normalizeBaseUrl(localStorage.getItem(storageKey)));
                 if (stored) return stored;
-            } catch (error) {}
+            } catch (error) { }
+
             const inlineConfig = ensureApiPath(normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl));
             if (inlineConfig) return inlineConfig;
+
             const metaTag = document.querySelector('meta[name="api-base-url"]');
             const metaUrl = ensureApiPath(normalizeBaseUrl(metaTag?.content));
             if (metaUrl) return metaUrl;
-            const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
+
+            // Prioritize current origin if valid (e.g. served from the same backend)
             const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
-            if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
+            if (normalizedCurrentOrigin && !normalizedCurrentOrigin.startsWith('file:') && normalizedCurrentOrigin !== 'null') {
                 return ensureApiPath(normalizedCurrentOrigin);
             }
-            const isLocalhost = normalizedCurrentOrigin ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin) : false;
-            if (isLocalhost && normalizedCurrentOrigin) {
-                return ensureApiPath(normalizedCurrentOrigin);
-            }
-            return ensureApiPath(normalizedRenderOrigin);
+
+            return ensureApiPath(fallbackOrigin);
         }
         const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');
         async function loadProducts() {
@@ -154,4 +254,5 @@
         loadProducts();
     </script>
 </body>
+
 </html>
