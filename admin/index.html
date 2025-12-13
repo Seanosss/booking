@@ -356,7 +356,13 @@
             background: #f8faff;
             font-size: 0.9em;
         }
+
+        /* Role Based UI */
+        body.role-receptionist .btn-danger {
+            display: none !important;
+        }
     </style>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 </head>
 
 <body>
@@ -386,14 +392,29 @@
         </div>
         <div class="tabs">
             <button class="tab-btn active" data-tab="bookingsTab">預約列表</button>
+            <button class="tab-btn" data-tab="calendarTab">行事曆</button>
             <button class="tab-btn" data-tab="overviewTab">預約概覽</button>
             <button class="tab-btn" data-tab="settingsTab">設定</button>
             <button class="tab-btn" data-tab="instructionsTab">預約須知</button>
             <button class="tab-btn" data-tab="itemsTab">課程 / 場地項目</button>
         </div>
+        <div id="calendarTab" class="tab-content">
+            <div class="section-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                    <h3>行事曆檢視</h3>
+                    <div>
+                        <span class="status-chip status-confirmed">點擊空格快速封鎖時段</span>
+                    </div>
+                </div>
+                <div id='calendar'></div>
+            </div>
+        </div>
         <div id="bookingsTab" class="tab-content active">
             <div class="section-card">
-                <h3>場地預約</h3>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                    <h3>場地預約</h3>
+                    <button class="btn btn-secondary" onclick="exportCsv()">匯出月報表 (CSV)</button>
+                </div>
                 <div id="bookingsMessage" class="message"></div>
                 <div style="overflow-x:auto;">
                     <table>
@@ -619,6 +640,22 @@
                 </form>
             </div>
         </div>
+
+        <!-- Notes Modal -->
+        <div id="notesModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeNotesModal()">&times;</span>
+                <h3 style="margin-bottom:18px;color:#0b4f6c;">編輯備註</h3>
+                <input type="hidden" id="noteBookingId">
+                <div class="input-group">
+                    <textarea id="noteText" rows="5" placeholder="輸入備註..."></textarea>
+                </div>
+                <div style="margin-top:18px;text-align:right;">
+                    <button class="btn btn-secondary" onclick="closeNotesModal()">取消</button>
+                    <button class="btn btn-primary" onclick="saveNote()">儲存</button>
+                </div>
+            </div>
+        </div>
         <div id="instructionsTab" class="tab-content">
             <div id="instructionsMessage" class="message"></div>
             <div class="section-card">
@@ -711,38 +748,40 @@
                         <button type="button" class="btn btn-secondary" onclick="resetClassProductForm()">清除</button>
                     </div>
                 </form>
-                <h4 style="margin-top:24px;color:#145da0;">現有方案</h4>
-                <div id="classProductsList" class="item-list"></div>
-            </div>
-            <div class="section-card">
-                <h3>場地租用項目</h3>
-                <div id="rentalItemsMessage" class="message"></div>
-                <form id="rentalItemForm">
-                    <input type="hidden" id="rentalItemId">
-                    <div class="form-grid two-columns">
-                        <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
-                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
-                                required></div>
-                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
-                                required></div>
-                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number"
-                                min="1" required></div>
-                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number"
-                                min="0" step="1" required></div>
-                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
-                        </div>
-                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
-                                required></div>
-                    </div>
-                    <div style="margin-top:18px;">
-                        <button type="submit" class="btn btn-primary">儲存場地項目</button>
-                        <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
-                    </div>
-                </form>
-                <h4 style="margin-top:24px;color:#145da0;">現有場地項目</h4>
-                <div id="rentalItemsList" class="item-list"></div>
+                <h4 style="margin-top:24px;color:#145da0;'>現有方案</h4>
+                <div id=" classProductsList" class="item-list">
             </div>
         </div>
+        <div class="section-card">
+            <h3>場地租用項目</h3>
+            <div id="rentalItemsMessage" class="message"></div>
+            <form id="rentalItemForm">
+                <input type="hidden" id="rentalItemId">
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
+                    <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
+                            required></div>
+                    <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
+                            required></div>
+                    <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number" min="1"
+                            required></div>
+                    <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number" min="0"
+                            step="1" required></div>
+                    <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
+                    </div>
+                    <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
+                            required></div>
+                </div>
+                <div style="margin-top:18px;">
+                    <button type="submit" class="btn btn-primary">儲存場地項目</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
+                </div>
+            </form>
+            <h4 style="margin-top:24px;color:#145da0;'>現有場地項目</h4>
+                <div id=" rentalItemsList" class="item-list">
+        </div>
+    </div>
+    </div>
     </div>
     <script>
         function resolveApiBaseUrl(storageKey) {
@@ -912,7 +951,7 @@
             const targetDate = date || document.getElementById('overviewDate')?.value;
             if (!targetDate) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/bookings/overview?date=${targetDate}`, { headers: authHeaders() });
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/bookings/overview?date=${targetDate}`);
                 if (response.status === 401) return logout();
                 const result = await response.json();
                 if (response.ok) {
@@ -1037,11 +1076,29 @@
 
         // Removed legacy auth functions (performAdminLogin, showAdminPanel, old logout, old authHeaders)
 
+        // 401 Interceptor wrapper
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('adminToken');
+            const headers = { ...options.headers };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            options.headers = headers;
+
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                // Token expired or invalid
+                logout(); // This will show the login modal
+                // Only alert if we were previously logged in (avoid loop on initial load)
+                if (token) alert('登入已過期，請重新登入。');
+                return response; // Caller handles status, but we've triggered logout
+            }
+            return response;
+        }
 
         async function loadStats() {
             try {
-                const response = await fetch(`${API_BASE_URL}/stats`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/stats`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load stats:', response.status, errorPayload);
@@ -1064,8 +1121,7 @@
 
         async function loadRentalBookings() {
             try {
-                const response = await fetch(`${API_BASE_URL}/bookings`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/bookings`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load bookings:', response.status, errorPayload);
@@ -1120,6 +1176,7 @@
                         <button class="btn btn-secondary" onclick="updateBookingStatus('${booking.id}','cancelled')">取消</button>
                         <a class="btn btn-secondary" href="${API_BASE_URL}/bookings/${booking.id}/ics" target="_blank" rel="noopener">下載日曆</a>
                         <button class="btn btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
+                        <button class="btn btn-secondary" onclick="openNotesModal('${booking.id}', '${escapeHtml(booking.adminNotes || '')}')">✏️</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -1128,8 +1185,7 @@
 
         async function loadClassBookings() {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/class-bookings`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load class bookings:', response.status, errorPayload);
@@ -1185,14 +1241,14 @@
 
         async function updateBookingStatus(id, status) {
             try {
-                const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ status }) });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/bookings/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
                 const result = await response.json();
                 if (response.ok) {
                     showMessage('bookingsMessage', 'success', result.message || '更新成功');
                     loadRentalBookings();
                     loadBookingOverview(document.getElementById('overviewDate')?.value);
                     loadStats();
+                    if (calendar) calendar.refetchEvents();
                 } else {
                     showMessage('bookingsMessage', 'error', result.error || '更新失敗');
                 }
@@ -1205,14 +1261,14 @@
         async function deleteRentalBooking(id) {
             if (!confirm('確定要刪除此預約記錄嗎？此動作無法復原。')) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/bookings/${id}`, { method: 'DELETE', headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/bookings/${id}`, { method: 'DELETE' });
                 const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     showMessage('bookingsMessage', 'success', result.message || '預約記錄已刪除');
                     loadRentalBookings();
                     loadBookingOverview(document.getElementById('overviewDate')?.value);
                     loadStats();
+                    if (calendar) calendar.refetchEvents();
                 } else {
                     showMessage('bookingsMessage', 'error', result.error || '刪除失敗');
                 }
@@ -1224,12 +1280,11 @@
 
         async function updateClassBookingStatus(id, status) {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/class-bookings/${id}/status`, {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings/${id}/status`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status })
                 });
-                if (response.status === 401) return logout();
                 const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     showMessage('classBookingsMessage', 'success', result.message || '更新成功');
@@ -1247,8 +1302,7 @@
         async function deleteClassBooking(id) {
             if (!confirm('確定要刪除此課程預約？')) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/class-bookings/${id}`, { method: 'DELETE', headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings/${id}`, { method: 'DELETE' });
                 if (response.ok) {
                     showMessage('classBookingsMessage', 'success', '課程預約已刪除');
                     loadClassBookings();
@@ -1261,11 +1315,6 @@
                 console.error('Error deleting class booking:', error);
                 showMessage('classBookingsMessage', 'error', '刪除失敗，請稍後再試');
             }
-        }
-
-        function authHeaders() {
-            const token = localStorage.getItem('adminToken');
-            return token ? { 'Authorization': `Bearer ${token}` } : {};
         }
 
         async function handleLogin(event) {
@@ -1313,7 +1362,7 @@
                 showLoginModal();
             } else {
                 // Verify token validity by calling a protected endpoint (e.g., stats)
-                fetch(`${API_BASE_URL}/stats`, { headers: authHeaders() })
+                authenticatedFetch(`${API_BASE_URL}/stats`)
                     .then(response => {
                         if (response.status === 401) {
                             throw new Error('Token expired');
@@ -1340,6 +1389,50 @@
             showLoginModal();
         }
 
+        function updateAdminUI() {
+            const role = localStorage.getItem('adminRole'); // 'super_admin' or 'receptionist'
+            const username = localStorage.getItem('adminUsername');
+
+            const adminIdentity = document.getElementById('adminIdentity');
+            if (adminIdentity) {
+                adminIdentity.textContent = `User: ${username} (${role})`;
+                adminIdentity.style.display = 'block';
+            }
+
+            // Hide Settings Tab for non-super_admin
+            const settingsBtn = document.querySelector('button[data-tab="settingsTab"]');
+            if (settingsBtn) {
+                settingsBtn.style.display = role === 'super_admin' ? 'inline-block' : 'none';
+            }
+
+            // Hide Revenue/Total Stats for non-super_admin (Allow Pending count only?)
+            // Requirement: "Restrict 'Settings', 'Financial Stats' ... to super_admin"
+            // Let's hide the total and confirmed revenue cards if not super_admin?
+            // Or just hide the stats API call? The API is protected now.
+            // If API fails (403), stats won't load. Ideally hide the UI too.
+            if (role !== 'super_admin') {
+                const statTotal = document.getElementById('stat-total');
+                const statConfirmed = document.getElementById('stat-confirmed');
+                if (statTotal) statTotal.style.visibility = 'hidden';
+                if (statConfirmed) statConfirmed.style.visibility = 'hidden';
+                // Keep 'stat-pending' visible as receptionist needs to see pending tasks?
+            } else {
+                const statTotal = document.getElementById('stat-total');
+                const statConfirmed = document.getElementById('stat-confirmed');
+                if (statTotal) statTotal.style.visibility = 'visible';
+                if (statConfirmed) statConfirmed.style.visibility = 'visible';
+            }
+
+            // Delete buttons dynamic hiding is harder in table render, 
+            // but we can add a global style or class to body?
+            if (role === 'super_admin') {
+                document.body.classList.add('role-super-admin');
+                document.body.classList.remove('role-receptionist');
+            } else {
+                document.body.classList.add('role-receptionist');
+                document.body.classList.remove('role-super-admin');
+            }
+        }
         function applyRolePermissions() {
             const role = localStorage.getItem('adminRole');
             const username = localStorage.getItem('adminUsername');
@@ -1406,9 +1499,9 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/users`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, role })
                 });
 
@@ -1461,15 +1554,12 @@
                 loadRentalBookings();
                 loadClassBookings();
                 loadBookingOverview(document.getElementById('overviewDate')?.value);
+                if (calendar) calendar.refetchEvents();
             }, 30000);
         }
 
         // Initial check only
         checkAuthentication();
-
-
-
-
 
         async function handlePasswordChange(event) {
             event.preventDefault();
@@ -1493,9 +1583,9 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/change-password`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ currentPassword: current, newPassword: nextPassword })
                 });
                 const result = await response.json().catch(() => ({}));
@@ -1523,7 +1613,7 @@
 
         async function loadInstructions() {
             try {
-                const response = await fetch(`${API_BASE_URL}/settings`);
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load instructions:', response.status, errorPayload);
@@ -1553,8 +1643,7 @@
             }
             const payload = { ...currentSettings, bookingInstructions };
             try {
-                const response = await fetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(payload) });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (response.ok) {
                     currentSettings = (await response.json()).settings || payload;
                     showMessage('instructionsMessage', 'success', '須知已更新');
@@ -1571,8 +1660,7 @@
 
         async function loadClasses() {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/classes?includePast=true`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/classes?includePast=true`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load classes:', response.status, errorPayload);
@@ -1727,12 +1815,11 @@
             try {
                 const method = id ? 'PUT' : 'POST';
                 const endpoint = id ? `${API_BASE_URL}/admin/classes/${id}` : `${API_BASE_URL}/admin/classes`;
-                const response = await fetch(endpoint, {
+                const response = await authenticatedFetch(endpoint, {
                     method,
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (response.status === 401) return logout();
                 const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     showMessage('classesMessage', 'success', '課程已儲存');
@@ -1752,8 +1839,7 @@
         async function deleteClass(id) {
             if (!confirm('確定要刪除此課程？')) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/classes/${id}`, { method: 'DELETE', headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/classes/${id}`, { method: 'DELETE' });
                 if (response.ok) {
                     showMessage('classesMessage', 'success', '課程已刪除');
                     loadClasses();
@@ -1770,8 +1856,7 @@
 
         async function loadClassProducts() {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/class-products`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-products`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load class products:', response.status, errorPayload);
@@ -1882,12 +1967,11 @@
             try {
                 const method = id ? 'PUT' : 'POST';
                 const endpoint = id ? `${API_BASE_URL}/admin/class-products/${id}` : `${API_BASE_URL}/admin/class-products`;
-                const response = await fetch(endpoint, {
+                const response = await authenticatedFetch(endpoint, {
                     method,
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (response.status === 401) return logout();
                 const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     showMessage('classProductsMessage', 'success', '方案已儲存');
@@ -1906,8 +1990,7 @@
         async function deleteClassProduct(id) {
             if (!confirm('確定要刪除此方案？')) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/class-products/${id}`, { method: 'DELETE', headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-products/${id}`, { method: 'DELETE' });
                 if (response.ok) {
                     showMessage('classProductsMessage', 'success', '方案已刪除');
                     loadClassProducts();
@@ -1923,8 +2006,7 @@
 
         async function loadRentalItems() {
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/items`, { headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/items`);
                 if (!response.ok) {
                     const errorPayload = await response.json().catch(() => ({}));
                     console.error('Failed to load rental items:', response.status, errorPayload);
@@ -2057,12 +2139,11 @@
             try {
                 const method = id ? 'PUT' : 'POST';
                 const endpoint = id ? `${API_BASE_URL}/admin/items/${id}` : `${API_BASE_URL}/admin/items`;
-                const response = await fetch(endpoint, {
+                const response = await authenticatedFetch(endpoint, {
                     method,
-                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (response.status === 401) return logout();
                 const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     showMessage('rentalItemsMessage', 'success', '場地項目已儲存');
@@ -2081,8 +2162,7 @@
         async function deleteRentalItem(id) {
             if (!confirm('確定要刪除此場地項目？')) return;
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/items/${id}`, { method: 'DELETE', headers: authHeaders() });
-                if (response.status === 401) return logout();
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/items/${id}`, { method: 'DELETE' });
                 if (response.ok) {
                     showMessage('rentalItemsMessage', 'success', '場地項目已刪除');
                     loadRentalItems();
@@ -2118,6 +2198,174 @@
             }
         }
 
+        let calendar;
+
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'zh-tw',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: async function (info, successCallback, failureCallback) {
+                    try {
+                        const [bookingsRes, classesRes] = await Promise.all([
+                            authenticatedFetch(`${API_BASE_URL}/bookings`),
+                            authenticatedFetch(`${API_BASE_URL}/admin/class-bookings`)
+                        ]);
+
+                        const events = [];
+
+                        if (bookingsRes.ok) {
+                            const bookings = await bookingsRes.json();
+                            bookings.forEach(b => {
+                                (b.items || []).forEach(item => {
+                                    events.push({
+                                        id: `rental-${b.id}`,
+                                        title: `${b.customerName} (${item.startTime}-${item.endTime})`,
+                                        start: `${item.date}T${item.startTime}`,
+                                        end: `${item.date}T${item.endTime}`,
+                                        backgroundColor: b.status === 'confirmed' ? '#28a745' : '#ffc107',
+                                        borderColor: b.status === 'confirmed' ? '#28a745' : '#ffc107',
+                                        extendedProps: { type: 'rental', data: b }
+                                    });
+                                });
+                            });
+                        }
+
+                        if (classesRes.ok) {
+                            const classBookings = await classesRes.json();
+                            classBookings.forEach(cb => {
+                                events.push({
+                                    id: `class-${cb.id}`,
+                                    title: `${cb.className} (${cb.customerName})`,
+                                    start: cb.classStartTime,
+                                    end: cb.classEndTime,
+                                    backgroundColor: cb.status === 'confirmed' ? '#007bff' : '#6c757d',
+                                    borderColor: cb.status === 'confirmed' ? '#007bff' : '#6c757d',
+                                    extendedProps: { type: 'class', data: cb }
+                                });
+                            });
+                        }
+
+                        successCallback(events);
+                    } catch (e) {
+                        failureCallback(e);
+                    }
+                },
+                dateClick: async function (info) {
+                    if (confirm(`要在 ${info.dateStr} 建立"維護"封鎖時段嗎？`)) {
+                        // Quick Block
+                        // Create dummy booking
+                        try {
+                            const res = await authenticatedFetch(`${API_BASE_URL}/bookings`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    customerName: 'Maintenance',
+                                    email: 'admin@studio.com',
+                                    phone: '00000000',
+                                    date: info.dateStr,
+                                    startTime: '00:00',
+                                    endTime: '23:59',
+                                    itemType: 'room_rental',
+                                    deposit: 0,
+                                    paymentMethod: 'cash',
+                                    adminNotes: 'Quick Block',
+                                    status: 'confirmed' // Auto-confirm for quick block
+                                })
+                            });
+                            if (res.ok) {
+                                showMessage('bookingsMessage', 'success', '已成功封鎖時段');
+                                calendar.refetchEvents();
+                                loadRentalBookings(); // Refresh bookings table
+                            } else {
+                                const errorData = await res.json();
+                                showMessage('bookingsMessage', 'error', errorData.error || '封鎖失敗');
+                            }
+                        } catch (e) {
+                            console.error('Failed to block:', e);
+                            showMessage('bookingsMessage', 'error', '封鎖失敗');
+                        }
+                    }
+                },
+                eventClick: function (info) {
+                    const props = info.event.extendedProps;
+                    let msg = "";
+                    if (props.type === 'rental') {
+                        const b = props.data;
+                        msg = `預約編號: ${b.id}\n客戶: ${b.customerName}\n狀態: ${b.status}\n備註: ${b.adminNotes || ''}`;
+                    } else if (props.type === 'class') {
+                        const cb = props.data;
+                        msg = `課程預約編號: ${cb.id}\n課程名稱: ${cb.className}\n客戶: ${cb.customerName}\n狀態: ${cb.status}`;
+                    }
+                    alert(msg);
+                }
+            });
+            calendar.render();
+        }
+
+        // Notes Modal Logic
+        function openNotesModal(id, currentNote) {
+            document.getElementById('noteBookingId').value = id;
+            document.getElementById('noteText').value = currentNote || '';
+            const modal = document.getElementById('notesModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+        }
+
+        function closeNotesModal() {
+            document.getElementById('notesModal').style.display = 'none';
+            document.getElementById('notesModal').classList.remove('show');
+        }
+
+        async function saveNote() {
+            const id = document.getElementById('noteBookingId').value;
+            const note = document.getElementById('noteText').value;
+
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/bookings/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminNotes: note })
+                });
+
+                if (res.ok) {
+                    closeNotesModal();
+                    loadRentalBookings(); // Refresh table
+                    if (calendar) calendar.refetchEvents();
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || '儲存失敗');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('錯誤');
+            }
+        }
+
+        async function exportCsv() {
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/reports/csv`);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bookings_report_${new Date().toISOString().slice(0, 7)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || '匯出失敗');
+                }
+            } catch (e) { console.error(e); alert('匯出錯誤'); }
+        }
+
         function handleTabClick(event) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -2127,6 +2375,12 @@
             if (targetId === 'overviewTab') {
                 setOverviewDateToToday();
                 loadBookingOverview(document.getElementById('overviewDate')?.value);
+            } else if (targetId === 'calendarTab') {
+                // Delay slightly to ensure visibility for rendering
+                setTimeout(() => {
+                    if (!calendar) initCalendar();
+                    else calendar.render();
+                }, 50);
             }
         }
     </script>

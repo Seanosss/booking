@@ -402,6 +402,31 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: #f0f0f0;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-slot {
+            height: 40px;
+            width: 100%;
+            border-radius: 12px;
+        }
     </style>
 </head>
 
@@ -421,6 +446,12 @@
         <div class="grid two">
             <div class="card">
                 <h2>📅 選擇日期與時段</h2>
+                <div class="form-group">
+                    <label for="room-select">選擇空間 (如有指定)</label>
+                    <select id="room-select" disabled>
+                        <option value="">正在載入...</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label for="date-input">預約日期</label>
                     <input type="date" id="date-input" min="" max="">
@@ -572,11 +603,48 @@
             availabilityByDate: new Map(),
             selectedSlotsByDate: new Map(),
             selectedRanges: [],
-            slotInterval: 30
+            slotInterval: 30,
+            activeRoomId: null, // Track selected room
+            rooms: [] // Store fetched rooms
         };
+
+        async function fetchRentalItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/items`); // Returns { workshops, roomRentals }
+                const data = await res.json();
+                return data.roomRentals || [];
+            } catch (e) {
+                console.error(e);
+                return [];
+            }
+        }
+
+        function populateRoomSelect(rooms) {
+            state.rooms = rooms;
+            const select = document.getElementById('room-select');
+            select.innerHTML = '<option value="">所有空間 (自動分配)</option>';
+
+            rooms.forEach(room => {
+                const opt = document.createElement('option');
+                opt.value = room.id;
+                opt.textContent = `${room.name} (容納 ${room.capacity}人)`;
+                select.appendChild(opt);
+            });
+
+            select.disabled = false;
+
+            select.addEventListener('change', (e) => {
+                state.activeRoomId = e.target.value || null;
+                // Refetch availability if date is selected
+                if (state.selectedDate) {
+                    fetchAvailability(state.selectedDate);
+                }
+            });
+        }
 
         const elements = {
             dateInput: document.getElementById('date-input'),
+            roomSelect: document.getElementById('room-select'),
             peopleInput: document.getElementById('people-count'),
             slotGrid: document.getElementById('slot-grid'),
             slotsSection: document.getElementById('slots-section'),
@@ -591,11 +659,48 @@
             contactCard: document.getElementById('contact-card'),
             instructionCard: document.getElementById('instruction-card'),
             paymentInfo: document.getElementById('payment-info'),
+            customerName: document.getElementById('customerName'),
+            email: document.getElementById('email'),
+            phone: document.getElementById('phone'),
+            notes: document.getElementById('notes'),
             heroSubtitle: document.getElementById('hero-subtitle'),
             paymentReminderModal: document.getElementById('payment-reminder-modal'),
             paymentReminderWhatsapp: document.getElementById('payment-reminder-whatsapp'),
             paymentReminderClose: document.getElementById('payment-reminder-close')
         };
+
+        function loadUserDetails() {
+            try {
+                const saved = localStorage.getItem('bookingUserDetails');
+                if (saved) {
+                    const details = JSON.parse(saved);
+                    if (details.name) elements.customerName.value = details.name;
+                    if (details.email) elements.email.value = details.email;
+                    if (details.phone) elements.phone.value = details.phone;
+                }
+            } catch (e) { console.warn('Failed to load user details', e); }
+        }
+
+        function saveUserDetails() {
+            try {
+                const details = {
+                    name: elements.customerName.value,
+                    email: elements.email.value,
+                    phone: elements.phone.value
+                };
+                localStorage.setItem('bookingUserDetails', JSON.stringify(details));
+            } catch (e) { console.warn('Failed to save user details', e); }
+        }
+
+        function renderSkeletonSlots() {
+            elements.slotGrid.innerHTML = '';
+            for (let i = 0; i < 18; i++) {
+                const div = document.createElement('div');
+                div.className = 'skeleton skeleton-slot';
+                elements.slotGrid.appendChild(div);
+            }
+            elements.slotsSection.style.display = 'block';
+        }
 
         function formatDateInputValue(date) {
             if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -846,65 +951,77 @@
 
             const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
             const interval = state.slotInterval;
-            const slots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
-            const selectedSlots = ensureSelectionSet(date);
+            const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
+
+            // Map generated slots to objects with status
+            const slots = generatedSlots.map(time => {
+                if (confirmedSlots.includes(time)) {
+                    return { time, status: 'booked' };
+                } else if (pendingSlots.includes(time)) {
+                    return { time, status: 'pending' };
+                } else {
+                    return { time, status: 'available' };
+                }
+            });
 
             elements.slotGrid.innerHTML = '';
             slots.forEach(slot => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'slot-button';
-                btn.textContent = slot;
-                const isConfirmed = confirmedSlots.includes(slot);
-                const isPending = pendingSlots.includes(slot);
-                if (isConfirmed) {
-                    btn.classList.add('disabled');
-                    btn.disabled = true;
-                } else if (isPending) {
-                    btn.classList.add('pending');
-                    btn.disabled = true;
+                const button = document.createElement('div');
+                button.className = 'slot-button';
+                button.textContent = slot.time;
+
+                let tooltip = '';
+
+                if (slot.status === 'booked' || slot.status === 'unavailable') {
+                    button.classList.add('disabled');
+                    button.classList.add('unavailable'); // For legend reference if needed
+                    tooltip = '此時段已被預約或不開放';
+                } else if (slot.status === 'pending') {
+                    button.classList.add('pending');
+                    tooltip = '此時段正在等待確認';
                 } else {
-                    if (selectedSlots?.has(slot)) {
-                        btn.classList.add('selected');
-                    }
-                    btn.addEventListener('click', () => {
-                        const selection = ensureSelectionSet(date);
-                        if (selection.has(slot)) {
-                            selection.delete(slot);
-                            if (selection.size === 0) {
-                                state.selectedSlotsByDate.delete(date);
-                            }
-                        } else {
-                            selection.add(slot);
-                        }
-                        renderSlots();
-                        renderSummary();
-                    });
+                    button.classList.add('available');
+                    tooltip = '可預約';
+                    button.addEventListener('click', () => toggleSlotSelection(slot));
                 }
-                elements.slotGrid.appendChild(btn);
+
+                if (isSelected(slot.time)) {
+                    button.classList.add('selected');
+                }
+
+                if (tooltip) {
+                    button.title = tooltip;
+                    button.setAttribute('aria-label', `${slot.time} ${tooltip}`);
+                }
+
+                elements.slotGrid.appendChild(button);
             });
         }
 
         async function fetchAvailability(date) {
             if (!date) return;
+            state.selectedDate = date;
+            state.availabilityByDate.delete(date); // Clear previous availability for this date
+
+            // Show skeletons
+            renderSkeletonSlots();
+
             try {
-                const response = await fetch(`${API_BASE_URL}/rentals/availability?date=${date}`);
+                let url = `${API_BASE_URL}/rentals/availability?date=${date}`;
+                if (state.activeRoomId) {
+                    url += `&itemId=${state.activeRoomId}`;
+                }
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Failed to load availability');
                 }
                 const availability = await response.json();
                 state.availabilityByDate.set(date, availability);
-                if (state.selectedDate === date) {
-                    elements.slotsSection.style.display = 'block';
-                    renderSlots();
-                }
             } catch (error) {
                 console.error('Unable to load availability:', error);
                 state.availabilityByDate.delete(date);
-                if (state.selectedDate === date) {
-                    elements.slotGrid.innerHTML = '<p style="color:#b91c1c;">無法取得該日的可用時段，請稍後再試。</p>';
-                    elements.slotsSection.style.display = 'block';
-                }
+            } finally {
+                renderSlots(date);
             }
         }
 
@@ -950,15 +1067,16 @@
             return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
         }
 
-        function buildWhatsappLink() {
+        function buildWhatsappLink(bookingId = '') {
             const number = getWhatsappNumber();
             if (!number) return null;
-            return `https://wa.me/${number}?text=${encodeURIComponent('付款證明')}`;
+            const message = bookingId ? `你好，我剛提交了預約 (${bookingId})，這是我的付款證明。` : '付款證明';
+            return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
         }
 
-        function openPaymentReminderModal() {
+        function openPaymentReminderModal(bookingId = '') {
             if (!elements.paymentReminderModal) return;
-            const link = buildWhatsappLink();
+            const link = buildWhatsappLink(bookingId);
             if (link) {
                 elements.paymentReminderWhatsapp.href = link;
                 elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
@@ -974,6 +1092,37 @@
             if (!elements.paymentReminderModal) return;
             elements.paymentReminderModal.classList.remove('active');
             elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
+        }
+
+        function saveUserDetails() {
+            try {
+                const userDetails = {
+                    customerName: elements.customerName.value,
+                    email: elements.email.value,
+                    phone: elements.phone.value
+                };
+                localStorage.setItem('bookingUserDetails', JSON.stringify(userDetails));
+            } catch (e) {
+                console.error('Failed to save user details to localStorage', e);
+            }
+        }
+
+        function loadUserDetails() {
+            try {
+                const savedDetails = localStorage.getItem('bookingUserDetails');
+                if (savedDetails) {
+                    const userDetails = JSON.parse(savedDetails);
+                    elements.customerName.value = userDetails.customerName || '';
+                    elements.email.value = userDetails.email || '';
+                    elements.phone.value = userDetails.phone || '';
+                }
+            } catch (e) {
+                console.error('Failed to load user details from localStorage', e);
+            }
+        }
+
+        function updateSubmitButtonState() {
+            elements.submitButton.disabled = getAllSelectedGroups().length === 0;
         }
 
         async function loadSettings() {
@@ -1000,32 +1149,26 @@
             elements.dateInput.max = formatDateInputValue(maxDate);
         }
 
-        async function init() {
-            try {
-                await loadSettings();
-            } catch (error) {
-                console.error(error);
-                elements.errorMessage.textContent = '無法載入設定，請稍後再試。';
-                elements.errorMessage.style.display = 'block';
-            }
+        function setTodayAsMinDate() {
+            const today = new Date();
+            elements.dateInput.min = formatDateInputValue(today);
         }
 
-        elements.dateInput.addEventListener('change', (event) => {
+        async function handleDateChange(event) {
             const value = event.target.value;
             state.selectedDate = value;
             if (value) {
                 elements.slotsSection.style.display = 'block';
-                elements.slotGrid.innerHTML = '<p style="color:#64748b;">載入可用時段...</p>';
-                if (state.availabilityByDate.has(value)) {
-                    renderSlots();
-                }
-                fetchAvailability(value);
+                renderSkeletonSlots(); // Show skeleton immediately
+                await fetchAvailability(value); // Await fetchAvailability
             } else {
                 elements.slotsSection.style.display = 'none';
                 elements.slotGrid.innerHTML = '';
             }
             renderSummary();
-        });
+        }
+
+        elements.dateInput.addEventListener('change', handleDateChange);
 
         elements.peopleInput.addEventListener('input', () => {
             const parsed = resolvePeopleCountInput();
@@ -1063,14 +1206,15 @@
             }
 
             const payload = {
-                customerName: document.getElementById('customerName').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                phone: document.getElementById('phone').value.trim(),
-                notes: document.getElementById('notes').value.trim(),
+                customerName: elements.customerName.value.trim(),
+                email: elements.email.value.trim(),
+                phone: elements.phone.value.trim(),
+                notes: elements.notes.value.trim(),
                 slots: groups.map(group => ({
                     date: group.date,
                     startTime: group.start,
-                    endTime: group.end
+                    endTime: group.end,
+                    catalogItemId: state.activeRoomId || null // Pass selected room ID
                 })),
                 peopleCount: resolvePeopleCountInput() ?? 1
             };
@@ -1083,43 +1227,68 @@
 
             try {
                 elements.submitButton.disabled = true;
+                elements.submitButton.textContent = '提交中...';
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
                 const result = await response.json().catch(() => ({}));
-                if (!response.ok) {
+
+                if (response.ok) {
+                    saveUserDetails(); // Remember user
+                    elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
+                    elements.successMessage.style.display = 'block';
+                    openPaymentReminderModal(result.bookingId);
+                    const affectedDates = Array.from(new Set(groups.map(group => group.date)));
+                    state.selectedSlotsByDate.clear();
+                    affectedDates.forEach(date => state.availabilityByDate.delete(date));
+                    renderSummary();
+                    calculateTotals();
+                    elements.notes.value = ''; // clear notes
+                    if (state.selectedDate) {
+                        fetchAvailability(state.selectedDate);
+                    }
+                } else {
                     console.error('Booking create failed:', response.status, result);
                     const message = result?.error || '無法提交預約';
                     throw new Error(message);
                 }
-                elements.successMessage.textContent = result.message || '預約已提交，請留意確認通知。';
-                elements.successMessage.style.display = 'block';
-                openPaymentReminderModal();
-                const affectedDates = Array.from(new Set(groups.map(group => group.date)));
-                state.selectedSlotsByDate.clear();
-                affectedDates.forEach(date => state.availabilityByDate.delete(date));
-                renderSummary();
-                calculateTotals();
-                document.getElementById('booking-form').reset();
-                if (state.selectedDate) {
-                    fetchAvailability(state.selectedDate);
-                }
-                elements.submitButton.disabled = true;
             } catch (error) {
                 console.error(error);
                 elements.errorMessage.textContent = error.message || '提交失敗，請稍後再試。';
                 elements.errorMessage.style.display = 'block';
             } finally {
-                elements.submitButton.disabled = getAllSelectedGroups().length === 0;
-                calculateTotals();
+                elements.submitButton.disabled = false;
+                elements.submitButton.textContent = '提交預約申請';
+                updateSubmitButtonState();
             }
         });
 
-        renderSummary();
-        calculateTotals();
-        init();
+        // Initialize
+        (async function init() {
+            setTodayAsMinDate();
+            loadUserDetails(); // Load saved user info
+
+            // Parallel fetch
+            const [settings, rentalItems] = await Promise.all([
+                loadSettings(),
+                fetchRentalItems()
+            ]);
+
+            if (rentalItems && rentalItems.length > 0) {
+                populateRoomSelect(rentalItems);
+            }
+            // loadSettings already applies rules/state.settings internally if checks passed?
+            // Actually loadSettings implementation (visible in file?) assigns to state.settings
+
+            // Set default date to today
+            const today = new Date();
+            const dateStr = formatDateInputValue(today);
+            elements.dateInput.value = dateStr;
+            handleDateChange({ target: { value: dateStr } });
+        })();
 
         // Remove any legacy footer note that might persist from cached assets
         document.querySelectorAll('footer').forEach((footer) => {
