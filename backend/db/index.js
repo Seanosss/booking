@@ -1,5 +1,17 @@
 require('dotenv').config();
 const { Pool } = require('pg');
+
+const poolConfig = {
+    connectionString: process.env.DATABASE_URL,
+};
+
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render.com')) {
+    poolConfig.ssl = {
+        rejectUnauthorized: false
+    };
+}
+
+const pool = new Pool(poolConfig);
 const crypto = require('crypto');
 
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';
@@ -82,18 +94,7 @@ const defaultSettings = {
     adminPassword: DEFAULT_ADMIN_PASSWORD
 };
 
-const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-    console.error('DATABASE_URL environment variable is not set. Cannot establish database connection.');
-    process.exit(1);
-}
-
-const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 5000
-});
 
 pool.on('error', (err) => {
     console.error('Unexpected database error:', err);
