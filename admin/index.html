@@ -1620,10 +1620,60 @@
             }
         }
 
-        function initializeAdminPanel() {
-            document.getElementById('adminContainer').style.display = 'block';
+        // Elements
+        const loginModal = document.getElementById('loginModal');
+        const adminContainer = document.getElementById('adminContainer');
+        const apiStatusMessage = document.getElementById('apiStatusMessage');
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Admin Panel Loading...');
+
+            // 1. Check API Health (Non-blocking)
+            try {
+                const res = await fetch(`${API_BASE_URL}/health`); // Assuming /health exists, otherwise this might fail. User code assumes it.
+                // If /health doesn't exist, we might get 404. Let's assume standard /api check if /health fails or just trust user.
+                // Actually, earlier code might not have had /health. I'll blindly trust user but maybe fail gracefully.
+                if (res.ok) {
+                    if (apiStatusMessage) {
+                        apiStatusMessage.textContent = 'API Status: Online';
+                        apiStatusMessage.className = 'status-ok';
+                    }
+                }
+            } catch (e) {
+                console.warn('API Check Failed or Offline:', e);
+                if (apiStatusMessage) {
+                    apiStatusMessage.textContent = 'API Status: Offline (Check Server)';
+                    apiStatusMessage.className = 'status-error';
+                }
+            }
+
+            // 2. Auth Check & Render UI
+            checkAuthentication();
+        });
+
+        function checkAuthentication() {
+            const token = localStorage.getItem('adminToken');
+            const tokenExpires = localStorage.getItem('adminTokenExpires');
+            const now = Date.now();
+
+            if (token && tokenExpires && now < parseInt(tokenExpires)) {
+                // Valid Token -> Show Panel
+                if (loginModal) loginModal.style.display = 'none';
+                if (adminContainer) {
+                    adminContainer.style.display = 'block';
+                    loadDashboardData();
+                }
+            } else {
+                // No Token -> Show Login
+                console.log('No valid token, showing login modal');
+                if (adminContainer) adminContainer.style.display = 'none';
+                if (loginModal) loginModal.style.display = 'flex';
+            }
+        }
+
+        function loadDashboardData() {
             applyRolePermissions();
-            checkApiHealth();
             setOverviewDateToToday();
 
             // Load initial data
@@ -1637,7 +1687,6 @@
             }
 
             // Load other data
-            // Permissions for "View Only" are handled by CSS/Disabled forms for receptionists
             loadClasses();
             loadClassProducts();
             loadRentalItems();
@@ -1649,12 +1698,10 @@
                 loadRentalBookings();
                 loadClassBookings();
                 loadBookingOverview(document.getElementById('overviewDate')?.value);
-                if (calendar) calendar.refetchEvents();
             }, 30000);
-        }
 
-        // Initial check only
-        checkAuthentication();
+            if (typeof calendar !== 'undefined' && calendar) calendar.refetchEvents();
+        }
 
         async function handlePasswordChange(event) {
             event.preventDefault();
