@@ -867,7 +867,18 @@
             return ensureApiPath(fallbackOrigin);
         }
 
-        const API_BASE_URL = resolveApiBaseUrl('admin.apiBaseUrl');
+        function resolveApiBaseUrl() {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3000';
+            }
+            if (hostname.includes('onrender.com')) {
+                return window.location.origin;
+            }
+            return 'https://booking-ub69.onrender.com';
+        }
+
+        const API_BASE_URL = resolveApiBaseUrl();
         console.log('Using API_BASE_URL:', API_BASE_URL);
 
         const DEV_AUTH_DISABLED = false; // Toggle to true to disable admin authentication (development only)
