@@ -1754,6 +1754,11 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
     }
 });
 
+// Catch-all route to serve frontend/index.html for any unmatched routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
 async function startServer() {
     try {
         await initializeDatabase();
