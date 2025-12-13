@@ -1426,14 +1426,24 @@ async function getClassBookingsDetailed({ date = null } = {}) {
     return result.rows.map(mapClassBookingWithClassRow);
 }
 
-async function updateClassBookingStatus(id, status) {
+async function updateClassBookingStatus(id, status, adminNotes) {
+    const updates = ['status = $1', 'updated_at = NOW()'];
+    const params = [status];
+    let paramIndex = params.length;
+
+    if (adminNotes !== undefined) {
+        params.push(adminNotes);
+        paramIndex += 1;
+        updates.push(`admin_notes = $${paramIndex}`);
+    }
+
+    params.push(id);
     const result = await pool.query(`
         UPDATE class_bookings
-        SET status = $1,
-            updated_at = NOW()
-        WHERE id = $2
+        SET ${updates.join(', ')}
+        WHERE id = $${params.length}
         RETURNING *
-    `, [status, id]);
+    `, params);
 
     if (result.rows.length === 0) {
         return null;
