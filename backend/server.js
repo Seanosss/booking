@@ -507,13 +507,19 @@ app.get('*', (req, res, next) => {
 
 async function startServer() {
     try {
-        await initializeDatabase();
+        // Attempt to initialize DB, but don't block server start if it fails (e.g. invalid credentials)
+        // This ensures static files (Frontend/Admin) can still be served so the user doesn't see a blank page.
+        initializeDatabase().catch(err => {
+            console.error('⚠️ Database initialization failed:', err);
+            console.error('Server will continue running to serve static files, but APIs may fail.');
+        });
+
         app.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
         });
     } catch (error) {
-        console.error('Failed to start:', error);
-        process.exit(1);
+        console.error('Failed to start server:', error);
+        // process.exit(1); // Removed to prevent crash loops on Render
     }
 }
 
