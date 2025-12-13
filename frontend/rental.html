@@ -296,6 +296,37 @@
             border-color: transparent;
         }
 
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .hot-tag {
+            font-size: 0.75rem;
+            color: #ef4444;
+            font-weight: 700;
+            margin-left: 6px;
+            display: inline-flex;
+            align-items: center;
+            animation: pulse-red 2s infinite;
+            background: rgba(254, 226, 226, 0.5);
+            padding: 2px 6px;
+            border-radius: 99px;
+            border: 1px solid rgba(252, 165, 165, 0.4);
+        }
+
         .summary-list {
             display: flex;
             flex-direction: column;
@@ -1074,6 +1105,18 @@
             const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
             const isSelected = (time) => currentSelected.has(time);
 
+            // Marketing Settings
+            const marketing = state.settings?.bookingRules?.marketing;
+            const isHotEnabled = marketing?.hotTagsEnabled === true;
+            const hotText = marketing?.hotTagText || '🔥 熱門';
+            // Simple string comparison for HH:MM works if format is consistent
+            const isHotTime = (time) => {
+                if (!isHotEnabled) return false;
+                const start = marketing.hotTagStartTime || '18:00';
+                const end = marketing.hotTagEndTime || '23:00';
+                return time >= start && time <= end;
+            };
+
             // Map generated slots to objects with status
             const slots = generatedSlots.map(time => {
                 if (confirmedSlots.includes(time)) {
@@ -1089,13 +1132,17 @@
             slots.forEach(slot => {
                 const button = document.createElement('div');
                 button.className = 'slot-button';
-                button.textContent = slot.time;
+
+                // Content construction
+                const timeSpan = document.createElement('span');
+                timeSpan.textContent = slot.time;
+                button.appendChild(timeSpan);
 
                 let tooltip = '';
 
                 if (slot.status === 'booked' || slot.status === 'unavailable') {
                     button.classList.add('disabled');
-                    button.classList.add('unavailable'); // For legend reference if needed
+                    button.classList.add('unavailable');
                     tooltip = '此時段已被預約或不開放';
                 } else if (slot.status === 'pending') {
                     button.classList.add('pending');
@@ -1104,6 +1151,14 @@
                     button.classList.add('available');
                     tooltip = '可預約';
                     button.addEventListener('click', () => toggleSlotSelection(slot));
+
+                    // Add Hot Tag if applicable
+                    if (isHotTime(slot.time)) {
+                        const hotSpan = document.createElement('span');
+                        hotSpan.className = 'hot-tag';
+                        hotSpan.textContent = hotText;
+                        button.appendChild(hotSpan);
+                    }
                 }
 
                 if (isSelected(slot.time)) {

@@ -1693,6 +1693,176 @@
             }
         }
 
+        async function loadSettings() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
+                if (!response.ok) {
+                    throw new Error('Failed to load settings');
+                }
+                const settings = await response.json();
+                currentSettings = settings;
+
+                // Basic Info
+                document.getElementById('businessName').value = settings.businessName || '';
+                document.getElementById('businessNameZh').value = settings.businessNameZh || '';
+                document.getElementById('businessDescription').value = settings.businessDescription || '';
+                document.getElementById('businessDescriptionZh').value = settings.businessDescriptionZh || '';
+
+                if (settings.operatingHours) {
+                    document.getElementById('startTime').value = settings.operatingHours.startTime || '';
+                    document.getElementById('endTime').value = settings.operatingHours.endTime || '';
+                    document.getElementById('daysLabelZh').value = settings.operatingHours.daysLabelZh || '';
+                    document.getElementById('daysLabelEn').value = settings.operatingHours.daysLabelEn || '';
+                }
+
+                // Contact
+                if (settings.contactInfo) {
+                    document.getElementById('contactWhatsapp').value = settings.contactInfo.whatsapp || '';
+                    document.getElementById('contactPhone').value = settings.contactInfo.phone || '';
+                    document.getElementById('contactEmail').value = settings.contactInfo.email || '';
+                }
+
+                // Payment
+                if (settings.paymentMethods) {
+                    const pm = settings.paymentMethods;
+                    if (pm.bankTransfer) {
+                        document.getElementById('paymentBankEnabled').value = pm.bankTransfer.enabled ? 'true' : 'false';
+                        document.getElementById('paymentBankName').value = pm.bankTransfer.bankName || '';
+                        document.getElementById('paymentBankAccount').value = pm.bankTransfer.accountNumber || '';
+                        document.getElementById('paymentBankAccountName').value = pm.bankTransfer.accountName || '';
+                    }
+                    if (pm.payme) {
+                        document.getElementById('paymentPaymeEnabled').value = pm.payme.enabled ? 'true' : 'false';
+                        document.getElementById('paymentPaymeDisplayName').value = pm.payme.displayName || '';
+                        document.getElementById('paymentPaymePhone').value = pm.payme.phoneNumber || ''; // Note: HTML id implies 'phone', check schema compatibility
+                    }
+                    if (pm.fps) {
+                        document.getElementById('paymentFpsEnabled').value = pm.fps.enabled ? 'true' : 'false';
+                        document.getElementById('paymentFpsNumber').value = pm.fps.fpsNumber || '';
+                        document.getElementById('paymentFpsDisplayName').value = pm.fps.displayName || '';
+                    }
+                }
+
+                // Booking Rules
+                if (settings.bookingRules) {
+                    const br = settings.bookingRules;
+                    document.getElementById('bookingMinAdvance').value = br.minAdvanceBooking || 0;
+                    document.getElementById('bookingMaxAdvance').value = br.maxAdvanceBooking || 30;
+                    document.getElementById('bookingSlotInterval').value = br.slotInterval || 30;
+                    document.getElementById('bookingAutoConfirm').value = br.autoConfirm ? 'true' : 'false';
+                    document.getElementById('bookingRequirePaymentProof').value = br.requirePaymentProof ? 'true' : 'false';
+
+                    // Marketing
+                    const mkt = br.marketing || {};
+                    document.getElementById('marketingHotTagsEnabled').value = mkt.hotTagsEnabled ? 'true' : 'false';
+                    document.getElementById('marketingHotTagText').value = mkt.hotTagText || '🔥 熱門';
+                    document.getElementById('marketingHotTagStart').value = mkt.hotTagStartTime || '18:00';
+                    document.getElementById('marketingHotTagEnd').value = mkt.hotTagEndTime || '23:00';
+                }
+
+                // Pricing
+                if (settings.pricing) {
+                    document.getElementById('normalUpTo10').value = settings.pricing.normalUpTo10 || 0;
+                    document.getElementById('normalUpTo18').value = settings.pricing.normalUpTo18 || 0;
+                    document.getElementById('peakUpTo10').value = settings.pricing.peakUpTo10 || 0;
+                    document.getElementById('peakUpTo18').value = settings.pricing.peakUpTo18 || 0;
+
+                    if (settings.pricing.peakSchedule) {
+                        document.getElementById('peakDays').value = (settings.pricing.peakSchedule.days || []).join(',');
+                        document.getElementById('peakStart').value = settings.pricing.peakSchedule.startTime || '';
+                        document.getElementById('peakEnd').value = settings.pricing.peakSchedule.endTime || '';
+                    }
+                }
+
+                hideMessage('settingsMessage');
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showMessage('settingsMessage', 'error', '無法載入系統設定');
+            }
+        }
+
+        async function saveSettings() {
+            const settings = {
+                ...currentSettings,
+                businessName: document.getElementById('businessName').value,
+                businessNameZh: document.getElementById('businessNameZh').value,
+                businessDescription: document.getElementById('businessDescription').value,
+                businessDescriptionZh: document.getElementById('businessDescriptionZh').value,
+                operatingHours: {
+                    startTime: document.getElementById('startTime').value,
+                    endTime: document.getElementById('endTime').value,
+                    daysLabelZh: document.getElementById('daysLabelZh').value,
+                    daysLabelEn: document.getElementById('daysLabelEn').value
+                },
+                contactInfo: {
+                    whatsapp: document.getElementById('contactWhatsapp').value,
+                    phone: document.getElementById('contactPhone').value,
+                    email: document.getElementById('contactEmail').value
+                },
+                paymentMethods: {
+                    bankTransfer: {
+                        enabled: document.getElementById('paymentBankEnabled').value === 'true',
+                        bankName: document.getElementById('paymentBankName').value,
+                        accountNumber: document.getElementById('paymentBankAccount').value,
+                        accountName: document.getElementById('paymentBankAccountName').value
+                    },
+                    payme: {
+                        enabled: document.getElementById('paymentPaymeEnabled').value === 'true',
+                        displayName: document.getElementById('paymentPaymeDisplayName').value,
+                        phoneNumber: document.getElementById('paymentPaymePhone').value
+                    },
+                    fps: {
+                        enabled: document.getElementById('paymentFpsEnabled').value === 'true',
+                        fpsNumber: document.getElementById('paymentFpsNumber').value,
+                        displayName: document.getElementById('paymentFpsDisplayName').value
+                    }
+                },
+                bookingRules: {
+                    minAdvanceBooking: Number(document.getElementById('bookingMinAdvance').value),
+                    maxAdvanceBooking: Number(document.getElementById('bookingMaxAdvance').value),
+                    slotInterval: Number(document.getElementById('bookingSlotInterval').value),
+                    autoConfirm: document.getElementById('bookingAutoConfirm').value === 'true',
+                    requirePaymentProof: document.getElementById('bookingRequirePaymentProof').value === 'true',
+                    marketing: {
+                        hotTagsEnabled: document.getElementById('marketingHotTagsEnabled').value === 'true',
+                        hotTagText: document.getElementById('marketingHotTagText').value,
+                        hotTagStartTime: document.getElementById('marketingHotTagStart').value,
+                        hotTagEndTime: document.getElementById('marketingHotTagEnd').value
+                    }
+                },
+                pricing: {
+                    normalUpTo10: Number(document.getElementById('normalUpTo10').value),
+                    normalUpTo18: Number(document.getElementById('normalUpTo18').value),
+                    peakUpTo10: Number(document.getElementById('peakUpTo10').value),
+                    peakUpTo18: Number(document.getElementById('peakUpTo18').value),
+                    peakSchedule: {
+                        days: document.getElementById('peakDays').value.split(',').map(d => d.trim()).filter(Boolean),
+                        startTime: document.getElementById('peakStart').value,
+                        endTime: document.getElementById('peakEnd').value
+                    }
+                }
+            };
+
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.ok) {
+                    currentSettings = (await response.json()).settings;
+                    showMessage('settingsMessage', 'success', '系統設定已儲存');
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('settingsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showMessage('settingsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
         async function loadInstructions() {
             try {
                 const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
