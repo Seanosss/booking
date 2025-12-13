@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Booking | 首頁</title>
+    <style>
+        :root {
+            --brand-primary: #0b4f6c;
+            --brand-secondary: #145da0;
+            --surface: #f8f9fb;
+            --surface-strong: #ffffff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: radial-gradient(circle at top, rgba(20,93,160,0.18), transparent 55%), #edf1f7;
+            color: #1f2933;
+            min-height: 100vh;
+        }
+        header {
+            padding: 60px 24px 40px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.8rem;
+            color: var(--brand-primary);
+            margin-bottom: 12px;
+        }
+        header p { color: #475569; font-size: 1.1rem; }
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px 60px;
+        }
+        .card-grid {
+            display: grid;
+            gap: 28px;
+        }
+        @media (min-width: 768px) {
+            .card-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+        .nav-card {
+            position: relative;
+            background: var(--surface-strong);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 24px 48px rgba(12,42,89,0.12);
+            border: 1px solid rgba(20,93,160,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        .nav-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 32px 60px rgba(15,55,98,0.18);
+        }
+        .nav-card h2 {
+            font-size: 1.8rem;
+            color: var(--brand-secondary);
+            margin-bottom: 12px;
+        }
+        .nav-card p { color: #475569; line-height: 1.6; }
+        .nav-card span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+        .badge {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(20,93,160,0.1);
+            color: var(--brand-secondary);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Studio Booking</h1>
+        <p>選擇您需要的服務流程：場地租用或課堂體驗</p>
+    </header>
+    <main>
+        <div class="card-grid">
+            <a class="nav-card" href="./rental.html">
+                <div class="badge">Rental 場地租用</div>
+                <h2>Whole Venue Rental</h2>
+                <p>查看營業時間，選擇多個 30 分鐘時段並一次提交。支援尖峰 / 非尖峰自動計價，以及人數需求設定。</p>
+                <span>進入場地預約 →</span>
+            </a>
+            <a class="nav-card" href="./classes.html">
+                <div class="badge" style="background:rgba(242,201,76,0.2);color:#a16207;">Class 課堂預約</div>
+                <h2>Class & Trial Centre</h2>
+                <p>瀏覽每週課堂時間表、購買課程套票或探索試堂方案。掌握即時名額與講師資訊。</p>
+                <span>前往課堂專區 →</span>
+            </a>
+        </div>
+    </main>
+    <script>
+        // Safety net: remove any lingering footer notes that may be present in cached deployments
+        document.querySelectorAll('footer').forEach((footer) => {
+            const text = footer.textContent.trim();
+            const shouldRemove =
+                text.includes('Powered by the Studio Booking backend API') ||
+                text.includes('課堂資料與方案皆由後台設定');
+            if (shouldRemove) {
+                footer.remove();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>試堂方案 | Studio Booking</title>
+    <style>
+        :root {
+            --brand-primary: #0b4f6c;
+            --accent: #f59e0b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft JhengHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #fff7ed;
+            color: #1f2933;
+        }
+        header { padding: 48px 24px 30px; text-align:center; background: linear-gradient(135deg,#fbbf24,#f59e0b); color:#fff; }
+        header h1 { margin:0 0 10px; font-size:2.4rem; }
+        header p { margin:0; opacity:0.95; }
+        nav { display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:18px; }
+        nav a { padding:10px 18px; border-radius:999px; border:2px solid rgba(255,255,255,0.7); color:#fff; font-weight:600; text-decoration:none; }
+        main { max-width:900px; margin:0 auto; padding:0 24px 60px; margin-top:-24px; }
+        section { background:#fff; border-radius:24px; padding:30px; box-shadow:0 28px 60px rgba(217,119,6,0.18); border:1px solid rgba(251,191,36,0.4); }
+        .product-grid { display:grid; gap:24px; }
+        @media(min-width:768px){ .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        .product-card { border:1px solid rgba(251,191,36,0.5); border-radius:18px; padding:22px; background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(255,255,255,0.92)); display:flex; flex-direction:column; gap:12px; }
+        .product-card h2 { margin:0; color:#92400e; }
+        .product-card p { margin:0; color:#7c2d12; line-height:1.6; }
+        .product-meta { color:#7c2d12; display:flex; flex-direction:column; gap:6px; }
+        .cta { margin-top:auto; font-weight:600; color:#b45309; }
+        .empty { text-align:center; color:#b45309; padding:24px; border:1px dashed rgba(251,191,36,0.6); border-radius:16px; background:rgba(254,243,199,0.6); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>試堂體驗方案</h1>
+        <p>專為首次體驗設計的優惠方案，快速感受課堂氛圍</p>
+        <nav>
+            <a href="./classes.html">課堂專區</a>
+            <a href="./class-schedule.html">課堂時間表</a>
+            <a href="./class-packages.html">課程套票</a>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <div id="products" class="product-grid"></div>
+        </section>
+    </main>
+    <script>
+        function resolveApiBaseUrl(storageKey) {
+            const DEFAULT_API_PATH = '/api';
+            const RENDER_API_ORIGIN = 'https://booking-ub69.onrender.com';
+            const fallbackOrigin = RENDER_API_ORIGIN;
+            const baseOrigin = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : fallbackOrigin;
+            const ensureApiPath = (value) => {
+                if (!value) return null;
+                try {
+                    const url = new URL(value, baseOrigin);
+                    const normalizedPath = url.pathname.replace(/\/+$/, '') || '/';
+                    const hasApiSegment = /\/api(?:$|\/)/i.test(normalizedPath);
+                    const resolvedPath = hasApiSegment
+                        ? normalizedPath
+                        : `${normalizedPath === '/' ? '' : normalizedPath}${DEFAULT_API_PATH}`;
+                    return `${url.origin}${resolvedPath}`;
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+            const normalizeBaseUrl = (value) => {
+                if (!value) return null;
+                try {
+                    const url = new URL(value, baseOrigin);
+                    const normalizedPath = url.pathname.replace(/\/+$/, '');
+                    return normalizedPath ? `${url.origin}${normalizedPath}` : url.origin;
+                } catch (error) {
+                    console.warn('Ignoring invalid API base URL:', value, error);
+                    return null;
+                }
+            };
+            const params = new URLSearchParams(window.location.search);
+            const queryOverride = params.get('apiBaseUrl') || params.get('api_base_url');
+            if (queryOverride) {
+                const resolved = ensureApiPath(normalizeBaseUrl(queryOverride));
+                if (resolved) {
+                    try { localStorage.setItem(storageKey, resolved); } catch (error) {}
+                    return resolved;
+                }
+            }
+            try {
+                const stored = ensureApiPath(normalizeBaseUrl(localStorage.getItem(storageKey)));
+                if (stored) return stored;
+            } catch (error) {}
+            const inlineConfig = ensureApiPath(normalizeBaseUrl(window.__BOOKING_CONFIG__?.apiBaseUrl));
+            if (inlineConfig) return inlineConfig;
+            const metaTag = document.querySelector('meta[name="api-base-url"]');
+            const metaUrl = ensureApiPath(normalizeBaseUrl(metaTag?.content));
+            if (metaUrl) return metaUrl;
+            const normalizedRenderOrigin = normalizeBaseUrl(RENDER_API_ORIGIN) || fallbackOrigin;
+            const normalizedCurrentOrigin = normalizeBaseUrl(baseOrigin);
+            if (normalizedCurrentOrigin && normalizedCurrentOrigin === normalizedRenderOrigin) {
+                return ensureApiPath(normalizedCurrentOrigin);
+            }
+            const isLocalhost = normalizedCurrentOrigin ? /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?$/i.test(normalizedCurrentOrigin) : false;
+            if (isLocalhost && normalizedCurrentOrigin) {
+                return ensureApiPath(normalizedCurrentOrigin);
+            }
+            return ensureApiPath(normalizedRenderOrigin);
+        }
+        const API_BASE_URL = resolveApiBaseUrl('booking.apiBaseUrl');
+        async function loadTrials() {
+            const container = document.getElementById('products');
+            container.innerHTML = '<p style="color:#b45309;">載入中...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/class-products?type=trial`);
+                if (!response.ok) throw new Error('無法取得試堂方案');
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    container.innerHTML = '<div class="empty">目前沒有試堂方案，歡迎稍後再查看。</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.innerHTML = `
+                        <h2>${item.name}</h2>
+                        <p>${item.description || '沒有提供詳細介紹。'}</p>
+                        <div class="product-meta">
+                            <div>價格：HK$ ${Number(item.price || 0).toFixed(2)}</div>
+                            <div>包含堂數：${item.numberOfClasses}</div>
+                            <div>有效期：${item.validityPeriodDays ? `${item.validityPeriodDays} 天` : '請於購買時確認'}</div>
+                        </div>
+                        <div class="cta">請聯絡客服安排試堂</div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="empty">${error.message}</div>`;
+            }
+        }
+        loadTrials();
+    </script>
+</body>
+</html>
