@@ -665,7 +665,7 @@
             prevWeek: document.getElementById('prev-week'),
             nextWeek: document.getElementById('next-week'),
             dayButtons: document.getElementById('day-buttons'),
-            classList: document.getElementById('classes-container'),
+            classesContainer: document.getElementById('classes-container'),
             bookingCard: document.getElementById('booking-card'),
             bookingForm: document.getElementById('class-booking-form'),
             // step1: document.getElementById('step1'), // These elements are not in the HTML
@@ -744,34 +744,30 @@
             if (!(date instanceof
                 Date) || Number.isNaN(date.getTime())) { return ''; } const year = date.getFullYear(); const
                     month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0'); return
-            `${ year } -${ month } -${ day } `;
+            `${year} -${month} -${day} `;
         } function formatDisplayDate(date) {
-            return `${ date.getMonth()+1 } /${
-        date.getDate() } `;
+            return `${date.getMonth() + 1} /${date.getDate()} `;
         } function updateWeekLabel() {
             const start = new Date(state.weekStart); const end = new
-                Date(start); end.setDate(end.getDate() + 6); elements.weekLabel.textContent = `${ start.getFullYear() } 年 ${
-        start.getMonth()+1 } /${ start.getDate() } - ${ end.getMonth()+1 } /${ end.getDate() } `;
+                Date(start); end.setDate(end.getDate() + 6); elements.weekLabel.textContent = `${start.getFullYear()} 年 ${start.getMonth() + 1} /${start.getDate()} - ${end.getMonth() + 1} /${end.getDate()} `;
         } function
             renderDayButtons() {
             elements.dayButtons.innerHTML = ''; for (let i = 0; i < 7; i += 1) {
                 const date = new
                     Date(state.weekStart); date.setDate(date.getDate() + i); const button = document.createElement('button');
                 button.type = 'button'; button.className = 'day-button'; const iso = formatDate(date); button.dataset.date = iso;
-                button.innerHTML = `<div style="font-weight:700;">${
-        ['日',
-        '一',
-        '二',
-        '三',
-        '四',
-        '五',
-        '六'][date.getDay()]
-        }
+                button.innerHTML = `<div style="font-weight:700;">${['日',
+                        '一',
+                        '二',
+                        '三',
+                        '四',
+                        '五',
+                        '六'][date.getDay()]
+                    }
 
         </div>
-        <div>${
-            formatDisplayDate(date)
-            }
+        <div>${formatDisplayDate(date)
+                    }
 
         </div>`;
 
@@ -807,13 +803,11 @@
             renderSkeletonSchedule();
 
             try {
-                const response = await fetch(`${
-        API_BASE_URL
-        }
+                const response = await fetch(`${API_BASE_URL
+                    }
 
-        /classes?date=${
-        dateIso
-        }
+        /classes?date=${dateIso
+                    }
 
         `);
                 if (!response.ok) throw new Error('無法載入課程');
@@ -845,9 +839,8 @@
             elements.filterContainer.style.display = 'flex'; elements.filterContainer.innerHTML = ''; tags.forEach(tag => {
                 const btn = document.createElement('button');
 
-                btn.className = `filter-btn ${
-            tag===currentFilter ? 'active' : ''
-            }
+                btn.className = `filter-btn ${tag === currentFilter ? 'active' : ''
+                    }
 
             `;
                 btn.textContent = tag === 'All' ? '全部' : tag;
@@ -889,17 +882,14 @@
                 const endLabel = cls.endTime ? cls.endTime.substring(11, 16) : '';
 
                 header.innerHTML = `<div>
-                <div style="font-weight:600; color:#0f172a;">${
-                    startLabel
+                <div style="font-weight:600; color:#0f172a;">${startLabel
                     }
 
-                    - ${
-                    endLabel
+                    - ${endLabel
                     }
 
                 </div>
-                <div class="class-name">${
-                    cls.name
+                <div class="class-name">${cls.name
                     }
 
                 </div>
@@ -919,43 +909,35 @@
                 const meta = document.createElement('div');
                 meta.className = 'class-meta';
 
-                const priceLine = cls.specialPriceForTwo != null ? `HK$ ${
-            Number(cls.price || 0).toFixed(2)
-            }
+                const priceLine = cls.specialPriceForTwo != null ? `HK$ ${Number(cls.price || 0).toFixed(2)
+                    }
 
-            /人 ｜ 兩人同行 HK$ ${
-            Number(cls.specialPriceForTwo).toFixed(2)
-            }
+            /人 ｜ 兩人同行 HK$ ${Number(cls.specialPriceForTwo).toFixed(2)
+                    }
 
-            ` : `HK$ ${
-            Number(cls.price || 0).toFixed(2)
-            }
+            ` : `HK$ ${Number(cls.price || 0).toFixed(2)
+                }
 
             /人`;
                 const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
 
-                meta.innerHTML = ` <div>講師：${
-                cls.instructor || '待定'
-                }
+                meta.innerHTML = ` <div>講師：${cls.instructor || '待定'
+                    }
 
             </div>
-            <div>地點：${
-                cls.location || 'Studio'
-                }
+            <div>地點：${cls.location || 'Studio'
+                    }
 
             </div>
-            <div>名額：剩餘 ${
-                remaining
-                }
+            <div>名額：剩餘 ${remaining
+                    }
 
-                / ${
-                cls.capacity
-                }
+                / ${cls.capacity
+                    }
 
             </div>
-            <div>價格：${
-                priceLine
-                }
+            <div>價格：${priceLine
+                    }
 
             </div> `;
                 wrapper.appendChild(meta);
@@ -990,32 +972,26 @@
         // The original loadWeekClasses is replaced by renderClassesForDate and its caching logic.
         // Keeping it commented out for reference if needed, but it's no longer used.
         /*
-        async function loadWeekClasses() {
+                nct        WeekClasses() {
         try {
-        elements.classesContainer.innerHTML = '<p style="color:#475569;">載入中...</p>';
-        const response = await
-        fetch(`${API_BASE_URL}/classes?weekStart=${formatDate(state.weekStart)}&includeTrial=true`);
-        if (!response.ok) {
-        throw new Error('無法取得課程資料');
+             nts.cl        tainer.innerHTML = '<p style="color:#475569;">載入中...</p>';
+        const respo        ait
+        fetch(`${AP        RL}/classes?weekStart=${formatDate(state.weekStart)}&includeTrial=true`);
+        if (!respon        
+        throw new E        取得課程資料');
         }
-        const data = await response.json();
-        state.classesByDate = data.reduce((acc, cls) => {
-        const key = cls.startTime ? cls.startTime.slice(0, 10) : null;
-        if (!key) return acc;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(cls);
-        return acc;
-        }, {});
-        renderClassesForDate(state.selectedDate);
-        } catch (error) {
-        console.error(error);
-        elements.classesContainer.innerHTML = `<div class="schedule-empty">${error.message || '載入課程失敗，請稍後再試。'}
+        c        a         response.json();
+        state.class         = data.reduce((acc, cls) => {
+        const key =        rtTime ? cls.startTime.slice(0, 10) : null;
+        if (!key) r        c;
+        if (!acc[ke        key] = [];
+        acc[key].pu        
+        return acc;         }, {});
+           derClass        e(state.selectedDate);
+        } catch (er               console.err        );
+        elements.cl        tainer.innerHTML = `<div class="schedule-empty">${error.message || '載入課程失敗，請稍後再試。'}
         </div>`;
-        }
-        }
-        */
-
-        function calculateBookingPrice(cls, peopleCount) {
+                  }         *                  n calculateBookingPrice(cls, peopleCount) {
             const base = Number(cls.price || 0);
             const useSpecial = peopleCount === 2 && cls.specialPriceForTwo != null;
             const total = useSpecial ? Number(cls.specialPriceForTwo) : base * peopleCount;
@@ -1295,12 +1271,14 @@
         });
 
         elements.prevWeek.addEventListener('click', () => {
-            state.weekStart.setDate(state.weekStart.getDate() - 7);
+            const current = new Date(state.weekStart);
+            current.setDate(current.getDate() - 7);
+            state.weekStart = current.toISOString().split('T')[0];
             updateWeekLabel();
 
-            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                state.selectedDate = formatDate(state.weekStart);
+            if (!state.selectedDate || new Date(state.selectedDate) < new Date(state.weekStart) || new
+                Date(state.selectedDate) > new Date(new Date(state.weekStart).getTime() + 6 * 86400000)) {
+                state.selectedDate = state.weekStart; // Already YYYY-MM-DD
             }
 
             renderDayButtons();
@@ -1308,12 +1286,14 @@
         });
 
         elements.nextWeek.addEventListener('click', () => {
-            state.weekStart.setDate(state.weekStart.getDate() + 7);
+            const current = new Date(state.weekStart);
+            current.setDate(current.getDate() + 7);
+            state.weekStart = current.toISOString().split('T')[0];
             updateWeekLabel();
 
-            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                state.selectedDate = formatDate(state.weekStart);
+            if (!state.selectedDate || new Date(state.selectedDate) < new Date(state.weekStart) || new
+                Date(state.selectedDate) > new Date(new Date(state.weekStart).getTime() + 6 * 86400000)) {
+                state.selectedDate = state.weekStart; // Already YYYY-MM-DD
             }
 
             renderDayButtons();
@@ -1339,7 +1319,7 @@
             const todayIso = formatDate(today);
             state.selectedDate = todayIso;
 
-            // Trigger fetch for selected date (default today)
+            // Trigger fetch for        te (default today)
             renderClassesForDate(todayIso);
         })();
     </script>
