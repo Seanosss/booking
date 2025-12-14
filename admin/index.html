@@ -807,28 +807,7 @@
             </div>
         </div>
 
-        <!-- Login Modal -->
-        <div id="loginModal">
-            <div
-                style="background:#fff; padding:32px; border-radius:16px; width:100%; max-width:400px; box-shadow:0 24px 50px rgba(0,0,0,0.2);">
-                <h2 style="color:#0b4f6c; margin-bottom:24px; text-align:center;">管理員登入</h2>
-                <div id="loginError" class="message error" style="display:none; margin-bottom:16px;"></div>
-                <form onsubmit="handleLogin(event)">
-                    <div class="input-group" style="margin-bottom:16px;">
-                        <label>使用者名稱</label>
-                        <input type="text" id="loginUsername" autocomplete="username" required placeholder="admin"
-                            autofocus>
-                    </div>
-                    <div class="input-group" style="margin-bottom:24px;">
-                        <label>密碼</label>
-                        <input type="password" id="loginPassword" autocomplete="current-password" required
-                            placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn btn-primary"
-                        style="width:100%; padding:14px; font-size:1.1em;">登入</button>
-                </form>
-            </div>
-        </div>
+
 
         <!-- Notes Modal -->
         <div id="notesModal" class="modal">
@@ -2786,6 +2765,29 @@
             }
         }
     </script>
+    <!-- Login Modal (Moved to root) -->
+    <div id="loginModal"
+        style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15, 23, 42, 0.9); backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+        <div
+            style="background:#fff; padding:32px; border-radius:16px; width:100%; max-width:400px; box-shadow:0 24px 50px rgba(0,0,0,0.2);">
+            <h2 style="color:#0b4f6c; margin-bottom:24px; text-align:center;">管理員登入</h2>
+            <div id="loginError" class="message error" style="display:none; margin-bottom:16px;"></div>
+            <form onsubmit="handleLogin(event)">
+                <div class="input-group" style="margin-bottom:16px;">
+                    <label>使用者名稱</label>
+                    <input type="text" id="loginUsername" autocomplete="username" required placeholder="admin"
+                        autofocus>
+                </div>
+                <div class="input-group" style="margin-bottom:24px;">
+                    <label>密碼</label>
+                    <input type="password" id="loginPassword" autocomplete="current-password" required
+                        placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="width:100%; padding:14px; font-size:1.1em;">登入</button>
+            </form>
+        </div>
+    </div>
 </body>
 
 </html>
