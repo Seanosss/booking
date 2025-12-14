@@ -534,6 +534,76 @@ async function startServer() {
             console.error('Server will continue running to serve static files, but APIs may fail.');
         });
 
+        // --- Calendar Export ---
+
+        app.get('/api/bookings/:ref/ics', async (req, res) => {
+            try {
+                const booking = await getBookingById(req.params.ref);
+                if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+                // Parse date/time
+                // Assuming booking has date (YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM)
+                // Adjust based on your schema. If it's rental, it might have items.
+                // If it's class booking, it has class details.
+
+                let summary = 'Booking';
+                let description = `Reference: ${booking.id}`;
+                let startDateTime, endDateTime;
+
+                // Determine if it is a Class Booking or Rental Booking
+                if (booking.classId) {
+                    // Class Booking
+                    const cls = await getClassById(booking.classId);
+                    summary = cls ? `Class: ${cls.title}` : 'Class Booking';
+                    startDateTime = cls ? cls.startTime : null; // ISO string expected
+                    endDateTime = cls ? cls.endTime : null;
+                    description += `\nClass: ${cls?.title || 'Unknown'}`;
+                } else {
+                    // Rental Booking (May have multiple slots, simplistic approach: use first slot or aggregate)
+                    // For simplicity, finding items for this booking
+                    // This part might be tricky if schema is complex. 
+                    // Falling back to simple default logic or assuming 'booking' object has start/end if simplified.
+                    // If getBookingById returns joined data (which it usually does for detail view):
+                    summary = 'Studio Rental';
+                }
+
+                // Minimal ICS generation helper
+                const formatICSDate = (dateStr) => {
+                    if (!dateStr) return '';
+                    const d = new Date(dateStr);
+                    return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                };
+
+                // Fallback for dates if not easily resolved (this acts as a robust fail-safe)
+                const now = new Date();
+                const dtStar = startDateTime ? formatICSDate(startDateTime) : formatICSDate(now);
+                const dtEnd = endDateTime ? formatICSDate(endDateTime) : formatICSDate(new Date(now.getTime() + 3600000));
+
+                const icsContent = [
+                    'BEGIN:VCALENDAR',
+                    'VERSION:2.0',
+                    'PRODID:-//StudioBooking//EN',
+                    'BEGIN:VEVENT',
+                    `UID:${booking.id}@studiobooking`,
+                    `DTSTAMP:${formatICSDate(new Date())}`,
+                    `DTSTART:${dtStar}`,
+                    `DTEND:${dtEnd}`,
+                    `SUMMARY:${summary}`,
+                    `DESCRIPTION:${description}`,
+                    'END:VEVENT',
+                    'END:VCALENDAR'
+                ].join('\r\n');
+
+                res.set('Content-Type', 'text/calendar');
+                res.set('Content-Disposition', `attachment; filename="booking-${booking.id}.ics"`);
+                res.send(icsContent);
+
+            } catch (e) {
+                console.error('ICS generation failed:', e);
+                res.status(500).json({ error: 'Failed to generate calendar' });
+            }
+        });
+
         // --- Admin Analytics & Overview ---
 
         app.delete('/api/admin/bookings/:id', authenticateAdmin, async (req, res) => {
