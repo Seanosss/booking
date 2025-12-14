@@ -1117,237 +1117,231 @@
             const parts = [];
 
             if (payments.bankTransfer?.enabled) {
-                parts.push(`銀行轉帳：$ {
-                payments.bankTransfer.bankName
-                }
-
-                $ {
-                payments.bankTransfer.accountNumber
-                parts.push(`銀行轉帳：${ payments.bankTransfer.bankName } ${ payments.bankTransfer.accountNumber }(${ payments.bankTransfer.accountName })`);
+                parts.push(`銀行轉帳：${payments.bankTransfer.bankName} ${payments.bankTransfer.accountNumber} (${payments.bankTransfer.accountName})`);
             }
 
             if (payments.payme?.enabled) {
                 const name = payments.payme.displayName || 'PayMe';
                 const phone = payments.payme.phoneNumber || payments.payme.phone || '';
-                parts.push(`${ name }：${ phone }`.trim());
+                parts.push(`${name}：${phone}`.trim());
             }
 
             if (payments.fps?.enabled) {
                 const label = payments.fps.displayName || 'FPS 轉數快';
                 const number = payments.fps.fpsNumber || '';
-                parts.push(`${ label }：${ number }`.trim());
+                parts.push(`${label}：${number}`.trim());
             }
 
             if (parts.length === 0) {
                 elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
             } else {
-                elements.paymentInfo.innerHTML = `< div class= "payment-info-title" > 付款方式</div > ` +
-                    parts.map(text => `< div >• ${ text }</div > `).join('');
+                elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>` +
+                    parts.map(text => `<div>• ${text}</div>`).join('');
             }
         }
 
-            function getWhatsappNumber() {
-                return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+        function getWhatsappNumber() {
+            return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+        }
+
+        function buildWhatsappLink(bookingId) {
+            const number = getWhatsappNumber();
+            if (!number) return null;
+
+            const message = bookingId ? `你好，我剛提交了課程預約(編號: ${bookingId})，這是我的付款證明。` : '付款證明';
+            return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+        }
+
+        function openPaymentReminderModal(bookingId) {
+            if (!elements.paymentReminderModal) return;
+            const link = buildWhatsappLink(bookingId);
+
+            if (link) {
+                elements.paymentReminderWhatsapp.href = link;
+                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+            } else {
+                elements.paymentReminderWhatsapp.href = '#';
+                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
             }
 
-            function buildWhatsappLink(bookingId) {
-                const number = getWhatsappNumber();
-                if (!number) return null;
+            elements.paymentReminderModal.classList.add('active');
+            elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
+        }
 
-                const message = bookingId ? `你好，我剛提交了課程預約(編號: ${ bookingId })，這是我的付款證明。` : '付款證明';
-                return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+        function closePaymentReminderModal() {
+            if (!elements.paymentReminderModal) return;
+            elements.paymentReminderModal.classList.remove('active');
+            elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/settings`);
+                if (!response.ok) {
+                    throw new Error('無法載入設定');
+                }
+
+                state.settings = await response.json();
+                renderPaymentInfo();
+            } catch (error) {
+                console.error('Unable to load settings:', error);
+
+                if (elements.paymentInfo) {
+                    elements.paymentInfo.textContent = '暫時無法載入付款資訊。';
+                }
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
             }
 
-            function openPaymentReminderModal(bookingId) {
-                if (!elements.paymentReminderModal) return;
-                const link = buildWhatsappLink(bookingId);
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
 
-                if (link) {
-                    elements.paymentReminderWhatsapp.href = link;
-                    elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+            // Icon
+            const icon = type === 'success'
+                ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                toast.addEventListener('animationend', () => {
+                    toast.remove();
+                });
+            }, 3000);
+        }
+
+        elements.bookingForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!state.selectedClass) {
+                showToast('請先選擇課堂', 'error');
+                return;
+            }
+
+            const payload = {
+                classId: state.selectedClass.id,
+                customerName: elements.customerInput.value.trim(),
+                email: elements.emailInput.value.trim(),
+                phone: elements.phoneInput.value.trim(),
+                peopleCount: Number(elements.peopleInput.value) || 1
+            };
+
+            if (!payload.customerName || !payload.email || !payload.phone) {
+                showToast('請填寫完整聯絡資訊', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/class-bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    saveUserDetails(); // Save user info
+
+                    // Check if function exists to avoid reference error
+                    if (typeof openPaymentReminderModal === 'function') {
+                        openPaymentReminderModal(result.bookingId);
+                    }
+
+                    // Clear form
+                    elements.bookingForm.reset();
+                    elements.bookingCard.style.display = 'none';
+
+                    showToast(`預約成功！編號：${result.bookingId}`, 'success');
+
+                    window.scrollTo({
+                        top: 0, behavior: 'smooth'
+                    });
+
+                    // Reload class list to update remaining spots
+                    state.classesByDate = {}; // Clear cache to force refresh
+                    renderClassesForDate(state.selectedDate);
                 } else {
-                    elements.paymentReminderWhatsapp.href = '#';
-                    elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+                    throw new Error(result.error || '預約失敗');
                 }
-
-                elements.paymentReminderModal.classList.add('active');
-                elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || '預約失敗，請稍後再試', 'error');
             }
+        });
 
-            function closePaymentReminderModal() {
-                if (!elements.paymentReminderModal) return;
-                elements.paymentReminderModal.classList.remove('active');
-                elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
+        elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
+
+        elements.paymentReminderModal?.addEventListener('click', (event) => {
+            if (event.target === elements.paymentReminderModal) {
+                closePaymentReminderModal();
             }
+        });
 
-            async function loadSettings() {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/settings`);
-                    if (!response.ok) {
-                        throw new Error('無法載入設定');
-                    }
-
-                    state.settings = await response.json();
-                    renderPaymentInfo();
-                } catch (error) {
-                    console.error('Unable to load settings:', error);
-
-                    if (elements.paymentInfo) {
-                        elements.paymentInfo.textContent = '暫時無法載入付款資訊。';
-                    }
-                }
-            }
-
-            function showToast(message, type = 'success') {
-                let container = document.querySelector('.toast-container');
-                if (!container) {
-                    container = document.createElement('div');
-                    container.className = 'toast-container';
-                    document.body.appendChild(container);
-                }
-
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-
-                // Icon
-                const icon = type === 'success'
-                    ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
-                    : '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
-
-                toast.innerHTML = `${icon}<span>${message}</span>`;
-
-                container.appendChild(toast);
-
-                // Remove after 3 seconds
-                setTimeout(() => {
-                    toast.style.animation = 'fadeOut 0.3s forwards';
-                    toast.addEventListener('animationend', () => {
-                        toast.remove();
-                    });
-                }, 3000);
-            }
-
-            elements.bookingForm.addEventListener('submit', async (event) => {
+        elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
+            if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
                 event.preventDefault();
+            }
+        });
 
-                if (!state.selectedClass) {
-                    showToast('請先選擇課堂', 'error');
-                    return;
-                }
+        elements.prevWeek.addEventListener('click', () => {
+            state.weekStart.setDate(state.weekStart.getDate() - 7);
+            updateWeekLabel();
 
-                const payload = {
-                    classId: state.selectedClass.id,
-                    customerName: elements.customerInput.value.trim(),
-                    email: elements.emailInput.value.trim(),
-                    phone: elements.phoneInput.value.trim(),
-                    peopleCount: Number(elements.peopleInput.value) || 1
-                };
+            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
+                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                state.selectedDate = formatDate(state.weekStart);
+            }
 
-                if (!payload.customerName || !payload.email || !payload.phone) {
-                    showToast('請填寫完整聯絡資訊', 'error');
-                    return;
-                }
+            renderDayButtons();
+            renderClassesForDate(state.selectedDate);
+        });
 
-                try {
-                    const response = await fetch(`${API_BASE_URL}/class-bookings`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
+        elements.nextWeek.addEventListener('click', () => {
+            state.weekStart.setDate(state.weekStart.getDate() + 7);
+            updateWeekLabel();
 
-                    if (response.ok) {
-                        saveUserDetails(); // Save user info
+            if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
+                Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
+                state.selectedDate = formatDate(state.weekStart);
+            }
 
-                        // Check if function exists to avoid reference error
-                        if (typeof openPaymentReminderModal === 'function') {
-                            openPaymentReminderModal(result.bookingId);
-                        }
+            renderDayButtons();
+            renderClassesForDate(state.selectedDate);
+        });
 
-                        // Clear form
-                        elements.bookingForm.reset();
-                        elements.bookingCard.style.display = 'none';
+        // Initialize
+        (function init() {
+            const today = new Date();
+            state.weekStart = startOfWeek(today).toISOString().split('T')[0];
+            updateWeekLabel();
 
-                        showToast(`預約成功！編號：${result.bookingId}`, 'success');
+            // Load Settings (Payment Info, etc.)
+            loadSettings();
 
-                        window.scrollTo({
-                            top: 0, behavior: 'smooth'
-                        });
+            // Load User Details
+            loadUserDetails();
 
-                        // Reload class list to update remaining spots
-                        state.classesByDate = {}; // Clear cache to force refresh
-                        renderClassesForDate(state.selectedDate);
-                    } else {
-                        throw new Error(result.error || '預約失敗');
-                    }
-                } catch (error) {
-                    console.error(error);
-                    showToast(error.message || '預約失敗，請稍後再試', 'error');
-                }
-            });
+            // Initial Render
+            renderDayButtons();
 
-            elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
+            // Auto Select Today if within view, else Select Start of Week
+            const todayIso = formatDate(today);
+            state.selectedDate = todayIso;
 
-            elements.paymentReminderModal?.addEventListener('click', (event) => {
-                if (event.target === elements.paymentReminderModal) {
-                    closePaymentReminderModal();
-                }
-            });
-
-            elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
-                if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
-                    event.preventDefault();
-                }
-            });
-
-            elements.prevWeek.addEventListener('click', () => {
-                state.weekStart.setDate(state.weekStart.getDate() - 7);
-                updateWeekLabel();
-
-                if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                    Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                    state.selectedDate = formatDate(state.weekStart);
-                }
-
-                renderDayButtons();
-                renderClassesForDate(state.selectedDate);
-            });
-
-            elements.nextWeek.addEventListener('click', () => {
-                state.weekStart.setDate(state.weekStart.getDate() + 7);
-                updateWeekLabel();
-
-                if (!state.selectedDate || new Date(state.selectedDate) < state.weekStart || new
-                    Date(state.selectedDate) > new Date(state.weekStart.getTime() + 6 * 86400000)) {
-                    state.selectedDate = formatDate(state.weekStart);
-                }
-
-                renderDayButtons();
-                renderClassesForDate(state.selectedDate);
-            });
-
-            // Initialize
-            (function init() {
-                const today = new Date();
-                state.weekStart = startOfWeek(today).toISOString().split('T')[0];
-                updateWeekLabel();
-
-                // Load Settings (Payment Info, etc.)
-                loadSettings();
-
-                // Load User Details
-                loadUserDetails();
-
-                // Initial Render
-                renderDayButtons();
-
-                // Auto Select Today if within view, else Select Start of Week
-                const todayIso = formatDate(today);
-                state.selectedDate = todayIso;
-
-                // Trigger fetch for selected date (default today)
-                renderClassesForDate(todayIso);
-            })();
+            // Trigger fetch for selected date (default today)
+            renderClassesForDate(todayIso);
+        })();
     </script>
 </body>
 
