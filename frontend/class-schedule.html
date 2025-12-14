@@ -1130,36 +1130,28 @@
 
                 $ {
                 payments.bankTransfer.accountNumber
-                }
-
-                ($ {
-                payments.bankTransfer.accountName
-                })`);
+                parts.push(`銀行轉帳：${payments.bankTransfer.bankName} ${payments.bankTransfer.accountNumber} (${payments.bankTransfer.accountName})`);
             }
 
             if (payments.payme?.enabled) {
                 const name = payments.payme.displayName || 'PayMe';
-                const phone = payments.payme.phoneNumber || '';
-
-                if (payments.payme?.enabled) {
-                    const name = payments.payme.displayName || 'PayMe';
-                    const phone = payments.payme.phone || '';
-                    parts.push(`${name}：${phone}`.trim());
-                }
-
-                if (payments.fps?.enabled) {
-                    const label = payments.fps.displayName || 'FPS 轉數快';
-                    const number = payments.fps.fpsNumber || '';
-                    parts.push(`${label}：${number}`.trim());
-                }
-
-                if (parts.length === 0) {
-                    elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
-                } else {
-                    elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>` +
-                        parts.map(text => `<div>• ${text}</div>`).join('');
-                }
+                const phone = payments.payme.phoneNumber || payments.payme.phone || '';
+                parts.push(`${name}：${phone}`.trim());
             }
+
+            if (payments.fps?.enabled) {
+                const label = payments.fps.displayName || 'FPS 轉數快';
+                const number = payments.fps.fpsNumber || '';
+                parts.push(`${label}：${number}`.trim());
+            }
+
+            if (parts.length === 0) {
+                elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
+            } else {
+                elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>` +
+                    parts.map(text => `<div>• ${text}</div>`).join('');
+            }
+        }
 
             function getWhatsappNumber() {
                 return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
@@ -1169,10 +1161,8 @@
                 const number = getWhatsappNumber();
                 if (!number) return null;
 
-                const message = bookingId ? `你好，我剛提交了課程預約 ($ {
-                    bookingId
-                    })，這是我的付款證明。` : '付款證明';
-                return `https: //wa.me/${number}?text=${encodeURIComponent(message)}`;
+                const message = bookingId ? `你好，我剛提交了課程預約 (編號: ${bookingId})，這是我的付款證明。` : '付款證明';
+                return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
             }
 
             function openPaymentReminderModal(bookingId) {
@@ -1182,9 +1172,7 @@
                 if (link) {
                     elements.paymentReminderWhatsapp.href = link;
                     elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
-                }
-
-                else {
+                } else {
                     elements.paymentReminderWhatsapp.href = '#';
                     elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
                 }
@@ -1201,20 +1189,14 @@
 
             async function loadSettings() {
                 try {
-                    const response = await fetch(`$ {
-                    API_BASE_URL
-                    }
-
-                    /settings`);
+                    const response = await fetch(`${API_BASE_URL}/settings`);
                     if (!response.ok) {
                         throw new Error('無法載入設定');
                     }
 
                     state.settings = await response.json();
                     renderPaymentInfo();
-                }
-
-                catch (error) {
+                } catch (error) {
                     console.error('Unable to load settings:', error);
 
                     if (elements.paymentInfo) {
@@ -1284,9 +1266,11 @@
                     if (response.ok) {
                         saveUserDetails(); // Save user info
 
-                        // Update WhatsApp link and show payment reminder modal
-                        openPaymentReminderModal(result.bookingId);
-
+                        // Check if function exists to avoid reference error
+                        if (typeof openPaymentReminderModal === 'function') {
+                             openPaymentReminderModal(result.bookingId);
+                        }
+                        
                         // Clear form
                         elements.bookingForm.reset();
                         elements.bookingCard.style.display = 'none';
@@ -1332,7 +1316,8 @@
                     state.selectedDate = formatDate(state.weekStart);
                 }
 
-                loadWeekClasses();
+                renderDayButtons();
+                renderClassesForDate(state.selectedDate);
             });
 
             elements.nextWeek.addEventListener('click', () => {
@@ -1344,7 +1329,8 @@
                     state.selectedDate = formatDate(state.weekStart);
                 }
 
-                loadWeekClasses();
+                renderDayButtons();
+                renderClassesForDate(state.selectedDate);
             });
 
             // Initialize
