@@ -517,6 +517,16 @@ async function startServer() {
 
         // --- Admin Analytics & Overview ---
 
+        app.delete('/api/admin/bookings/:id', authenticateAdmin, async (req, res) => {
+            try {
+                await deleteBooking(req.params.id);
+                res.json({ success: true });
+            } catch (e) {
+                console.error('Delete booking error:', e);
+                res.status(500).json({ error: 'Delete failed' });
+            }
+        });
+
         app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
             try {
                 const { date } = req.query;
