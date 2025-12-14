@@ -421,6 +421,25 @@ app.get('/api/classes', async (req, res) => {
     }
 });
 
+app.get('/api/class-products', async (req, res) => {
+    try {
+        const { type } = req.query;
+        let products = await getClassProducts();
+
+        // Filter by type if provided (e.g., 'package', 'trial')
+        if (type) {
+            products = products.filter(p => p.type === type);
+        }
+
+        // Only return active products for public view
+        const activeProducts = products.filter(p => p.active !== false && p.active !== 0);
+
+        res.json(activeProducts);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load products' });
+    }
+});
+
 app.post('/api/admin/classes', authenticateAdmin, async (req, res) => {
     try {
         const avail = await checkClassScheduleAvailability(req.body.startTime, req.body.endTime);
