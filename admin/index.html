@@ -64,14 +64,13 @@
         }
 
         .logout-btn {
-            display: none;
-            /* position: absolute; */
-            /* top: 24px; */
-            /* right: 24px; */
-            /* padding: 10px 18px; */
-            /* background: transparent; */
-            /* color: var(--danger); */
-            /* border: 1px solid var(--border); */
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            padding: 10px 18px;
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--border);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s;
@@ -1435,8 +1434,13 @@
                     localStorage.setItem('adminToken', result.token);
                     localStorage.setItem('adminRole', result.role || 'super_admin');
                     localStorage.setItem('adminUsername', result.username || username);
+
                     document.getElementById('loginModal').style.display = 'none';
-                    initializeAdminPanel();
+                    document.getElementById('adminContainer').style.display = 'block';
+
+                    if (typeof loadDashboardData === 'function') {
+                        loadDashboardData();
+                    }
                 } else {
                     errorEl.textContent = result.error || '登入失敗';
                     errorEl.style.display = 'block';
@@ -1657,22 +1661,26 @@
         }
 
         function checkAuthentication() {
-            // AUTH REMOVED: Auto-login
+            const token = localStorage.getItem('adminToken');
             const loginModal = document.getElementById('loginModal');
             const adminContainer = document.getElementById('adminContainer');
 
+            // 1. Check for Token
+            if (!token) {
+                console.log('No token found. Showing login.');
+                if (loginModal) loginModal.style.display = 'flex';
+                if (adminContainer) adminContainer.style.display = 'none';
+                return; // STOP execution
+            }
+
+            // 2. Token exists -> Show Dashboard
             if (loginModal) loginModal.style.display = 'none';
             if (adminContainer) {
                 adminContainer.style.display = 'block';
 
-                // Set fake "super_admin" role to ensure UI features are visible
-                localStorage.setItem('adminRole', 'super_admin');
-
-                // Safe to load data now
+                // 3. Load Data ONLY now
                 if (typeof loadDashboardData === 'function') {
                     loadDashboardData();
-                } else if (typeof loadStats === 'function') {
-                    loadStats();
                 }
             }
         }
