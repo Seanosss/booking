@@ -649,64 +649,54 @@
         </div>
     </div>
     <script>
-        // const API_BASE_URL = 'https://booking-ub69.onrender.com/api'; // OLD
-        const API_BASE_URL = '/api'; // Relative path for local/prod compatibility
+        const API_BASE_URL = '/api';
 
         const state = {
-
-            settings: null,
-            weekStart: null,
+            weekStart: new Date(),
             selectedDate: null,
-            classes: [],
-            classesByDate: {}
-
-            ,
-            selectedClass: null
-        }
-
-            ;
+            selectedClass: null,
+            settings: {},
+            classesByDate: {},
+            userDetails: { name: '', email: '', phone: '' }
+        };
 
         const elements = {
+            weekLabel: document.getElementById('week-label'),
             prevWeek: document.getElementById('prev-week'),
             nextWeek: document.getElementById('next-week'),
-            weekLabel: document.getElementById('week-label'),
-            dayButtons: document.getElementById('day-buttons'),
-            classesContainer: document.getElementById('classes-container'),
+            dayButtonsGrid: document.getElementById('day-buttons'),
+            classList: document.getElementById('classes-container'),
             bookingCard: document.getElementById('booking-card'),
-            bookingSummary: document.getElementById('booking-summary'),
             bookingForm: document.getElementById('class-booking-form'),
-            classNameInput: document.getElementById('class-name'),
+            // step1: document.getElementById('step1'), // These elements are not in the HTML
+            // step2: document.getElementById('step2'), // These elements are not in the HTML
+            className: document.getElementById('class-name'),
+            classTime: document.getElementById('class-time'), // This element is not in the HTML
+            classPrice: document.getElementById('class-price'), // This element is not in the HTML
             customerInput: document.getElementById('class-customer'),
             emailInput: document.getElementById('class-email'),
             phoneInput: document.getElementById('class-phone'),
             peopleInput: document.getElementById('class-people'),
-            successMessage: document.getElementById('class-success'),
-            errorMessage: document.getElementById('class-error'),
             paymentInfo: document.getElementById('payment-info'),
+            // calendarTitle: document.getElementById('calendar-title'), // This element is not in the HTML
+            // heroSubtitle: document.getElementById('heroSubtitle'), // This element is not in the HTML
             paymentReminderModal: document.getElementById('payment-reminder-modal'),
-            paymentReminderWhatsapp: document.getElementById('payment-reminder-whatsapp'),
             paymentReminderClose: document.getElementById('payment-reminder-close'),
-            filterContainer: document.getElementById('filter-container')
+            function loadUserDetails() {
+                try {
+                    const saved = localStorage.getItem('classUserDetails');
+
+        if (saved) {
+            const details = JSON.parse(saved);
+            if (details.name) elements.customerInput.value = details.name;
+            if (details.email) elements.emailInput.value = details.email;
+            if (details.phone) elements.phoneInput.value = details.phone;
         }
-
-            ;
-
-        // User Details Persistence
-        function loadUserDetails() {
-            try {
-                const saved = localStorage.getItem('classUserDetails');
-
-                if (saved) {
-                    const details = JSON.parse(saved);
-                    if (details.name) elements.customerInput.value = details.name;
-                    if (details.email) elements.emailInput.value = details.email;
-                    if (details.phone) elements.phoneInput.value = details.phone;
-                }
             }
 
             catch (e) {
-                console.warn('Failed to load user details', e);
-            }
+            console.warn('Failed to load user details', e);
+        }
         }
 
         function saveUserDetails() {
@@ -1130,26 +1120,26 @@
 
                 $ {
                 payments.bankTransfer.accountNumber
-                parts.push(`銀行轉帳：${payments.bankTransfer.bankName} ${payments.bankTransfer.accountNumber} (${payments.bankTransfer.accountName})`);
+                parts.push(`銀行轉帳：${ payments.bankTransfer.bankName } ${ payments.bankTransfer.accountNumber }(${ payments.bankTransfer.accountName })`);
             }
 
             if (payments.payme?.enabled) {
                 const name = payments.payme.displayName || 'PayMe';
                 const phone = payments.payme.phoneNumber || payments.payme.phone || '';
-                parts.push(`${name}：${phone}`.trim());
+                parts.push(`${ name }：${ phone }`.trim());
             }
 
             if (payments.fps?.enabled) {
                 const label = payments.fps.displayName || 'FPS 轉數快';
                 const number = payments.fps.fpsNumber || '';
-                parts.push(`${label}：${number}`.trim());
+                parts.push(`${ label }：${ number }`.trim());
             }
 
             if (parts.length === 0) {
                 elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
             } else {
-                elements.paymentInfo.innerHTML = `<div class="payment-info-title">付款方式</div>` +
-                    parts.map(text => `<div>• ${text}</div>`).join('');
+                elements.paymentInfo.innerHTML = `< div class= "payment-info-title" > 付款方式</div > ` +
+                    parts.map(text => `< div >• ${ text }</div > `).join('');
             }
         }
 
@@ -1161,7 +1151,7 @@
                 const number = getWhatsappNumber();
                 if (!number) return null;
 
-                const message = bookingId ? `你好，我剛提交了課程預約 (編號: ${bookingId})，這是我的付款證明。` : '付款證明';
+                const message = bookingId ? `你好，我剛提交了課程預約(編號: ${ bookingId })，這是我的付款證明。` : '付款證明';
                 return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
             }
 
@@ -1268,9 +1258,9 @@
 
                         // Check if function exists to avoid reference error
                         if (typeof openPaymentReminderModal === 'function') {
-                             openPaymentReminderModal(result.bookingId);
+                            openPaymentReminderModal(result.bookingId);
                         }
-                        
+
                         // Clear form
                         elements.bookingForm.reset();
                         elements.bookingCard.style.display = 'none';
