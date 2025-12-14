@@ -681,22 +681,25 @@
             // calendarTitle: document.getElementById('calendar-title'), // This element is not in the HTML
             // heroSubtitle: document.getElementById('heroSubtitle'), // This element is not in the HTML
             paymentReminderModal: document.getElementById('payment-reminder-modal'),
-            paymentReminderClose: document.getElementById('payment-reminder-close'),
-            function loadUserDetails() {
-                try {
-                    const saved = localStorage.getItem('classUserDetails');
+            paymentReminderClose: document.getElementById('payment-reminder-close')
+        };
 
-        if (saved) {
-            const details = JSON.parse(saved);
-            if (details.name) elements.customerInput.value = details.name;
-            if (details.email) elements.emailInput.value = details.email;
-            if (details.phone) elements.phoneInput.value = details.phone;
-        }
+        // User Details Persistence
+        function loadUserDetails() {
+            try {
+                const saved = localStorage.getItem('classUserDetails');
+
+                if (saved) {
+                    const details = JSON.parse(saved);
+                    if (details.name) elements.customerInput.value = details.name;
+                    if (details.email) elements.emailInput.value = details.email;
+                    if (details.phone) elements.phoneInput.value = details.phone;
+                }
             }
 
             catch (e) {
-            console.warn('Failed to load user details', e);
-        }
+                console.warn('Failed to load user details', e);
+            }
         }
 
         function saveUserDetails() {
