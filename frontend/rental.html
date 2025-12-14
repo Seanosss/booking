@@ -549,7 +549,6 @@
                 font-size: 1.05rem;
             }
 
-            /* Modal Styles */
             .payment-reminder-modal {
                 position: fixed;
                 inset: 0;
@@ -563,6 +562,18 @@
                 pointer-events: none;
                 transition: opacity 0.2s ease;
                 backdrop-filter: blur(4px);
+            }
+
+            /* Announcement Banner */
+            .announcement-banner {
+                background: var(--brand-primary);
+                color: white;
+                text-align: center;
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                font-weight: 500;
+                display: none;
+                /* Hidden by default */
             }
 
             .payment-reminder-modal.active {
@@ -764,14 +775,20 @@
             </form>
         </div>
     </main>
+    <!-- Success Modal (Glassmorphism) -->
     <div class="payment-reminder-modal" id="payment-reminder-modal" aria-hidden="true">
         <div class="payment-reminder-content">
             <button type="button" class="payment-reminder-close" id="payment-reminder-close"
                 aria-label="Close">×</button>
-            <h3>預約已提交</h3>
-            <p>預約已提交，請在 30 分鐘內完成付款，並將付款截圖 send 到 WhatsApp。</p>
-            <a id="payment-reminder-whatsapp" class="whatsapp-button" href="#" target="_blank" rel="noopener">打開
-                WhatsApp</a>
+            <div style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+            <h3 style="margin: 0 0 12px; color: #0f172a; font-size: 1.5rem;">預約已提交</h3>
+            <p style="color: #475569; margin-bottom: 24px; line-height: 1.5;">
+                請在 <strong>30 分鐘內</strong> 完成付款，並將付款截圖傳送至 WhatsApp 以確認預約。
+            </p>
+            <a id="payment-reminder-whatsapp" class="whatsapp-button" href="#" target="_blank" rel="noopener"
+                style="display: inline-block; background: #25D366; color: white; padding: 12px 24px; border-radius: 99px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.4);">
+                <span style="margin-right: 6px;">💬</span> 打開 WhatsApp
+            </a>
         </div>
     </div>
     <script>
@@ -1277,26 +1294,32 @@
         }
 
         function openPaymentReminderModal(bookingId = '') {
-            if (!elements.paymentReminderModal) return;
-            const link = buildWhatsappLink(bookingId);
-            if (link) {
-                elements.paymentReminderWhatsapp.href = link;
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
-            } else {
-                elements.paymentReminderWhatsapp.href = '#';
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+            const modal = document.getElementById('payment-reminder-modal');
+            const whatsappBtn = document.getElementById('payment-reminder-whatsapp');
+
+            if (state.settings?.contactInfo?.whatsapp) {
+                const phone = state.settings.contactInfo.whatsapp;
+                const text = encodeURIComponent(`你好，我剛提交了預約 (編號: ${bookingId})，這是我的付款證明。`);
+                whatsappBtn.href = `https://wa.me/${phone}?text=${text}`;
             }
-            elements.paymentReminderModal.classList.add('active');
-            elements.paymentReminderModal.setAttribute('aria-hidden', 'false');
+
+            if (modal) {
+                // Force display flex then add active for transition
+                // modal.style.display = 'flex'; 
+                // We rely on CSS flex + opacity, but just in case:
+                modal.classList.add('active');
+                modal.setAttribute('aria-hidden', 'false');
+            }
         }
 
         function closePaymentReminderModal() {
-            if (!elements.paymentReminderModal) return;
-            elements.paymentReminderModal.classList.remove('active');
-            elements.paymentReminderModal.setAttribute('aria-hidden', 'true');
-        }
-
-        function saveUserDetails() {
+            const modal = document.getElementById('payment-reminder-modal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden', 'true');
+                // setTimeout(() => modal.style.display = 'none', 300); // Optional if using display:none logic
+            }
+        } function saveUserDetails() {
             try {
                 const userDetails = {
                     customerName: elements.customerName.value,
@@ -1335,11 +1358,16 @@
             const settings = await response.json();
             state.settings = settings;
             state.slotInterval = Number(settings.bookingRules?.slotInterval || 30);
+
+            applyInterfaceSettings(settings); // NEW: Apply CMS settings
             applyInstructions(settings);
             renderPaymentInfo(settings);
-            if (settings.operatingHours?.daysLabelZh) {
+
+            // Legacy subtitle fallback (only if no custom subtitle)
+            if (settings.operatingHours?.daysLabelZh && !settings.ui?.heroSubtitleZh) {
                 elements.heroSubtitle.textContent = `${settings.operatingHours.daysLabelZh} · ${settings.operatingHours.startTime || '07:00'} - ${settings.operatingHours.endTime || '22:00'}`;
             }
+
             const rules = settings.bookingRules || {};
             const minDays = Number(rules.minAdvanceBooking || 0);
             const maxDays = Number(rules.maxAdvanceBooking || 30);
@@ -1351,6 +1379,45 @@
             if (fpInstance) {
                 fpInstance.set('minDate', today);
                 fpInstance.set('maxDate', maxDate);
+            }
+        }
+
+        function applyInterfaceSettings(settings) {
+            const ui = settings.ui || {};
+
+            // Theme Color
+            if (ui.primaryColor) {
+                document.documentElement.style.setProperty('--brand-primary', ui.primaryColor);
+            }
+
+            // Hero Text
+            if (ui.heroTitleZh) {
+                const titleEl = document.querySelector('.hero h1');
+                if (titleEl) titleEl.textContent = ui.heroTitleZh;
+            }
+            if (ui.heroSubtitleZh) {
+                elements.heroSubtitle.textContent = ui.heroSubtitleZh;
+            }
+
+            // Announcement Banner
+            let banner = document.getElementById('announcement-banner');
+            if (ui.announcementActive && ui.announcementText) {
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'announcement-banner';
+                    banner.className = 'announcement-banner';
+                    document.body.prepend(banner);
+                }
+                banner.textContent = ui.announcementText;
+                banner.style.display = 'block';
+            } else if (banner) {
+                banner.style.display = 'none';
+            }
+
+            // Footer
+            if (ui.footerText) {
+                const footerP = document.querySelector('footer p');
+                if (footerP) footerP.textContent = ui.footerText;
             }
         }
 
@@ -1444,6 +1511,15 @@
             }, 3000);
         }
 
+        // Helper to resolve people count
+        function resolvePeopleCountInput() {
+            const val = parseInt(elements.peopleInput.value, 10);
+            return (Number.isFinite(val) && val >= 1) ? val : null;
+        }
+
+        // --- Event Listeners ---
+
+        // Handle Booking Submit
         document.getElementById('booking-form').addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -1475,6 +1551,7 @@
             try {
                 elements.submitButton.disabled = true;
                 elements.submitButton.textContent = '提交中...';
+
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1485,10 +1562,15 @@
 
                 if (response.ok) {
                     saveUserDetails();
-                    showToast(result.message || '預約已提交！', 'success');
 
+                    // 1. Show Toast
+                    showToast('預約已提交！', 'success');
+
+                    // 2. Open Success Modal
+                    console.log('Opening success modal for booking:', result.bookingId);
                     openPaymentReminderModal(result.bookingId);
 
+                    // 3. Reset State & UI
                     const affectedDates = Array.from(new Set(groups.map(group => group.date)));
                     state.selectedSlotsByDate.clear();
                     affectedDates.forEach(date => state.availabilityByDate.delete(date));
@@ -1500,8 +1582,7 @@
                     }
                 } else {
                     console.error('Booking create failed:', response.status, result);
-                    const message = result?.error || '無法提交預約';
-                    throw new Error(message);
+                    throw new Error(result?.error || '無法提交預約');
                 }
             } catch (error) {
                 console.error(error);
@@ -1534,7 +1615,7 @@
                 if (rentalItems && rentalItems.length > 0) {
                     populateRoomSelect(rentalItems);
                 }
-                
+
                 // Use settings if available, else defaults
                 const minAdvance = Number(settings?.bookingRules?.minAdvanceBooking || 0);
                 const maxAdvance = Number(settings?.bookingRules?.maxAdvanceBooking || 30);
@@ -1543,17 +1624,17 @@
                 const today = new Date();
                 const minDate = new Date();
                 minDate.setDate(minDate.getDate() + minAdvance);
-    
+
                 const maxDate = new Date();
                 maxDate.setDate(maxDate.getDate() + maxAdvance);
-    
+
                 // Initialize Flatpickr with bounds
                 initFlatpickr(minDate, maxDate);
             } catch (err) {
                 console.error('Initialization error:', err);
                 showToast('系統初始化失敗，請重新整理頁面', 'error');
                 // Ensure Flatpickr still inits even if everything else explodes
-                try { initFlatpickr(new Date(), new Date(Date.now() + 86400000 * 30)); } catch(e){}
+                try { initFlatpickr(new Date(), new Date(Date.now() + 86400000 * 30)); } catch (e) { }
             }
 
 

@@ -638,6 +638,51 @@
                             rows="3"></textarea></div>
                 </div>
             </div>
+            <!-- Interface Settings -->
+            <div class="section-card">
+                <h3>🎨 介面與外觀 (Interface)</h3>
+                <h4 style="color:var(--brand-primary); margin-top:16px; margin-bottom:12px;">首頁橫幅 (Hero Section)</h4>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>標題 (Title) - ZH</label>
+                        <input id="uiHeroTitleZh" type="text" placeholder="例如: 24小時自助預約">
+                    </div>
+                    <div class="input-group">
+                        <label>副標題 (Subtitle) - ZH</label>
+                        <input id="uiHeroSubtitleZh" type="text" placeholder="例如: 輕鬆預約您的專屬空間">
+                    </div>
+                </div>
+
+                <h4 style="color:var(--brand-primary); margin-top:20px; margin-bottom:12px;">全站公告 (Announcement)</h4>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>公告內容</label>
+                        <input id="uiAnnouncementText" type="text" placeholder="例如: 系統維護通知...">
+                    </div>
+                    <div class="input-group">
+                        <label class="checkbox-label" style="justify-content:flex-start; margin-top:8px;">
+                            <input type="checkbox" id="uiAnnouncementActive"> 顯示公告
+                        </label>
+                    </div>
+                </div>
+
+                <h4 style="color:var(--brand-primary); margin-top:20px; margin-bottom:12px;">品牌色系 (Theme)</h4>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>主色 (Primary Color)</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input id="uiPrimaryColor" type="color" value="#3b82f6"
+                                style="height:40px; width:60px; padding:0; border:none; background:none;">
+                            <span id="uiPrimaryColorValue" style="color:#666;">#3b82f6</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>頁尾文字 (Footer)</label>
+                        <input id="uiFooterText" type="text" placeholder="© 2024 Your Studio">
+                    </div>
+                </div>
+            </div>
+
             <div class="section-card">
                 <h3>聯絡資訊</h3>
                 <div class="form-grid two-columns">
@@ -1794,6 +1839,25 @@
                     document.getElementById('contactEmail').value = settings.contactInfo.email || '';
                 }
 
+                // Interface / CMS
+                if (settings.ui) {
+                    document.getElementById('uiHeroTitleZh').value = settings.ui.heroTitleZh || '';
+                    document.getElementById('uiHeroSubtitleZh').value = settings.ui.heroSubtitleZh || '';
+                    document.getElementById('uiAnnouncementText').value = settings.ui.announcementText || '';
+                    document.getElementById('uiAnnouncementActive').checked = settings.ui.announcementActive === true;
+                    document.getElementById('uiPrimaryColor').value = settings.ui.primaryColor || '#3b82f6';
+                    document.getElementById('uiPrimaryColorValue').textContent = settings.ui.primaryColor || '#3b82f6';
+                    document.getElementById('uiFooterText').value = settings.ui.footerText || '';
+                }
+
+                // Color Picker Listener
+                const colorInput = document.getElementById('uiPrimaryColor');
+                if (colorInput) {
+                    colorInput.oninput = (e) => {
+                        document.getElementById('uiPrimaryColorValue').textContent = e.target.value;
+                    };
+                }
+
                 // Payment
                 if (settings.paymentMethods) {
                     const pm = settings.paymentMethods;
@@ -1891,6 +1955,16 @@
                     whatsapp: document.getElementById('contactWhatsapp').value,
                     phone: document.getElementById('contactPhone').value,
                     email: document.getElementById('contactEmail').value
+                },
+
+                // Interface / CMS
+                ui: {
+                    heroTitleZh: document.getElementById('uiHeroTitleZh').value,
+                    heroSubtitleZh: document.getElementById('uiHeroSubtitleZh').value,
+                    announcementText: document.getElementById('uiAnnouncementText').value,
+                    announcementActive: document.getElementById('uiAnnouncementActive').checked,
+                    primaryColor: document.getElementById('uiPrimaryColor').value,
+                    footerText: document.getElementById('uiFooterText').value
                 },
                 paymentMethods: {
                     bankTransfer: {
