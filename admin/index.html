@@ -1241,6 +1241,11 @@
         }
 
         function renderRentalBookings(bookings) {
+            const statusMap = {
+                pending: '待處理',
+                confirmed: '已確認',
+                cancelled: '已取消'
+            };
             const tbody = document.getElementById('bookingsTable');
             if (!tbody) return;
             tbody.innerHTML = '';

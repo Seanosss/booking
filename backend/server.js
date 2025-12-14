@@ -53,7 +53,7 @@ const ADMIN_TOKEN_TTL_MS = (() => {
     return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0 ? ttlFromEnv : 1000 * 60 * 60;
 })();
 // AUTH REMOVED AS REQUESTED
-const ADMIN_AUTH_DISABLED = true; 
+const ADMIN_AUTH_DISABLED = true;
 const activeAdminTokens = new Map();
 
 // Rate Limiter
@@ -513,6 +513,91 @@ async function startServer() {
         initializeDatabase().catch(err => {
             console.error('⚠️ Database initialization failed:', err);
             console.error('Server will continue running to serve static files, but APIs may fail.');
+        });
+
+        // --- Admin Analytics & Overview ---
+
+        app.get('/api/admin/bookings/overview', authenticateAdmin, async (req, res) => {
+            try {
+                const { date } = req.query;
+                if (!date) return res.status(400).json({ error: 'Date required' });
+
+                // 1. Studio Sessions
+                const rentalItems = await getBookingItemsByDate(date);
+                const studioSessions = await Promise.all(rentalItems.map(async item => {
+                    const booking = await getBookingById(item.bookingId);
+                    return {
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        bookingId: item.bookingId,
+                        customerName: booking?.customerName,
+                        peopleCount: item.peopleCount,
+                        status: booking?.status,
+                        email: booking?.email,
+                        phone: booking?.phone,
+                        notes: booking?.adminNotes || booking?.notes
+                    };
+                }));
+
+                // 2. Class Sessions
+                const classes = await getClasses({ startDate: date, endDate: date, includePast: true });
+                const classSessions = await Promise.all(classes.map(async cls => {
+                    const bookings = await getClassBookingsDetailed(cls.id);
+                    return {
+                        name: cls.title,
+                        startDateTime: cls.startTime,
+                        endDateTime: cls.endTime,
+                        description: cls.description,
+                        instructorName: cls.instructor,
+                        attendees: bookings.map(b => ({
+                            customerName: b.customerName,
+                            peopleCount: b.peopleCount,
+                            status: b.status
+                        }))
+                    };
+                }));
+
+                res.json({ studioSessions, classSessions });
+            } catch (e) {
+                console.error('Overview error:', e);
+                res.status(500).json({ error: 'Failed to load overview' });
+            }
+        });
+
+        app.get('/api/admin/classes', authenticateAdmin, async (req, res) => {
+            try {
+                const { includePast } = req.query;
+                const classes = await getClasses({ includePast: includePast === 'true' });
+                const enriched = await Promise.all(classes.map(async c => {
+                    const used = await getClassCapacityUsage(c.id);
+                    // Map to format expected by Admin
+                    return {
+                        id: c.id,
+                        name: c.title,
+                        instructor: c.instructor,
+                        location: c.location,
+                        startTime: c.startTime,
+                        endTime: c.endTime,
+                        price: c.price,
+                        capacity: c.capacity,
+                        tags: c.tags,
+                        isTrialOnly: c.isTrialOnly,
+                        confirmedCount: used
+                    };
+                }));
+                res.json(enriched);
+            } catch (e) {
+                res.status(500).json({ error: 'Failed to load classes' });
+            }
+        });
+
+        app.get('/api/admin/class-products', authenticateAdmin, async (req, res) => {
+            try {
+                const products = await getClassProducts();
+                res.json(products);
+            } catch (e) {
+                res.status(500).json({ error: 'Failed to load products' });
+            }
         });
 
         app.listen(PORT, () => {
