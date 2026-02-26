@@ -41,6 +41,9 @@ const {
     deleteClassProduct,
     checkClassScheduleAvailability,
     checkRentalAvailability,
+    hashPassword,
+    verifyPassword,
+    pool,
     DEFAULT_ADMIN_PASSWORD
 } = require('./db');
 
@@ -209,15 +212,30 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/admin/login', async (req, res) => {
-    if (ADMIN_AUTH_DISABLED) return res.json({ success: true, token: 'dev', expiresAt: new Date(Date.now() + 3600000).toISOString() });
+    if (ADMIN_AUTH_DISABLED) return res.json({ success: true, token: 'dev', expiresAt: new Date(Date.now() + 3600000).toISOString(), username: 'dev', role: 'super_admin' });
     try {
-        const { password } = req.body || {};
+        const { username, password } = req.body || {};
+        if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+        // Try authenticating against admin_users table first
+        const userResult = await pool.query('SELECT * FROM admin_users WHERE username = $1', [username]);
+        if (userResult.rows.length > 0) {
+            const user = userResult.rows[0];
+            if (!verifyPassword(password, user.password_hash)) {
+                return res.status(401).json({ error: 'Invalid username or password' });
+            }
+            const { token, expiresAt } = issueAdminToken();
+            return res.json({ success: true, token, expiresAt: new Date(expiresAt).toISOString(), username: user.username, role: user.role });
+        }
+
+        // Fallback: legacy single-password login (for backward compatibility)
         const settings = await loadSettings();
         const stored = settings.adminPassword || DEFAULT_ADMIN_PASSWORD;
-        if (password !== stored) return res.status(401).json({ error: 'Invalid password' });
+        if (password !== stored) return res.status(401).json({ error: 'Invalid username or password' });
         const { token, expiresAt } = issueAdminToken();
-        res.json({ success: true, token, expiresAt: new Date(expiresAt).toISOString() });
+        res.json({ success: true, token, expiresAt: new Date(expiresAt).toISOString(), username: username || 'admin', role: 'super_admin' });
     } catch (e) {
+        console.error('Login error:', e);
         res.status(500).json({ error: 'Login failed' });
     }
 });
@@ -399,10 +417,14 @@ app.delete('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
 
 app.get('/api/classes', async (req, res) => {
     try {
-        const { start, end, includeTrial, weekStart } = req.query;
+        const { start, end, includeTrial, weekStart, date } = req.query;
         let startDate = start;
         let endDate = end;
-        if (weekStart) {
+        if (date) {
+            // Support ?date=YYYY-MM-DD for single-day queries
+            startDate = date;
+            endDate = date;
+        } else if (weekStart) {
             startDate = weekStart;
             const d = new Date(weekStart);
             d.setDate(d.getDate() + 7);
@@ -491,6 +513,150 @@ app.patch('/api/admin/class-bookings/:id/status', authenticateAdmin, async (req,
         res.json({ success: true, booking: updated });
     } catch (e) {
         res.status(500).json({ error: 'Update failed' });
+    }
+});
+
+app.delete('/api/admin/class-bookings/:id', authenticateAdmin, async (req, res) => {
+    try {
+        await deleteClassBooking(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Delete failed' });
+    }
+});
+
+// ---------------- CLASS PRODUCT MANAGEMENT ----------------
+
+app.post('/api/admin/class-products', authenticateAdmin, async (req, res) => {
+    try {
+        const product = await createClassProduct(req.body);
+        res.status(201).json(product);
+    } catch (e) {
+        console.error('Create class product error:', e);
+        res.status(500).json({ error: 'Create product failed' });
+    }
+});
+
+app.put('/api/admin/class-products/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const product = await updateClassProduct(req.params.id, req.body);
+        res.json(product);
+    } catch (e) {
+        console.error('Update class product error:', e);
+        res.status(500).json({ error: 'Update product failed' });
+    }
+});
+
+app.delete('/api/admin/class-products/:id', authenticateAdmin, async (req, res) => {
+    try {
+        await deleteClassProduct(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Delete class product error:', e);
+        res.status(500).json({ error: 'Delete product failed' });
+    }
+});
+
+// ---------------- CLASS UPDATE ----------------
+
+app.put('/api/admin/classes/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const cls = await updateClass(req.params.id, req.body);
+        res.json(cls);
+    } catch (e) {
+        console.error('Update class error:', e);
+        res.status(500).json({ error: 'Update class failed' });
+    }
+});
+
+// ---------------- RENTAL ITEM UPDATE ----------------
+
+app.put('/api/admin/items/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const item = await updateCatalogItem(req.params.id, req.body);
+        res.json(item);
+    } catch (e) {
+        console.error('Update item error:', e);
+        res.status(500).json({ error: 'Update item failed' });
+    }
+});
+
+// ---------------- ADMIN USER MANAGEMENT ----------------
+
+app.post('/api/admin/users', authenticateAdmin, async (req, res) => {
+    try {
+        const { username, password, role } = req.body;
+        if (!username || !password || !role) {
+            return res.status(400).json({ error: 'Username, password, and role are required' });
+        }
+        if (!['super_admin', 'receptionist'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role. Must be super_admin or receptionist' });
+        }
+        const hashedPassword = hashPassword(password);
+        const result = await pool.query(
+            'INSERT INTO admin_users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role, created_at',
+            [username, hashedPassword, role]
+        );
+        res.status(201).json({ success: true, user: result.rows[0] });
+    } catch (e) {
+        if (e.code === '23505') {
+            return res.status(409).json({ error: 'Username already exists' });
+        }
+        console.error('Create user error:', e);
+        res.status(500).json({ error: 'Failed to create user' });
+    }
+});
+
+app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, role, created_at FROM admin_users ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (e) {
+        console.error('List users error:', e);
+        res.status(500).json({ error: 'Failed to load users' });
+    }
+});
+
+// ---------------- REPORTS ----------------
+
+app.get('/api/admin/reports/csv', authenticateAdmin, async (req, res) => {
+    try {
+        const bookings = await getBookings();
+        const classBookings = await getClassBookingsDetailed();
+
+        // Build CSV for rental bookings
+        let csv = 'Type,ID,Date,Time,Name,WhatsApp,Email,Status,Amount,Notes\n';
+
+        bookings.forEach(b => {
+            const date = b.date || '';
+            const time = b.startTime ? `${b.startTime}-${b.endTime || ''}` : '';
+            const name = (b.customerName || '').replace(/,/g, ' ');
+            const whatsapp = (b.whatsapp || '').replace(/,/g, ' ');
+            const email = (b.email || '').replace(/,/g, ' ');
+            const status = b.status || '';
+            const amount = b.totalPrice || b.amount || '';
+            const notes = (b.adminNotes || '').replace(/,/g, ' ').replace(/\n/g, ' ');
+            csv += `Rental,${b.id},${date},${time},${name},${whatsapp},${email},${status},${amount},${notes}\n`;
+        });
+
+        classBookings.forEach(b => {
+            const date = b.classStartTime ? b.classStartTime.slice(0, 10) : '';
+            const time = b.classStartTime ? b.classStartTime.slice(11, 16) : '';
+            const name = (b.customerName || '').replace(/,/g, ' ');
+            const phone = (b.phone || '').replace(/,/g, ' ');
+            const email = (b.email || '').replace(/,/g, ' ');
+            const status = b.status || '';
+            const amount = b.totalPrice || '';
+            const notes = (b.adminNotes || '').replace(/,/g, ' ').replace(/\n/g, ' ');
+            csv += `Class,${b.id},${date},${time},${name},${phone},${email},${status},${amount},${notes}\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=bookings_report_${new Date().toISOString().slice(0, 10)}.csv`);
+        res.send(csv);
+    } catch (e) {
+        console.error('CSV export error:', e);
+        res.status(500).json({ error: 'Failed to generate report' });
     }
 });
 

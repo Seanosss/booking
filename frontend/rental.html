@@ -778,6 +778,21 @@
                     <input type="number" id="people-count" min="1" max="18" placeholder="例如 6">
                 </div>
                 <div class="form-group" style="margin-top:18px;">
+                    <label for="instagram">Instagram (可選)</label>
+                    <input type="text" id="instagram" placeholder="@youraccount">
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="usage-type">用途 *</label>
+                    <select id="usage-type" required>
+                        <option value="" disabled selected>請選擇用途...</option>
+                        <option value="practice">練習 Practice</option>
+                        <option value="commercial">商業拍攝 Commercial</option>
+                        <option value="event">活動 Event</option>
+                        <option value="private">私人聚會 Private</option>
+                        <option value="other">其他 Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top:18px;">
                     <label for="notes">備註 (可選)</label>
                     <textarea id="notes" rows="3" placeholder="告訴我們您的特別需求..."></textarea>
                 </div>
@@ -871,6 +886,8 @@
             customerName: document.getElementById('customerName'),
             email: document.getElementById('email'),
             phone: document.getElementById('phone'),
+            instagram: document.getElementById('instagram'),
+            usageType: document.getElementById('usage-type'),
             notes: document.getElementById('notes'),
             heroSubtitle: document.getElementById('hero-subtitle'),
             paymentReminderModal: document.getElementById('payment-reminder-modal'),
@@ -1544,6 +1561,8 @@
                 customerName: elements.customerName.value.trim(),
                 email: elements.email.value.trim(),
                 phone: elements.phone.value.trim(),
+                instagram: elements.instagram.value.trim(),
+                usageType: elements.usageType.value,
                 notes: elements.notes.value.trim(),
                 slots: groups.map(group => ({
                     date: group.date,
@@ -1556,6 +1575,11 @@
 
             if (!payload.customerName || !payload.email || !payload.phone) {
                 showToast('請填寫完整聯絡資料', 'error');
+                return;
+            }
+
+            if (!payload.usageType) {
+                showToast('請選擇用途', 'error');
                 return;
             }
 

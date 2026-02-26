@@ -803,13 +803,7 @@
             renderSkeletonSchedule();
 
             try {
-                const response = await fetch(`${API_BASE_URL
-                    }
-
-        /classes?date=${dateIso
-                    }
-
-        `);
+                const response = await fetch(`${API_BASE_URL}/classes?date=${dateIso}`);
                 if (!response.ok) throw new Error('無法載入課程');
                 const classes = await response.json();
                 state.classesByDate[dateIso] = classes;
