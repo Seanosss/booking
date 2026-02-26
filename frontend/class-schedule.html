@@ -963,29 +963,7 @@
             });
         }
 
-        // The original loadWeekClasses is replaced by renderClassesForDate and its caching logic.
-        // Keeping it commented out for reference if needed, but it's no longer used.
-        /*
-                nct        WeekClasses() {
-        try {
-             nts.cl        tainer.innerHTML = '<p style="color:#475569;">載入中...</p>';
-        const respo        ait
-        fetch(`${AP        RL}/classes?weekStart=${formatDate(state.weekStart)}&includeTrial=true`);
-        if (!respon        
-        throw new E        取得課程資料');
-        }
-        c        a         response.json();
-        state.class         = data.reduce((acc, cls) => {
-        const key =        rtTime ? cls.startTime.slice(0, 10) : null;
-        if (!key) r        c;
-        if (!acc[ke        key] = [];
-        acc[key].pu        
-        return acc;         }, {});
-           derClass        e(state.selectedDate);
-        } catch (er               console.err        );
-        elements.cl        tainer.innerHTML = `<div class="schedule-empty">${error.message || '載入課程失敗，請稍後再試。'}
-        </div>`;
-                  }         *                  n calculateBookingPrice(cls, peopleCount) {
+        function calculateBookingPrice(cls, peopleCount) {
             const base = Number(cls.price || 0);
             const useSpecial = peopleCount === 2 && cls.specialPriceForTwo != null;
             const total = useSpecial ? Number(cls.specialPriceForTwo) : base * peopleCount;
@@ -995,9 +973,7 @@
                 useSpecial,
                 base,
                 baseTotal: base * peopleCount
-            }
-
-                ;
+            };
         }
 
         function updateBookingSummary() {
