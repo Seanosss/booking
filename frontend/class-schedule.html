@@ -1056,6 +1056,14 @@
                 </div>`;
         }
 
+        function openBookingForm(cls) {
+            state.selectedClass = cls;
+            updateBookingSummary();
+            renderPaymentInfo();
+            elements.bookingCard.style.display = 'block';
+            elements.bookingCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function renderPaymentInfo() {
             if (!elements.paymentInfo) return;
 
