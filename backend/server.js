@@ -422,8 +422,9 @@ app.get('/api/classes', async (req, res) => {
         let endDate = end;
         if (date) {
             // Support ?date=YYYY-MM-DD for single-day queries
-            startDate = date;
-            endDate = date;
+            // Use end-of-day timestamp so classes at any time of day are included
+            startDate = `${date}T00:00:00`;
+            endDate = `${date}T23:59:59`;
         } else if (weekStart) {
             startDate = weekStart;
             const d = new Date(weekStart);
@@ -805,7 +806,7 @@ async function startServer() {
                 }));
 
                 // 2. Class Sessions
-                const classes = await getClasses({ startDate: date, endDate: date, includePast: true });
+                const classes = await getClasses({ startDate: `${date}T00:00:00`, endDate: `${date}T23:59:59`, includePast: true });
                 const classSessions = await Promise.all(classes.map(async cls => {
                     const bookings = await getClassBookingsDetailed(cls.id);
                     return {
