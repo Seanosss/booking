@@ -810,8 +810,8 @@
 
 
         <!-- Notes Modal -->
-        <div id="notesModal" class="modal">
-            <div class="modal-content">
+        <div id="notesModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:24px;">
+            <div class="modal-content" style="background:#fff; padding:32px; border-radius:16px; width:90%; max-width:480px; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
                 <span class="close-modal" onclick="closeNotesModal()">&times;</span>
                 <h3 style="margin-bottom:18px;color:#0b4f6c;">編輯備註</h3>
                 <input type="hidden" id="noteBookingId">
@@ -2694,7 +2694,7 @@
             document.getElementById('noteBookingId').value = id;
             document.getElementById('noteText').value = currentNote || '';
             const modal = document.getElementById('notesModal');
-            modal.style.display = 'block';
+            modal.style.display = 'flex';
             modal.classList.add('show');
         }
 
