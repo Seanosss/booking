@@ -926,15 +926,11 @@
                 <form id="rentalItemForm">
                     <input type="hidden" id="rentalItemId">
                     <div class="form-grid two-columns">
-                        <div class="input-group"><label>名稱</label><input id="rentalItemName" type="text" required></div>
-                        <div class="input-group"><label>開始時間</label><input id="rentalItemStart" type="datetime-local"
-                                required></div>
-                        <div class="input-group"><label>結束時間</label><input id="rentalItemEnd" type="datetime-local"
-                                required></div>
-                        <div class="input-group"><label>時長 (分鐘)</label><input id="rentalItemDuration" type="number"
-                                min="1" required></div>
-                        <div class="input-group"><label>價錢 (每位或每節)</label><input id="rentalItemPrice" type="number"
-                                min="0" step="1" required></div>
+                        <div class="input-group"><label>名稱 *</label><input id="rentalItemName" type="text" required></div>
+                        <div class="input-group"><label>開始供應日期 (選填)</label><input id="rentalItemStart" type="datetime-local"></div>
+                        <div class="input-group"><label>結束供應日期 (選填)</label><input id="rentalItemEnd" type="datetime-local"></div>
+                        <div class="input-group"><label>預設時長 (分鐘, 選填)</label><input id="rentalItemDuration" type="number" min="1"></div>
+                        <div class="input-group"><label>每小時價錢 (選填)</label><input id="rentalItemPrice" type="number" min="0" step="1"></div>
                         <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
                         </div>
                         <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
@@ -2477,26 +2473,25 @@
                 showMessage('rentalItemsMessage', 'error', '請輸入項目名稱');
                 return;
             }
-            if (!startDateTime || !endDateTime) {
-                showMessage('rentalItemsMessage', 'error', '請選擇開始與結束時間');
+            // start/end datetime are optional for room_rental items (rooms are always available)
+            if (startDateTime && endDateTime) {
+                const rentalStart = new Date(startDateTime);
+                const rentalEnd = new Date(endDateTime);
+                if (Number.isNaN(rentalStart.getTime()) || Number.isNaN(rentalEnd.getTime())) {
+                    showMessage('rentalItemsMessage', 'error', '請輸入有效的日期時間');
+                    return;
+                }
+                if (rentalStart >= rentalEnd) {
+                    showMessage('rentalItemsMessage', 'error', '結束時間需晚於開始時間');
+                    return;
+                }
+            }
+            if (durationValue && (!Number.isInteger(durationValue) || durationValue <= 0)) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的時長 (分鐘)');
                 return;
             }
-            const rentalStart = new Date(startDateTime);
-            const rentalEnd = new Date(endDateTime);
-            if (Number.isNaN(rentalStart.getTime()) || Number.isNaN(rentalEnd.getTime())) {
-                showMessage('rentalItemsMessage', 'error', '請輸入有效的日期時間');
-                return;
-            }
-            if (rentalStart >= rentalEnd) {
-                showMessage('rentalItemsMessage', 'error', '結束時間需晚於開始時間');
-                return;
-            }
-            if (!Number.isInteger(durationValue) || durationValue <= 0) {
-                showMessage('rentalItemsMessage', 'error', '請輸入有效的時長');
-                return;
-            }
-            if (!Number.isFinite(priceValue) || priceValue < 0) {
-                showMessage('rentalItemsMessage', 'error', '請輸入有效的價格');
+            if (priceValue !== null && !Number.isNaN(priceValue) && priceValue < 0) {
+                showMessage('rentalItemsMessage', 'error', '價格不可小於 0');
                 return;
             }
             if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
@@ -2507,10 +2502,10 @@
             const payload = {
                 type: 'room_rental',
                 name,
-                startDateTime,
-                endDateTime,
-                duration: durationValue,
-                price: priceValue,
+                startDateTime: startDateTime || null,
+                endDateTime: endDateTime || null,
+                duration: durationValue || 60,
+                price: Number.isFinite(priceValue) ? priceValue : 0,
                 instructorName: document.getElementById('rentalItemInstructor').value,
                 capacity: capacityValue
             };

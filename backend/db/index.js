@@ -442,6 +442,22 @@ async function initializeDatabase() {
         ADD COLUMN IF NOT EXISTS description TEXT
     `,
         `
+        ALTER TABLE catalog_items
+        ALTER COLUMN start_datetime DROP NOT NULL
+    `,
+        `
+        ALTER TABLE catalog_items
+        ALTER COLUMN end_datetime DROP NOT NULL
+    `,
+        `
+        ALTER TABLE catalog_items
+        ALTER COLUMN price DROP NOT NULL
+    `,
+        `
+        ALTER TABLE catalog_items
+        ALTER COLUMN duration DROP NOT NULL
+    `,
+        `
         CREATE TABLE IF NOT EXISTS booking_items (
             id SERIAL PRIMARY KEY,
             booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
@@ -1061,10 +1077,10 @@ async function createCatalogItem(item) {
         item.type,
         item.name,
         item.description || null,
-        item.startDateTime,
-        item.endDateTime,
-        item.duration,
-        item.price,
+        item.startDateTime || null,
+        item.endDateTime || null,
+        item.duration || null,
+        item.price != null ? item.price : null,
         item.instructorName || null,
         item.capacity
     ]);
