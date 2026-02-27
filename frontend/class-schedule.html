@@ -214,6 +214,90 @@
             transform: scale(1.05);
         }
 
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 999px;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+
+        .view-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 6px 20px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: #fff;
+            color: var(--brand-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Week View Sections */
+        .week-section {
+            margin-bottom: 28px;
+        }
+
+        .week-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border-left: 4px solid var(--brand-secondary);
+        }
+
+        .week-section-dow {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--brand-secondary);
+            min-width: 20px;
+        }
+
+        .week-section-date {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--brand-primary);
+        }
+
+        .week-section-today-badge {
+            font-size: 0.7rem;
+            background: var(--brand-secondary);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .week-section-count {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .week-section-empty {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            padding: 14px 16px;
+            text-align: center;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px dashed var(--border);
+            margin-bottom: 8px;
+        }
+
         .class-item {
             border: 1px solid var(--border);
             border-radius: 16px;
@@ -615,6 +699,10 @@
     <main>
         <div class="layout">
             <div class="card">
+                <div class="view-toggle">
+                    <button id="view-day" class="view-btn active">日視圖</button>
+                    <button id="view-week" class="view-btn">週視圖</button>
+                </div>
                 <div class="week-nav"><button id="prev-week">← 上一週</button>
                     <div id="week-label" style="font-weight:700;color:var(--brand-secondary);"></div><button
                         id="next-week">下一週 →</button>
@@ -657,7 +745,8 @@
             selectedClass: null,
             settings: {},
             classesByDate: {},
-            userDetails: { name: '', email: '', phone: '' }
+            userDetails: { name: '', email: '', phone: '' },
+            viewMode: 'day'
         };
 
         const elements = {
@@ -773,12 +862,18 @@
 
         </div>`;
 
-                if (state.selectedDate === iso) {
+                if (state.viewMode === 'day' && state.selectedDate === iso) {
                     button.classList.add('active');
                 }
 
                 button.addEventListener('click', () => {
-                    renderClassesForDate(iso);
+                    if (state.viewMode === 'week') {
+                        // Scroll to that day's section
+                        const section = document.getElementById(`week-section-${iso}`);
+                        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        renderClassesForDate(iso);
+                    }
                 });
                 elements.dayButtons.appendChild(button);
             }
@@ -851,16 +946,66 @@
             });
         }
 
+        // Shared: build a single class card DOM element
+        function buildClassCard(cls) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'class-item';
+            const header = document.createElement('div');
+            header.className = 'class-header';
+            const startLabel = cls.startTime ? new Date(cls.startTime).toTimeString().slice(0, 5) : '';
+            const endLabel = cls.endTime ? new Date(cls.endTime).toTimeString().slice(0, 5) : '';
+            header.innerHTML = `<div><div style="font-weight:600;color:#0f172a;">${startLabel} - ${endLabel}</div><div class="class-name">${cls.name}</div></div>`;
+            const tags = document.createElement('div');
+            tags.className = 'tag-list';
+            (cls.tags || []).forEach(tag => {
+                const span = document.createElement('span');
+                span.className = 'tag';
+                span.textContent = tag;
+                tags.appendChild(span);
+            });
+            header.appendChild(tags);
+            wrapper.appendChild(header);
+
+            const meta = document.createElement('div');
+            meta.className = 'class-meta';
+            const priceLine = cls.specialPriceForTwo != null
+                ? `HK$ ${Number(cls.price || 0).toFixed(2)}/人 ｜ 兩人同行 HK$ ${Number(cls.specialPriceForTwo).toFixed(2)}`
+                : `HK$ ${Number(cls.price || 0).toFixed(2)}/人`;
+            const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
+            meta.innerHTML = `<div>講師：${cls.instructor || '待定'}</div><div>地點：${cls.location || 'Studio'}</div><div>名額：剩餘 ${remaining} / ${cls.capacity}</div><div>價格：${priceLine}</div>`;
+            wrapper.appendChild(meta);
+
+            const actions = document.createElement('div');
+            actions.className = 'class-actions';
+            const availability = document.createElement('div');
+            availability.textContent = remaining > 0 ? '可預約' : '已滿額';
+            availability.style.fontWeight = '600';
+            availability.style.color = remaining > 0 ? '#0f766e' : '#b91c1c';
+            const bookBtn = document.createElement('button');
+            bookBtn.type = 'button';
+            bookBtn.textContent = '預約 / 加入名單';
+            bookBtn.disabled = remaining <= 0 || cls.isTrialOnly;
+            bookBtn.addEventListener('click', () => openBookingForm(cls));
+            actions.appendChild(availability);
+            actions.appendChild(bookBtn);
+            wrapper.appendChild(actions);
+
+            if (cls.isTrialOnly) {
+                const trialNote = document.createElement('div');
+                trialNote.style.color = '#b45309';
+                trialNote.style.fontSize = '0.9rem';
+                trialNote.textContent = '此課堂僅限試堂套票預約。';
+                wrapper.appendChild(trialNote);
+            }
+            return wrapper;
+        }
+
         function renderClasses() {
             elements.classesContainer.innerHTML = '';
-
             let displayClasses = state.classes || [];
-
-            // Filter
             if (currentFilter !== 'All') {
                 displayClasses = displayClasses.filter(cls => (cls.tags || []).includes(currentFilter));
             }
-
             if (displayClasses.length === 0) {
                 const empty = document.createElement('div');
                 empty.className = 'schedule-empty';
@@ -868,101 +1013,83 @@
                 elements.classesContainer.appendChild(empty);
                 return;
             }
-
             displayClasses.forEach(cls => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'class-item';
-                const header = document.createElement('div');
-                header.className = 'class-header';
-                const startLabel = cls.startTime ? new Date(cls.startTime).toTimeString().slice(0, 5) : '';
-                const endLabel = cls.endTime ? new Date(cls.endTime).toTimeString().slice(0, 5) : '';
-
-                header.innerHTML = `<div>
-                <div style="font-weight:600; color:#0f172a;">${startLabel
-                    }
-
-                    - ${endLabel
-                    }
-
-                </div>
-                <div class="class-name">${cls.name
-                    }
-
-                </div>
-            </div>`;
-                const tags = document.createElement('div');
-                tags.className = 'tag-list';
-
-                (cls.tags || []).forEach(tag => {
-                    const span = document.createElement('span');
-                    span.className = 'tag';
-                    span.textContent = tag;
-                    tags.appendChild(span);
-                });
-                header.appendChild(tags);
-                wrapper.appendChild(header);
-
-                const meta = document.createElement('div');
-                meta.className = 'class-meta';
-
-                const priceLine = cls.specialPriceForTwo != null ? `HK$ ${Number(cls.price || 0).toFixed(2)
-                    }
-
-            /人 ｜ 兩人同行 HK$ ${Number(cls.specialPriceForTwo).toFixed(2)
-                    }
-
-            ` : `HK$ ${Number(cls.price || 0).toFixed(2)
-                }
-
-            /人`;
-                const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
-
-                meta.innerHTML = ` <div>講師：${cls.instructor || '待定'
-                    }
-
-            </div>
-            <div>地點：${cls.location || 'Studio'
-                    }
-
-            </div>
-            <div>名額：剩餘 ${remaining
-                    }
-
-                / ${cls.capacity
-                    }
-
-            </div>
-            <div>價格：${priceLine
-                    }
-
-            </div> `;
-                wrapper.appendChild(meta);
-
-                const actions = document.createElement('div');
-                actions.className = 'class-actions';
-                const availability = document.createElement('div');
-                availability.textContent = remaining > 0 ? '可預約' : '已滿額';
-                availability.style.fontWeight = '600';
-                availability.style.color = remaining > 0 ? '#0f766e' : '#b91c1c';
-                const bookBtn = document.createElement('button');
-                bookBtn.type = 'button';
-                bookBtn.textContent = '預約 / 加入名單';
-                bookBtn.disabled = remaining <= 0 || cls.isTrialOnly; bookBtn.addEventListener('click', () =>
-                    openBookingForm(cls));
-                actions.appendChild(availability);
-                actions.appendChild(bookBtn);
-                wrapper.appendChild(actions);
-
-                if (cls.isTrialOnly) {
-                    const trialNote = document.createElement('div');
-                    trialNote.style.color = '#b45309';
-                    trialNote.style.fontSize = '0.9rem';
-                    trialNote.textContent = '此課堂僅限試堂套票預約。';
-                    wrapper.appendChild(trialNote);
-                }
-
-                elements.classesContainer.appendChild(wrapper);
+                elements.classesContainer.appendChild(buildClassCard(cls));
             });
+        }
+
+        // Week View: fetch all classes for the week and display grouped by day
+        async function renderWeekView() {
+            elements.classesContainer.innerHTML = '<div style="color:var(--text-muted);padding:24px;text-align:center;">載入中...</div>';
+            elements.filterContainer.style.display = 'none';
+            const weekStart = state.weekStart;
+            try {
+                const response = await fetch(`${API_BASE_URL}/classes?weekStart=${weekStart}`);
+                if (!response.ok) throw new Error('無法載入課程');
+                const allClasses = await response.json();
+
+                // Cache each class by date
+                allClasses.forEach(cls => {
+                    const dateKey = cls.startTime ? formatDate(new Date(cls.startTime)) : null;
+                    if (dateKey) {
+                        if (!state.classesByDate[dateKey]) state.classesByDate[dateKey] = [];
+                        if (!state.classesByDate[dateKey].find(c => c.id === cls.id)) {
+                            state.classesByDate[dateKey].push(cls);
+                        }
+                    }
+                });
+
+                elements.classesContainer.innerHTML = '';
+                const todayIso = formatDate(new Date());
+                const dowNames = ['日', '一', '二', '三', '四', '五', '六'];
+
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(weekStart);
+                    d.setDate(d.getDate() + i);
+                    const iso = formatDate(d);
+                    const dayClasses = state.classesByDate[iso] || [];
+                    const isToday = iso === todayIso;
+
+                    const section = document.createElement('div');
+                    section.className = 'week-section';
+                    section.id = `week-section-${iso}`;
+
+                    const sectionHeader = document.createElement('div');
+                    sectionHeader.className = 'week-section-header';
+                    sectionHeader.innerHTML = `
+                        <span class="week-section-dow">${dowNames[d.getDay()]}</span>
+                        <span class="week-section-date">${formatDisplayDate(d)}</span>
+                        ${isToday ? '<span class="week-section-today-badge">今天</span>' : ''}
+                        <span class="week-section-count">${dayClasses.length > 0 ? dayClasses.length + ' 堂課' : ''}</span>
+                    `;
+                    section.appendChild(sectionHeader);
+
+                    if (dayClasses.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'week-section-empty';
+                        empty.textContent = '暫無課程';
+                        section.appendChild(empty);
+                    } else {
+                        dayClasses.forEach(cls => section.appendChild(buildClassCard(cls)));
+                    }
+                    elements.classesContainer.appendChild(section);
+                }
+            } catch (error) {
+                console.error(error);
+                elements.classesContainer.innerHTML = '<div class="schedule-empty">無法載入課程，請稍後再試。</div>';
+            }
+        }
+
+        function switchView(mode) {
+            state.viewMode = mode;
+            document.getElementById('view-day').classList.toggle('active', mode === 'day');
+            document.getElementById('view-week').classList.toggle('active', mode === 'week');
+            renderDayButtons();
+            if (mode === 'week') {
+                renderWeekView();
+            } else {
+                renderClassesForDate(state.selectedDate);
+            }
         }
 
         function calculateBookingPrice(cls, peopleCount) {
@@ -1187,7 +1314,8 @@
 
                     // Reload class list to update remaining spots
                     state.classesByDate = {}; // Clear cache to force refresh
-                    renderClassesForDate(state.selectedDate);
+                    if (state.viewMode === 'week') renderWeekView();
+                    else renderClassesForDate(state.selectedDate);
                 } else {
                     throw new Error(result.error || '預約失敗');
                 }
@@ -1216,14 +1344,13 @@
             current.setDate(current.getDate() - 7);
             state.weekStart = current.toISOString().split('T')[0];
             updateWeekLabel();
-
             if (!state.selectedDate || new Date(state.selectedDate) < new Date(state.weekStart) || new
                 Date(state.selectedDate) > new Date(new Date(state.weekStart).getTime() + 6 * 86400000)) {
-                state.selectedDate = state.weekStart; // Already YYYY-MM-DD
+                state.selectedDate = state.weekStart;
             }
-
             renderDayButtons();
-            renderClassesForDate(state.selectedDate);
+            if (state.viewMode === 'week') renderWeekView();
+            else renderClassesForDate(state.selectedDate);
         });
 
         elements.nextWeek.addEventListener('click', () => {
@@ -1231,15 +1358,18 @@
             current.setDate(current.getDate() + 7);
             state.weekStart = current.toISOString().split('T')[0];
             updateWeekLabel();
-
             if (!state.selectedDate || new Date(state.selectedDate) < new Date(state.weekStart) || new
                 Date(state.selectedDate) > new Date(new Date(state.weekStart).getTime() + 6 * 86400000)) {
-                state.selectedDate = state.weekStart; // Already YYYY-MM-DD
+                state.selectedDate = state.weekStart;
             }
-
             renderDayButtons();
-            renderClassesForDate(state.selectedDate);
+            if (state.viewMode === 'week') renderWeekView();
+            else renderClassesForDate(state.selectedDate);
         });
+
+        // View toggle event listeners
+        document.getElementById('view-day').addEventListener('click', () => switchView('day'));
+        document.getElementById('view-week').addEventListener('click', () => switchView('week'));
 
         // Initialize
         (function init() {
