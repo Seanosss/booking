@@ -1618,7 +1618,7 @@
 
                     // 2. Open Success Modal
                     const whatsappNum = (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
-                    const link = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(`你好，我剛提交了場地預約 (編號: ${result.bookingId})，這是我的付款證明。`)}`;
+                    const link = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(`你好，我剛提交了場地預約 (編號: ${result.booking?.id})，這是我的付款證明。`)}`;
                     const linkEl = document.getElementById('whatsappLink');
                     if (linkEl) linkEl.href = link;
 

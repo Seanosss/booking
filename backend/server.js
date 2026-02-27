@@ -666,12 +666,8 @@ app.get('/api/admin/reports/csv', authenticateAdmin, async (req, res) => {
 // Public Items
 app.get('/api/items', async (req, res) => {
     try {
-        const items = await getCatalogItems({ includePast: false });
-        // Filter for room rentals only if needed, but catalog usually has types.
-        // The frontend expects { roomRentals: [] } or just array?
-        // Let's check frontend: `const data = await res.json(); return data.roomRentals || [];`
-        // So we should return { roomRentals: items.filter(...) }
-        const roomRentals = items.filter(i => i.itemType === 'room_rental');
+        const items = await getCatalogItems({ includePast: true });
+        const roomRentals = items.filter(i => i.type === 'room_rental');
         res.json({ roomRentals });
     } catch (e) {
         res.status(500).json({ error: 'Failed to load items' });

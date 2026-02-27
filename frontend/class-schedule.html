@@ -683,7 +683,8 @@
             // calendarTitle: document.getElementById('calendar-title'), // This element is not in the HTML
             // heroSubtitle: document.getElementById('heroSubtitle'), // This element is not in the HTML
             paymentReminderModal: document.getElementById('payment-reminder-modal'),
-            paymentReminderClose: document.getElementById('payment-reminder-close')
+            paymentReminderClose: document.getElementById('payment-reminder-close'),
+            paymentReminderWhatsapp: document.getElementById('payment-reminder-whatsapp')
         };
 
         // User Details Persistence
@@ -719,8 +720,6 @@
             catch (e) {
                 console.warn('Failed to save user details', e);
             }
-
-            localStorage.setItem('classUserDetails', JSON.stringify(details));
         }
 
 
@@ -1013,52 +1012,13 @@
                 /人）`;
             const remaining = cls.seatsRemaining != null ? cls.seatsRemaining : cls.capacity;
 
-            elements.bookingSummary.innerHTML = ` <div><strong>${
-                        start.getFullYear()
-                        }
-
-                        -${
-                        (start.getMonth() + 1).toString().padStart(2, '0')
-                        }
-
-                        -${
-                        start.getDate().toString().padStart(2, '0')
-                        }
-
-                    </strong></div>
-                <div>時間：${
-                    start.toTimeString().slice(0, 5)
-                    }
-
-                    - ${
-                    end.toTimeString().slice(0, 5)
-                    }
-
-                </div>
-                <div>講師：${
-                    cls.instructor || '待定'
-                    }
-
-                </div>
-                <div>地點：${
-                    cls.location || 'Studio'
-                    }
-
-                </div>
-                <div>剩餘名額：${
-                    remaining
-                    }
-
-                </div>
-                <div>${
-                    priceLine
-                    }
-
-                </div>`;
+            const dateStr = `${start.getFullYear()}-${(start.getMonth() + 1).toString().padStart(2, '0')}-${start.getDate().toString().padStart(2, '0')}`;
+            elements.bookingSummary.innerHTML = `<div><strong>${dateStr}</strong></div><div>時間：${start.toTimeString().slice(0, 5)} - ${end.toTimeString().slice(0, 5)}</div><div>講師：${cls.instructor || '待定'}</div><div>地點：${cls.location || 'Studio'}</div><div>剩餘名額：${remaining}</div><div>${priceLine}</div>`;
         }
 
         function openBookingForm(cls) {
             state.selectedClass = cls;
+            if (elements.className) elements.className.value = cls.name || '';
             updateBookingSummary();
             renderPaymentInfo();
             elements.bookingCard.style.display = 'block';
