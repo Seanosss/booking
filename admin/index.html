@@ -1003,6 +1003,20 @@
             return value.toString().replace(/[&<>"']/g, (match) => HTML_ESCAPES[match] || match);
         }
 
+        function makeGCalUrl({ title, startISO, endISO, details, location }) {
+            function toGCalDate(iso) {
+                return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+            }
+            const params = new URLSearchParams({
+                action: 'TEMPLATE',
+                text: title,
+                dates: `${toGCalDate(startISO)}/${toGCalDate(endISO)}`,
+                details: details || '',
+                location: location || ''
+            });
+            return `https://calendar.google.com/calendar/render?${params.toString()}`;
+        }
+
         function formatDateOnly(date) {
             if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
                 return '';
@@ -1262,7 +1276,14 @@
                         ? Number(item.peopleCount)
                         : 1;
                     const label = item.itemType === 'workshop_class' ? '課程' : '場地';
-                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${peopleCount}人)</div>`;
+                    const itemGCalUrl = makeGCalUrl({
+                        title: `${label}預約 - ${booking.customerName}`,
+                        startISO: `${item.date}T${item.startTime}:00+08:00`,
+                        endISO: `${item.date}T${item.endTime}:00+08:00`,
+                        details: `客戶: ${booking.customerName}\n人數: ${peopleCount}`,
+                        location: ''
+                    });
+                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${peopleCount}人) <a href="${itemGCalUrl}" target="_blank" rel="noopener" style="color:#4285f4;text-decoration:none;font-size:0.85em;" title="加入 Google Calendar">📅</a></div>`;
                 }).join('');
                 const totalPeopleValue = Number.isFinite(Number(booking.totalPeople)) && Number(booking.totalPeople) > 0
                     ? Number(booking.totalPeople)
@@ -1343,6 +1364,13 @@
                 const locationHtml = booking.classLocation ? `<br><small>${escapeHtml(booking.classLocation)}</small>` : '';
                 const statusBadge = `<span class="status-chip status-${booking.status}">${statusMap[booking.status] || booking.status}</span>`;
                 const notes = booking.adminNotes ? `<div style="font-size:0.85em;color:#666;margin-top:4px;">📝 ${escapeHtml(booking.adminNotes)}</div>` : '';
+                const classGCalUrl = (booking.classStartTime && booking.classEndTime) ? makeGCalUrl({
+                    title: `課程 - ${booking.customerName}`,
+                    startISO: booking.classStartTime,
+                    endISO: booking.classEndTime,
+                    details: `學員: ${booking.customerName}\n人數: ${booking.peopleCount || 1}`,
+                    location: booking.classLocation || ''
+                }) : null;
 
                 row.innerHTML = `
                     <td>${escapeHtml(booking.id.slice(0, 8))}...</td>
@@ -1364,6 +1392,7 @@
                             <button class="btn btn-sm btn-danger" onclick="updateClassBookingStatus('${booking.id}', 'cancelled')">取消</button>
                             <button class="btn btn-sm btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
                             <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                            ${classGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${classGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
                         </div>
                     </td>
                 `;
@@ -2675,15 +2704,80 @@
                 },
                 eventClick: function (info) {
                     const props = info.event.extendedProps;
-                    let msg = "";
+                    const startISO = info.event.startStr;
+                    const endISO = info.event.endStr;
+                    const statusLabel = { confirmed: '已確認', pending: '待處理', cancelled: '已取消' };
+
+                    let title = '';
+                    let detailsHtml = '';
+                    let gCalUrl = null;
+
                     if (props.type === 'rental') {
                         const b = props.data;
-                        msg = `預約編號: ${b.id}\n客戶: ${b.customerName}\n狀態: ${b.status}\n備註: ${b.adminNotes || ''}`;
+                        title = '場地預約';
+                        detailsHtml = `
+                            <p style="margin:6px 0;"><strong>客戶：</strong>${escapeHtml(b.customerName)}</p>
+                            <p style="margin:6px 0;"><strong>狀態：</strong>${statusLabel[b.status] || b.status}</p>
+                            ${b.adminNotes ? `<p style="margin:6px 0;"><strong>備註：</strong>${escapeHtml(b.adminNotes)}</p>` : ''}
+                        `;
+                        if (startISO && endISO) {
+                            gCalUrl = makeGCalUrl({
+                                title: `場地預約 - ${b.customerName}`,
+                                startISO,
+                                endISO,
+                                details: `客戶: ${b.customerName}`,
+                                location: ''
+                            });
+                        }
                     } else if (props.type === 'class') {
                         const cb = props.data;
-                        msg = `課程預約編號: ${cb.id}\n課程名稱: ${cb.className}\n客戶: ${cb.customerName}\n狀態: ${cb.status}`;
+                        title = '課程預約';
+                        detailsHtml = `
+                            <p style="margin:6px 0;"><strong>課程：</strong>${escapeHtml(cb.className || '')}</p>
+                            <p style="margin:6px 0;"><strong>客戶：</strong>${escapeHtml(cb.customerName)}</p>
+                            <p style="margin:6px 0;"><strong>狀態：</strong>${statusLabel[cb.status] || cb.status}</p>
+                        `;
+                        if (startISO && endISO) {
+                            gCalUrl = makeGCalUrl({
+                                title: `課程: ${cb.className} - ${cb.customerName}`,
+                                startISO,
+                                endISO,
+                                details: `學員: ${cb.customerName}`,
+                                location: cb.classLocation || ''
+                            });
+                        }
                     }
-                    alert(msg);
+
+                    // Remove existing popup
+                    const existing = document.getElementById('calEventPopup');
+                    if (existing) existing.remove();
+
+                    const popup = document.createElement('div');
+                    popup.id = 'calEventPopup';
+                    popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);padding:24px;z-index:9999;min-width:280px;max-width:400px;font-size:0.95em;';
+                    popup.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <strong style="font-size:1.1em;">${title}</strong>
+                            <button onclick="document.getElementById('calEventPopup').remove()" style="background:none;border:none;font-size:1.5em;cursor:pointer;color:#888;line-height:1;">×</button>
+                        </div>
+                        ${detailsHtml}
+                        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                            ${gCalUrl ? `<a href="${gCalUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-secondary" style="display:inline-flex;align-items:center;gap:5px;">📅 加入 Google Calendar</a>` : ''}
+                            <button onclick="document.getElementById('calEventPopup').remove()" class="btn btn-sm btn-secondary">關閉</button>
+                        </div>
+                    `;
+                    document.body.appendChild(popup);
+
+                    // Click outside to close
+                    setTimeout(() => {
+                        function outsideHandler(e) {
+                            if (!popup.contains(e.target)) {
+                                popup.remove();
+                                document.removeEventListener('click', outsideHandler);
+                            }
+                        }
+                        document.addEventListener('click', outsideHandler);
+                    }, 100);
                 }
             });
             calendar.render();
