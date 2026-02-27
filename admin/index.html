@@ -1373,7 +1373,7 @@
                 }) : null;
 
                 row.innerHTML = `
-                    <td>${escapeHtml(booking.id.slice(0, 8))}...</td>
+                    <td>${escapeHtml(String(booking.id))}</td>
                     <td>${formatDateTime(new Date(booking.createdAt))}</td>
                     <td>
                         <div>${escapeHtml(booking.customerName)}</div>
