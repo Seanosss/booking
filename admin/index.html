@@ -245,6 +245,36 @@
             margin-left: 10px;
         }
 
+        .btn-sm {
+            padding: 5px 11px;
+            font-size: 0.8em;
+            border-radius: 8px;
+            font-weight: 500;
+            letter-spacing: 0;
+            box-shadow: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .action-buttons .btn-sm + .btn-sm {
+            margin-left: 0;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .action-row + .action-row {
+            margin-top: 5px;
+        }
+
         .status-chip {
             display: inline-flex;
             align-items: center;
@@ -1276,20 +1306,21 @@
                         ? Number(item.peopleCount)
                         : 1;
                     const label = item.itemType === 'workshop_class' ? '課程' : '場地';
-                    const itemGCalUrl = makeGCalUrl({
-                        title: `${label}預約 - ${booking.customerName}`,
-                        startISO: `${item.date}T${item.startTime}:00+08:00`,
-                        endISO: `${item.date}T${item.endTime}:00+08:00`,
-                        details: `客戶: ${booking.customerName}\n人數: ${peopleCount}`,
-                        location: ''
-                    });
-                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}-${item.endTime} (${peopleCount}人) <a href="${itemGCalUrl}" target="_blank" rel="noopener" style="color:#4285f4;text-decoration:none;font-size:0.85em;" title="加入 Google Calendar">📅</a></div>`;
+                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}–${item.endTime} (${peopleCount}人)</div>`;
                 }).join('');
                 const totalPeopleValue = Number.isFinite(Number(booking.totalPeople)) && Number(booking.totalPeople) > 0
                     ? Number(booking.totalPeople)
                     : 1;
                 const statusBadge = `<span class="status-chip status-${booking.status}">${statusMap[booking.status] || booking.status}</span>`;
                 const notes = booking.adminNotes ? `<div style="font-size:0.85em;color:#666;margin-top:4px;">📝 ${escapeHtml(booking.adminNotes)}</div>` : '';
+                const firstItem = (booking.items || [])[0];
+                const rentalGCalUrl = firstItem ? makeGCalUrl({
+                    title: `場地預約 - ${booking.customerName}`,
+                    startISO: `${firstItem.date}T${firstItem.startTime}:00+08:00`,
+                    endISO: `${firstItem.date}T${firstItem.endTime}:00+08:00`,
+                    details: `客戶: ${booking.customerName}\n人數: ${totalPeopleValue}`,
+                    location: ''
+                }) : null;
 
                 row.innerHTML = `
                     <td>${escapeHtml(booking.id.slice(0, 8))}...</td>
@@ -1306,12 +1337,16 @@
                     <td>${statusBadge}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'confirmed')">確認</button>
-                            <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'pending')">待處理</button>
-                            <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('${booking.id}', 'cancelled')">取消</button>
-                            <a class="btn btn-sm btn-secondary" href="${API_BASE_URL}/bookings/${booking.id}/ics" target="_blank" rel="noopener">下載日曆</a>
-                            <button class="btn btn-sm btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
-                            <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'rental', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                            <div class="action-row">
+                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'confirmed')">確認</button>
+                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'pending')">待處理</button>
+                                <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('${booking.id}', 'cancelled')">取消</button>
+                            </div>
+                            <div class="action-row">
+                                ${rentalGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${rentalGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'rental', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
+                            </div>
                         </div>
                     </td>
                 `;
@@ -1387,12 +1422,16 @@
                     </td>
                     <td>
                          <div class="action-buttons">
-                            <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'confirmed')">確認</button>
-                            <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'pending')">待處理</button>
-                            <button class="btn btn-sm btn-danger" onclick="updateClassBookingStatus('${booking.id}', 'cancelled')">取消</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
-                            <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
-                            ${classGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${classGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
+                            <div class="action-row">
+                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'confirmed')">確認</button>
+                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'pending')">待處理</button>
+                                <button class="btn btn-sm btn-danger" onclick="updateClassBookingStatus('${booking.id}', 'cancelled')">取消</button>
+                            </div>
+                            <div class="action-row">
+                                ${classGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${classGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
+                            </div>
                         </div>
                     </td>
                 `;
