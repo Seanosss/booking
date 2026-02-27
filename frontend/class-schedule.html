@@ -874,8 +874,8 @@
                 wrapper.className = 'class-item';
                 const header = document.createElement('div');
                 header.className = 'class-header';
-                const startLabel = cls.startTime ? cls.startTime.substring(11, 16) : '';
-                const endLabel = cls.endTime ? cls.endTime.substring(11, 16) : '';
+                const startLabel = cls.startTime ? new Date(cls.startTime).toTimeString().slice(0, 5) : '';
+                const endLabel = cls.endTime ? new Date(cls.endTime).toTimeString().slice(0, 5) : '';
 
                 header.innerHTML = `<div>
                 <div style="font-weight:600; color:#0f172a;">${startLabel
@@ -941,7 +941,7 @@
                 const actions = document.createElement('div');
                 actions.className = 'class-actions';
                 const availability = document.createElement('div');
-                availability.textContent = remaining > 0 ? '立即預約' : '已滿額';
+                availability.textContent = remaining > 0 ? '可預約' : '已滿額';
                 availability.style.fontWeight = '600';
                 availability.style.color = remaining > 0 ? '#0f766e' : '#b91c1c';
                 const bookBtn = document.createElement('button');
