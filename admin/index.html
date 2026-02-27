@@ -1501,7 +1501,10 @@
                     localStorage.setItem('adminUsername', result.username || username);
 
                     const loginModal = document.getElementById('loginModal');
-                    if (loginModal) loginModal.classList.remove('active');
+                    if (loginModal) {
+                        loginModal.classList.remove('active');
+                        loginModal.style.display = 'none'; // clear any residual inline style
+                    }
 
                     document.getElementById('adminContainer').style.display = 'block';
 
@@ -1520,8 +1523,13 @@
         }
 
         function showLoginModal() {
-            document.getElementById('loginModal').style.display = 'flex';
-            document.getElementById('adminContainer').style.display = 'none';
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.style.display = '';   // clear any inline style
+                loginModal.classList.add('active');
+            }
+            const adminContainer = document.getElementById('adminContainer');
+            if (adminContainer) adminContainer.style.display = 'none';
         }
 
         function logout() {
@@ -1716,7 +1724,10 @@
             }
 
             // 2. Token exists -> Show Dashboard
-            if (loginModal) loginModal.classList.remove('active');
+            if (loginModal) {
+                loginModal.classList.remove('active');
+                loginModal.style.display = 'none';
+            }
             if (adminContainer) {
                 adminContainer.style.display = 'block';
 
