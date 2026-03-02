@@ -1544,10 +1544,16 @@
                 minDate: minDate,
                 maxDate: maxDate,
                 dateFormat: "Y-m-d",
-                disableMobile: "true", // Force custom picker on mobile for consistency
+                disableMobile: true,
                 altInput: true,
                 altFormat: "Y 年 m 月 d 日 (D)",
-                onChange: handleDateChange
+                position: "below",
+                static: false,
+                onChange: handleDateChange,
+                onReady: function(selectedDates, dateStr, instance) {
+                    // Ensure alt input has same styling as original
+                    instance.altInput.style.cursor = 'pointer';
+                }
             });
         }
 
