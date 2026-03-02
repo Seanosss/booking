@@ -1577,43 +1577,64 @@
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
             const errorEl = document.getElementById('loginError');
+            const submitBtn = event.target.querySelector('button[type="submit"]');
 
             errorEl.style.display = 'none';
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '連線中，請稍候…'; }
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    localStorage.setItem('adminToken', result.token);
-                    localStorage.setItem('adminRole', result.role || 'super_admin');
-                    localStorage.setItem('adminUsername', result.username || username);
-
-                    const loginModal = document.getElementById('loginModal');
-                    if (loginModal) {
-                        loginModal.classList.remove('active');
-                        loginModal.style.display = 'none'; // clear any residual inline style
+            // Retry up to 2 times (handles Render free-tier cold start ~50s)
+            let lastError;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    if (attempt === 2) {
+                        errorEl.textContent = '伺服器正在啟動中，再試一次…（免費伺服器需約 50 秒熱身）';
+                        errorEl.style.display = 'block';
                     }
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+                    const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
 
-                    document.getElementById('adminContainer').style.display = 'block';
+                    const result = await response.json();
 
-                    if (typeof loadDashboardData === 'function') {
-                        loadDashboardData();
+                    if (response.ok && result.success) {
+                        localStorage.setItem('adminToken', result.token);
+                        localStorage.setItem('adminRole', result.role || 'super_admin');
+                        localStorage.setItem('adminUsername', result.username || username);
+
+                        const loginModal = document.getElementById('loginModal');
+                        if (loginModal) {
+                            loginModal.classList.remove('active');
+                            loginModal.style.display = 'none';
+                        }
+
+                        document.getElementById('adminContainer').style.display = 'block';
+
+                        if (typeof loadDashboardData === 'function') {
+                            loadDashboardData();
+                        }
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
+                        return;
+                    } else {
+                        errorEl.textContent = result.error || '登入失敗';
+                        errorEl.style.display = 'block';
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
+                        return;
                     }
-                } else {
-                    errorEl.textContent = result.error || '登入失敗';
-                    errorEl.style.display = 'block';
+                } catch (error) {
+                    lastError = error;
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 3000)); // wait 3s before retry
                 }
-            } catch (error) {
-                console.error('Login error:', error);
-                errorEl.textContent = '登入連線失敗';
-                errorEl.style.display = 'block';
             }
+            console.error('Login error:', lastError);
+            errorEl.textContent = '連線失敗。伺服器可能正在啟動，請等 30 秒後再試。';
+            errorEl.style.display = 'block';
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
         }
 
         function showLoginModal() {
