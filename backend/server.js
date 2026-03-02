@@ -55,8 +55,8 @@ const ADMIN_TOKEN_TTL_MS = (() => {
     const ttlFromEnv = parseInt(process.env.ADMIN_TOKEN_TTL_MS, 10);
     return Number.isFinite(ttlFromEnv) && ttlFromEnv > 0 ? ttlFromEnv : 1000 * 60 * 60;
 })();
-// AUTH REMOVED AS REQUESTED
-const ADMIN_AUTH_DISABLED = true;
+// Auth bypass — only enable locally via env var (never in production)
+const ADMIN_AUTH_DISABLED = process.env.ADMIN_AUTH_DISABLED === 'true';
 const activeAdminTokens = new Map();
 
 // Rate Limiter
