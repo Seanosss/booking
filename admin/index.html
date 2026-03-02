@@ -1409,12 +1409,15 @@
 
                 row.innerHTML = `
                     <td>${escapeHtml(String(booking.id))}</td>
-                    <td>${formatDateTime(new Date(booking.createdAt))}</td>
+                    <td>
+                        <div>${scheduleDisplay}</div>
+                        ${locationHtml}
+                    </td>
                     <td>
                         <div>${escapeHtml(booking.customerName)}</div>
                         <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.email)}</div>
+                        <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.phone)}</div>
                     </td>
-                    <td>${escapeHtml(booking.phone)}</td>
                     <td>${escapeHtml(String(booking.peopleCount || 0))}</td>
                     <td>
                          ${statusBadge}
