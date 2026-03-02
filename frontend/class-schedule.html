@@ -687,6 +687,31 @@
             border-radius: 16px;
             margin-bottom: 24px;
         }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 600px) {
+            header { padding: 16px 16px 48px; }
+            .nav-bar { margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+            .nav-bar a { font-size: 0.85rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.95rem; }
+            main { padding: 0 12px; margin-bottom: 48px; }
+            .card { padding: 20px 16px; border-radius: 16px; }
+            .card h2 { font-size: 1.2rem; }
+            /* Stack layout on mobile */
+            .layout { grid-template-columns: 1fr !important; }
+            /* Class cards */
+            .class-card { padding: 20px 16px; }
+            .class-card-header { flex-wrap: wrap; gap: 8px; }
+            .class-title { font-size: 1.1rem; }
+            .class-meta { flex-wrap: wrap; gap: 8px; }
+            /* Booking modal */
+            .modal-content { padding: 24px 16px !important; width: 95vw !important; max-width: 95vw !important; }
+            .toast { min-width: 0; width: 90vw; }
+            .toast-container { width: 100%; padding: 0 16px; left: 0; transform: none; }
+            /* Week/month switcher */
+            .view-controls { flex-wrap: wrap; gap: 8px; }
+        }
     </style>
 </head>
 

@@ -134,6 +134,18 @@
             border: 1px dashed #cbd5e1;
             border-radius: 16px;
         }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 600px) {
+            header { padding: 16px 16px 48px; }
+            .nav-bar { margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+            .nav-bar a { font-size: 0.85rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.95rem; }
+            main { padding: 0 12px; margin-bottom: 48px; }
+            .product-grid { grid-template-columns: 1fr; }
+            .product-card { padding: 24px 16px; }
+        }
     </style>
 </head>
 

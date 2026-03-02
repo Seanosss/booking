@@ -521,6 +521,58 @@
         body.role-receptionist .btn-danger {
             display: none !important;
         }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .admin-header { padding: 20px 16px; border-radius: 16px; margin-bottom: 16px; }
+            .admin-header h1 { font-size: 1.4em !important; }
+            .section-card { padding: 16px 12px !important; border-radius: 16px !important; }
+            .section-card h3 { font-size: 1.1em; }
+
+            /* Tabs: wrap and shrink */
+            .tabs { gap: 6px; padding: 6px; }
+            .tab-btn { padding: 8px 12px; font-size: 0.82em; }
+
+            /* Tables: allow horizontal scroll */
+            .section-card > div[style*="overflow-x"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+            table { min-width: 600px; }
+            th, td { padding: 10px 8px; font-size: 0.82em; }
+
+            /* Buttons: wrap and shrink */
+            .action-buttons { flex-direction: column; gap: 4px; }
+            .action-row { flex-wrap: wrap; gap: 4px; }
+            .btn-sm { padding: 4px 8px; font-size: 0.75em; }
+
+            /* Stats grid */
+            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+            .stat-card { padding: 16px 12px !important; }
+
+            /* Form grid: single column on mobile */
+            .form-grid.two-columns { grid-template-columns: 1fr !important; }
+            .form-grid { gap: 12px; }
+
+            /* Overview grid: single column */
+            .overview-grid { grid-template-columns: 1fr !important; }
+
+            /* Item list: single column */
+            .item-list { grid-template-columns: 1fr !important; }
+            .item-card { padding: 16px; }
+
+            /* Calendar: shrink header */
+            .fc-toolbar { flex-wrap: wrap; gap: 8px; }
+            .fc-toolbar-title { font-size: 1em !important; }
+            .fc-button { padding: 4px 8px !important; font-size: 0.8em !important; }
+
+            /* Export button */
+            button[onclick*="exportCSV"] { font-size: 0.82em; padding: 8px 12px; }
+        }
+
+        @media (max-width: 480px) {
+            .stat-grid { grid-template-columns: 1fr !important; }
+            .tabs { flex-direction: column; }
+            .tab-btn { width: 100%; text-align: center; }
+        }
     </style>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 </head>

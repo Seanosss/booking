@@ -70,6 +70,13 @@ const bookingCreationLimiter = rateLimit({
 app.use(cors());
 app.use(express.json());
 
+// Allow embedding in iframes (e.g. Wix)
+app.use((req, res, next) => {
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    next();
+});
+
 // --- Helper Functions ---
 
 function cleanupExpiredTokens() {
