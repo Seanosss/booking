@@ -1792,6 +1792,37 @@
             }
         }
 
+        async function editAdminNote(id, type, currentStatus, currentNote) {
+            const newNote = prompt('編輯備註（管理員內部用）：', currentNote || '');
+            if (newNote === null) return; // user cancelled
+            try {
+                let url, reloadFn, msgEl;
+                if (type === 'rental') {
+                    url = `${API_BASE_URL}/bookings/${id}/status`;
+                    reloadFn = loadRentalBookings;
+                    msgEl = 'bookingsMessage';
+                } else {
+                    url = `${API_BASE_URL}/admin/class-bookings/${id}/status`;
+                    reloadFn = loadClassBookings;
+                    msgEl = 'classBookingsMessage';
+                }
+                const response = await authenticatedFetch(url, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: currentStatus, adminNotes: newNote })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage(msgEl, 'success', '備註已更新');
+                    reloadFn();
+                } else {
+                    showMessage(msgEl, 'error', result.error || '備註更新失敗');
+                }
+            } catch (error) {
+                console.error('Error updating admin note:', error);
+            }
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const username = document.getElementById('loginUsername').value;
