@@ -925,8 +925,10 @@
         </div>
     </div>
     <script>
-        // const API_BASE_URL = 'https://booking-ub69.onrender.com/api'; // OLD
-        const API_BASE_URL = '/api'; // Relative path for local/prod compatibility
+        // Use Render backend when served from GitHub Pages; relative path when served from the backend itself
+        const API_BASE_URL = window.location.hostname.endsWith('github.io')
+            ? 'https://booking-ub69.onrender.com/api'
+            : '/api';
 
         const state = {
             settings: null,

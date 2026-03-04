@@ -779,7 +779,10 @@
         </div>
     </div>
     <script>
-        const API_BASE_URL = '/api';
+        // Use Render backend when served from GitHub Pages; relative path when served from the backend itself
+        const API_BASE_URL = window.location.hostname.endsWith('github.io')
+            ? 'https://booking-ub69.onrender.com/api'
+            : '/api';
 
         const state = {
             weekStart: new Date(),
