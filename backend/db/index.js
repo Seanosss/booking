@@ -1413,13 +1413,18 @@ async function getClassBookingsByClassIds(classIds = []) {
     return result.rows.map(mapClassBookingRow);
 }
 
-async function getClassBookingsDetailed({ date = null } = {}) {
+async function getClassBookingsDetailed({ date = null, classId = null } = {}) {
     const params = [];
     const conditions = [];
 
     if (date) {
         params.push(date);
         conditions.push(`DATE(c.start_time) = $${params.length}`);
+    }
+
+    if (classId) {
+        params.push(classId);
+        conditions.push(`cb.class_id = $${params.length}`);
     }
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

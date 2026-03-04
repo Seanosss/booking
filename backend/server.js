@@ -86,6 +86,8 @@ function cleanupExpiredTokens() {
         if (metadata.expiresAt <= now) activeAdminTokens.delete(token);
     }
 }
+// Run periodic cleanup so expired tokens don't accumulate in memory
+setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
 
 function issueAdminToken() {
     const token = crypto.randomBytes(32).toString('hex');
@@ -390,12 +392,12 @@ app.post('/api/admin/bookings', authenticateAdmin, async (req, res) => {
         }
         const settings = await loadSettings();
         const duration = minutesBetween(startTime, endTime);
+        if (duration <= 0) return res.status(400).json({ error: 'End time must be after start time' });
         const periodType = determinePeriodType(date, startTime, endTime, settings);
         const bookingStatus = ['pending', 'confirmed', 'cancelled'].includes(status) ? status : 'confirmed';
         const booking = await createBooking({
             customerName, email, phone,
             notes: adminNotes || '',
-            adminNotes: adminNotes || '',
             status: bookingStatus,
             totalPeople: 1,
             items: [{
@@ -725,18 +727,18 @@ app.get('/api/admin/reports/csv', authenticateAdmin, async (req, res) => {
         const classBookings = await getClassBookingsDetailed();
 
         // Build CSV for rental bookings
-        let csv = 'Type,ID,Date,Time,Name,WhatsApp,Email,Status,Amount,Notes\n';
+        let csv = 'Type,ID,Date,Time,Name,Phone,Email,Status,Amount,Notes\n';
 
         bookings.forEach(b => {
             const date = b.date || '';
             const time = b.startTime ? `${b.startTime}-${b.endTime || ''}` : '';
             const name = (b.customerName || '').replace(/,/g, ' ');
-            const whatsapp = (b.whatsapp || '').replace(/,/g, ' ');
+            const phone = (b.phone || '').replace(/,/g, ' ');
             const email = (b.email || '').replace(/,/g, ' ');
             const status = b.status || '';
             const amount = b.totalPrice || b.amount || '';
             const notes = (b.adminNotes || '').replace(/,/g, ' ').replace(/\n/g, ' ');
-            csv += `Rental,${b.id},${date},${time},${name},${whatsapp},${email},${status},${amount},${notes}\n`;
+            csv += `Rental,${b.id},${date},${time},${name},${phone},${email},${status},${amount},${notes}\n`;
         });
 
         classBookings.forEach(b => {
@@ -816,17 +818,24 @@ async function startServer() {
                 if (booking.classId) {
                     // Class Booking
                     const cls = await getClassById(booking.classId);
-                    summary = cls ? `Class: ${cls.title}` : 'Class Booking';
+                    summary = cls ? `Class: ${cls.name}` : 'Class Booking';
                     startDateTime = cls ? cls.startTime : null; // ISO string expected
                     endDateTime = cls ? cls.endTime : null;
-                    description += `\nClass: ${cls?.title || 'Unknown'}`;
+                    description += `\nClass: ${cls?.name || 'Unknown'}`;
                 } else {
-                    // Rental Booking (May have multiple slots, simplistic approach: use first slot or aggregate)
-                    // For simplicity, finding items for this booking
-                    // This part might be tricky if schema is complex. 
-                    // Falling back to simple default logic or assuming 'booking' object has start/end if simplified.
-                    // If getBookingById returns joined data (which it usually does for detail view):
-                    summary = 'Studio Rental';
+                    // Rental Booking — extract date/time from first booking item
+                    summary = `Studio Rental - ${booking.customerName || ''}`.trim();
+                    if (booking.items && booking.items.length > 0) {
+                        const firstItem = booking.items[0];
+                        const lastItem = booking.items[booking.items.length - 1];
+                        if (firstItem.date && firstItem.startTime) {
+                            startDateTime = `${firstItem.date}T${firstItem.startTime}:00+08:00`;
+                        }
+                        if (lastItem.date && lastItem.endTime) {
+                            endDateTime = `${lastItem.date}T${lastItem.endTime}:00+08:00`;
+                        }
+                        description += `\nDate: ${firstItem.date}\nTime: ${firstItem.startTime}–${lastItem.endTime}`;
+                    }
                 }
 
                 // Minimal ICS generation helper
@@ -838,7 +847,7 @@ async function startServer() {
 
                 // Fallback for dates if not easily resolved (this acts as a robust fail-safe)
                 const now = new Date();
-                const dtStar = startDateTime ? formatICSDate(startDateTime) : formatICSDate(now);
+                const dtStart = startDateTime ? formatICSDate(startDateTime) : formatICSDate(now);
                 const dtEnd = endDateTime ? formatICSDate(endDateTime) : formatICSDate(new Date(now.getTime() + 3600000));
 
                 const icsContent = [
@@ -848,7 +857,7 @@ async function startServer() {
                     'BEGIN:VEVENT',
                     `UID:${booking.id}@studiobooking`,
                     `DTSTAMP:${formatICSDate(new Date())}`,
-                    `DTSTART:${dtStar}`,
+                    `DTSTART:${dtStart}`,
                     `DTEND:${dtEnd}`,
                     `SUMMARY:${summary}`,
                     `DESCRIPTION:${description}`,
@@ -903,9 +912,9 @@ async function startServer() {
                 // 2. Class Sessions
                 const classes = await getClasses({ startDate: `${date}T00:00:00`, endDate: `${date}T23:59:59`, includePast: true });
                 const classSessions = await Promise.all(classes.map(async cls => {
-                    const bookings = await getClassBookingsDetailed(cls.id);
+                    const bookings = await getClassBookingsDetailed({ classId: cls.id });
                     return {
-                        name: cls.title,
+                        name: cls.name,
                         startDateTime: cls.startTime,
                         endDateTime: cls.endTime,
                         description: cls.description,
