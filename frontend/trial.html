@@ -238,7 +238,7 @@
                 if (!response.ok) throw new Error('無法取得試堂方案');
                 const data = await response.json();
                 if (!Array.isArray(data) || data.length === 0) {
-                    container.innerHTML = '<div class="empty">目前沒有試堂方案，歡迎稍後再查看。</div>';
+                    container.innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:2.5rem;margin-bottom:12px;">🌿</div><p style="color:var(--text-main);font-size:1rem;margin-bottom:8px;">試堂方案即將推出</p><p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:20px;">管理員尚未設定試堂方案，歡迎直接聯絡我們了解詳情。</p><a href="https://wa.me/85298725268" target="_blank" style="display:inline-block;padding:10px 24px;background:var(--brand-secondary);color:#fff;border-radius:999px;text-decoration:none;font-size:0.9rem;">WhatsApp 查詢 →</a></div>';
                     return;
                 }
                 container.innerHTML = '';
