@@ -251,6 +251,29 @@
             cursor: not-allowed;
         }
 
+        .slot-button.class-occupied {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
+            cursor: not-allowed;
+            position: relative;
+        }
+
+        .class-tag {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #2563eb;
+            margin-top: 3px;
+            text-transform: uppercase;
+        }
+
+        .legend-box.class-occupied {
+            background: #eff6ff;
+            border-color: #93c5fd;
+        }
+
         .legend {
             display: flex;
             gap: 20px;
@@ -847,6 +870,7 @@
                         <span><span class="legend-box available"></span> 可選</span>
                         <span><span class="legend-box pending"></span> 待確認</span>
                         <span><span class="legend-box unavailable"></span> 已預約</span>
+                        <span><span class="legend-box class-occupied"></span> 課堂時段</span>
                     </div>
                 </div>
             </div>
@@ -1308,7 +1332,7 @@
                 return;
             }
 
-            const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
+            const { openingHours, confirmedSlots = [], pendingSlots = [], classSlots = [] } = availability;
             const interval = state.slotInterval;
             const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
             const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
@@ -1332,8 +1356,12 @@
                 // Base Content
                 let contentHtml = `<span>${time}</span>`;
 
-                // Status Logic
-                if (confirmedSlots.includes(time)) {
+                // Status Logic — class slots take priority, then confirmed, then pending
+                if (classSlots.includes(time)) {
+                    button.classList.add('disabled', 'class-occupied');
+                    button.title = '課堂時段';
+                    contentHtml += `<span class="class-tag">課堂</span>`;
+                } else if (confirmedSlots.includes(time)) {
                     button.classList.add('disabled', 'unavailable');
                     button.title = '已預約';
                 } else if (pendingSlots.includes(time)) {

@@ -190,6 +190,7 @@ async function getRentalAvailability(date) {
     const items = await getBookingItemsByDate(date);
     const confirmedSlots = [];
     const pendingSlots = [];
+    const classSlots = [];
     const openingHours = {
         startTime: settings.operatingHours?.startTime || '07:00',
         endTime: settings.operatingHours?.endTime || '22:00'
@@ -207,11 +208,12 @@ async function getRentalAvailability(date) {
         const start = normalizeIsoToDateTimeStrings(cls.startTime);
         const end = normalizeIsoToDateTimeStrings(cls.endTime);
         if (start && end && start.date === date) {
-            confirmedSlots.push(...generateSlotsForRange(start.time, end.time));
+            // Separate classSlots so frontend can show a distinct label
+            classSlots.push(...generateSlotsForRange(start.time, end.time));
         }
     });
 
-    return { date, confirmedSlots, pendingSlots, openingHours };
+    return { date, confirmedSlots, pendingSlots, classSlots, openingHours };
 }
 
 // ---------------- API ROUTES ----------------
@@ -393,6 +395,18 @@ app.post('/api/admin/bookings', authenticateAdmin, async (req, res) => {
         const settings = await loadSettings();
         const duration = minutesBetween(startTime, endTime);
         if (duration <= 0) return res.status(400).json({ error: 'End time must be after start time' });
+
+        // Check for conflicts with existing rentals and classes
+        const availability = await checkRentalAvailability(date, startTime, endTime);
+        if (!availability.available) {
+            const classConflicts = availability.conflicts.filter(c => c.itemType === 'class_session');
+            const rentalConflicts = availability.conflicts.filter(c => c.itemType !== 'class_session');
+            const parts = [];
+            if (classConflicts.length > 0) parts.push(`課堂「${classConflicts.map(c => c.name).join('、')}」已排定此時段`);
+            if (rentalConflicts.length > 0) parts.push(`此時段已有場地預約`);
+            return res.status(409).json({ error: `時間衝突：${parts.join('；')}` });
+        }
+
         const periodType = determinePeriodType(date, startTime, endTime, settings);
         const bookingStatus = ['pending', 'confirmed', 'cancelled'].includes(status) ? status : 'confirmed';
         const booking = await createBooking({
