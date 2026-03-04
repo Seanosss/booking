@@ -625,6 +625,66 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
     }
 });
 
+// Reset any user's password (super_admin only)
+app.patch('/api/admin/users/:id/password', authenticateAdmin, async (req, res) => {
+    try {
+        if (req.admin.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Only super_admin can reset passwords' });
+        }
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters' });
+        }
+        const hashed = hashPassword(newPassword);
+        const result = await pool.query(
+            'UPDATE admin_users SET password_hash = $1 WHERE id = $2 RETURNING id, username, role',
+            [hashed, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, user: result.rows[0] });
+    } catch (e) {
+        console.error('Reset password error:', e);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
+// Change a user's role (super_admin only)
+app.patch('/api/admin/users/:id/role', authenticateAdmin, async (req, res) => {
+    try {
+        if (req.admin.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Only super_admin can change roles' });
+        }
+        const { role } = req.body;
+        if (!['super_admin', 'receptionist'].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+        const result = await pool.query(
+            'UPDATE admin_users SET role = $1 WHERE id = $2 RETURNING id, username, role',
+            [role, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, user: result.rows[0] });
+    } catch (e) {
+        console.error('Change role error:', e);
+        res.status(500).json({ error: 'Failed to change role' });
+    }
+});
+
+// Delete a user (super_admin only)
+app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
+    try {
+        if (req.admin.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Only super_admin can delete users' });
+        }
+        const result = await pool.query('DELETE FROM admin_users WHERE id = $1 RETURNING id, username', [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, deleted: result.rows[0] });
+    } catch (e) {
+        console.error('Delete user error:', e);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
 // ---------------- REPORTS ----------------
 
 app.get('/api/admin/reports/csv', authenticateAdmin, async (req, res) => {

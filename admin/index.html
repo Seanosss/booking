@@ -609,6 +609,7 @@
             <button class="tab-btn" data-tab="settingsTab">系統設定</button>
             <button class="tab-btn" data-tab="instructionsTab">預約須知</button>
             <button class="tab-btn" data-tab="itemsTab">課程 / 場地項目</button>
+            <button class="tab-btn super-admin-only" data-tab="usersTab" style="display:none;">用戶管理</button>
         </div>
         <div id="calendarTab" class="tab-content">
             <div class="section-card">
@@ -1025,6 +1026,57 @@
                 </form>
                 <h4 style="margin-top:24px;color:#145da0;">現有場地項目</h4>
                 <div id="rentalItemsList" class="item-list">
+            </div>
+        </div>
+    </div>
+
+    <!-- USER MANAGEMENT TAB (super_admin only) -->
+    <div id="usersTab" class="tab-content">
+        <div class="section-card">
+            <h3>👥 用戶管理</h3>
+            <p style="color:#666;font-size:0.9em;margin-bottom:16px;">只有 Super Admin 可以管理其他用戶。密碼以加密方式儲存，無法查看原始密碼，但可以重設。</p>
+
+            <!-- Add new user -->
+            <div style="background:#f0f7ff;border-radius:12px;padding:16px;margin-bottom:24px;">
+                <h4 style="margin:0 0 12px;color:#145da0;">新增用戶</h4>
+                <form id="addUserForm" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+                    <div>
+                        <label style="font-size:0.85em;color:#555;">用戶名</label>
+                        <input type="text" id="newUsername" placeholder="用戶名" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.85em;color:#555;">密碼</label>
+                        <input type="text" id="newUserPassword" placeholder="密碼（最少6位）" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.85em;color:#555;">角色</label>
+                        <select id="newUserRole" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;">
+                            <option value="receptionist">Receptionist（接待）</option>
+                            <option value="super_admin">Super Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn" style="padding:8px 16px;">新增</button>
+                </form>
+                <div id="addUserMsg" style="margin-top:8px;font-size:0.9em;display:none;"></div>
+            </div>
+
+            <!-- Users list -->
+            <h4 style="color:#145da0;margin-bottom:12px;">現有用戶</h4>
+            <div style="overflow-x:auto;">
+                <table id="usersTable" style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#e8f0fe;text-align:left;">
+                            <th style="padding:10px 12px;border-radius:8px 0 0 8px;">用戶名</th>
+                            <th style="padding:10px 12px;">角色</th>
+                            <th style="padding:10px 12px;">建立日期</th>
+                            <th style="padding:10px 12px;">重設密碼</th>
+                            <th style="padding:10px 12px;border-radius:0 8px 8px 0;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">載入中...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -1748,6 +1800,8 @@
                 document.body.classList.remove('role-receptionist');
                 const style = document.getElementById('rbac-style');
                 if (style) style.remove();
+                // Show users tab for super_admin
+                document.querySelectorAll('.super-admin-only').forEach(el => el.style.display = '');
             }
         }
 
@@ -1790,6 +1844,156 @@
                 msgEl.style.display = 'block';
             }
         }
+
+        // ---- USER MANAGEMENT FUNCTIONS ----
+
+        async function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/users`);
+                const users = await res.json();
+                if (!res.ok || !Array.isArray(users)) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="color:red;padding:12px;">載入失敗</td></tr>';
+                    return;
+                }
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:12px;">暫無用戶</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(u => `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:10px 12px;font-weight:500;">${escapeHtml(u.username)}</td>
+                        <td style="padding:10px 12px;">
+                            <select onchange="changeUserRole(${u.id}, this.value)" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="receptionist" ${u.role === 'receptionist' ? 'selected' : ''}>Receptionist</option>
+                                <option value="super_admin" ${u.role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+                            </select>
+                        </td>
+                        <td style="padding:10px 12px;color:#666;font-size:0.85em;">${new Date(u.created_at).toLocaleDateString('zh-HK')}</td>
+                        <td style="padding:10px 12px;">
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <input type="text" id="pw_${u.id}" placeholder="新密碼" style="padding:5px 8px;border:1px solid #ddd;border-radius:6px;width:120px;font-size:0.85em;">
+                                <button onclick="resetUserPassword(${u.id})" style="padding:5px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.82em;">重設</button>
+                            </div>
+                        </td>
+                        <td style="padding:10px 12px;">
+                            <button onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" style="padding:5px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.82em;">刪除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="5" style="color:red;padding:12px;">載入錯誤</td></tr>';
+            }
+        }
+
+        async function changeUserRole(userId, newRole) {
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/users/${userId}/role`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMsg('addUserMsg', '✅ 角色已更新', 'success');
+                } else {
+                    showMsg('addUserMsg', '❌ ' + (data.error || '更新失敗'), 'error');
+                    loadUsers(); // reload to reset the select
+                }
+            } catch(e) {
+                showMsg('addUserMsg', '❌ 更新失敗', 'error');
+            }
+        }
+
+        async function resetUserPassword(userId) {
+            const input = document.getElementById(`pw_${userId}`);
+            const newPassword = input ? input.value.trim() : '';
+            if (!newPassword || newPassword.length < 6) {
+                showMsg('addUserMsg', '❌ 密碼最少需要 6 個字符', 'error');
+                return;
+            }
+            if (!confirm(`確認重設此用戶的密碼？`)) return;
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/users/${userId}/password`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (input) input.value = '';
+                    showMsg('addUserMsg', '✅ 密碼已重設', 'success');
+                } else {
+                    showMsg('addUserMsg', '❌ ' + (data.error || '重設失敗'), 'error');
+                }
+            } catch(e) {
+                showMsg('addUserMsg', '❌ 重設失敗', 'error');
+            }
+        }
+
+        async function deleteUser(userId, username) {
+            if (!confirm(`確認刪除用戶「${username}」？此操作無法復原。`)) return;
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/users/${userId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    showMsg('addUserMsg', `✅ 用戶「${username}」已刪除`, 'success');
+                    loadUsers();
+                } else {
+                    showMsg('addUserMsg', '❌ ' + (data.error || '刪除失敗'), 'error');
+                }
+            } catch(e) {
+                showMsg('addUserMsg', '❌ 刪除失敗', 'error');
+            }
+        }
+
+        function showMsg(elId, text, type) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            el.textContent = text;
+            el.style.display = 'block';
+            el.style.color = type === 'success' ? '#16a34a' : '#dc2626';
+            el.style.fontWeight = '500';
+            setTimeout(() => { el.style.display = 'none'; }, 3500);
+        }
+
+        // Handle Add User form in new usersTab
+        document.addEventListener('DOMContentLoaded', () => {
+            const addUserForm = document.getElementById('addUserForm');
+            if (addUserForm) {
+                addUserForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const username = document.getElementById('newUsername').value.trim();
+                    const password = document.getElementById('newUserPassword').value.trim();
+                    const role = document.getElementById('newUserRole').value;
+                    if (!username || !password) return;
+                    try {
+                        const res = await authenticatedFetch(`${API_BASE_URL}/admin/users`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password, role })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            showMsg('addUserMsg', `✅ 用戶「${username}」建立成功`, 'success');
+                            addUserForm.reset();
+                            loadUsers();
+                        } else {
+                            showMsg('addUserMsg', '❌ ' + (data.error || '建立失敗'), 'error');
+                        }
+                    } catch(e) {
+                        showMsg('addUserMsg', '❌ 建立失敗', 'error');
+                    }
+                });
+            }
+        });
+
+        // Load users when usersTab is clicked
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-tab="usersTab"]');
+            if (btn) loadUsers();
+        });
 
         // Use relative path for Render compatibility
         // const API_BASE_URL = '/api'; // Already defined at top of script
