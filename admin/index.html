@@ -1601,16 +1601,19 @@
                     <td>HK$${Number(booking.totalPrice || 0).toFixed(2)}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <div class="action-buttons">
-                            <div class="action-row">
-                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'confirmed')">確認</button>
-                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'pending')">待處理</button>
-                                <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('${booking.id}', 'cancelled')">取消</button>
-                            </div>
-                            <div class="action-row">
-                                ${rentalGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${rentalGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
-                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'rental', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
+                        <div class="action-cell">
+                            <select class="status-select status-${booking.status}" onchange="updateBookingStatus('${booking.id}', this.value); this.className='status-select status-'+this.value;">
+                                <option value="pending" ${booking.status==='pending'?'selected':''}>⏳ 待處理</option>
+                                <option value="confirmed" ${booking.status==='confirmed'?'selected':''}>✅ 已確認</option>
+                                <option value="cancelled" ${booking.status==='cancelled'?'selected':''}>✗ 已取消</option>
+                            </select>
+                            <div class="overflow-menu">
+                                <button class="overflow-trigger" onclick="toggleOverflow(this)" title="更多操作">⋮</button>
+                                <div class="overflow-dropdown">
+                                    ${rentalGCalUrl ? `<a href="${rentalGCalUrl}" target="_blank" rel="noopener">📅 加入 Google Calendar</a>` : ''}
+                                    <button onclick="editAdminNote('${booking.id}', 'rental', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">📝 備註</button>
+                                    <button class="danger" onclick="deleteRentalBooking('${booking.id}')">🗑 刪除</button>
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -1690,16 +1693,19 @@
                          ${notes}
                     </td>
                     <td>
-                         <div class="action-buttons">
-                            <div class="action-row">
-                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'confirmed')">確認</button>
-                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'pending')">待處理</button>
-                                <button class="btn btn-sm btn-danger" onclick="updateClassBookingStatus('${booking.id}', 'cancelled')">取消</button>
-                            </div>
-                            <div class="action-row">
-                                ${classGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${classGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
-                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
+                        <div class="action-cell">
+                            <select class="status-select status-${booking.status}" onchange="updateClassBookingStatus('${booking.id}', this.value); this.className='status-select status-'+this.value;">
+                                <option value="pending" ${booking.status==='pending'?'selected':''}>⏳ 待處理</option>
+                                <option value="confirmed" ${booking.status==='confirmed'?'selected':''}>✅ 已確認</option>
+                                <option value="cancelled" ${booking.status==='cancelled'?'selected':''}>✗ 已取消</option>
+                            </select>
+                            <div class="overflow-menu">
+                                <button class="overflow-trigger" onclick="toggleOverflow(this)" title="更多操作">⋮</button>
+                                <div class="overflow-dropdown">
+                                    ${classGCalUrl ? `<a href="${classGCalUrl}" target="_blank" rel="noopener">📅 加入 Google Calendar</a>` : ''}
+                                    <button onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">📝 備註</button>
+                                    <button class="danger" onclick="deleteClassBooking('${booking.id}')">🗑 刪除</button>
+                                </div>
                             </div>
                         </div>
                     </td>
