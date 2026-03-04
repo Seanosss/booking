@@ -328,6 +328,7 @@ function mapClassBookingRow(row) {
         phone: row.phone,
         status: row.status,
         peopleCount: Number(row.people_count || 1),
+        adminNotes: row.admin_notes || null,
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
         updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
     };
@@ -520,6 +521,10 @@ async function initializeDatabase() {
         `
         ALTER TABLE class_bookings
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    `,
+        `
+        ALTER TABLE class_bookings
+        ADD COLUMN IF NOT EXISTS admin_notes TEXT
     `,
         `
         CREATE TABLE IF NOT EXISTS class_products (

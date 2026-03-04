@@ -89,11 +89,11 @@ function cleanupExpiredTokens() {
 // Run periodic cleanup so expired tokens don't accumulate in memory
 setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
 
-function issueAdminToken() {
+function issueAdminToken(role = 'super_admin', username = 'admin') {
     const token = crypto.randomBytes(32).toString('hex');
     const issuedAt = Date.now();
     const expiresAt = issuedAt + ADMIN_TOKEN_TTL_MS;
-    activeAdminTokens.set(token, { issuedAt, expiresAt });
+    activeAdminTokens.set(token, { issuedAt, expiresAt, role, username });
     return { token, issuedAt, expiresAt };
 }
 
@@ -235,7 +235,7 @@ app.post('/api/admin/login', async (req, res) => {
             if (!verifyPassword(password, user.password_hash)) {
                 return res.status(401).json({ error: 'Invalid username or password' });
             }
-            const { token, expiresAt } = issueAdminToken();
+            const { token, expiresAt } = issueAdminToken(user.role, user.username);
             return res.json({ success: true, token, expiresAt: new Date(expiresAt).toISOString(), username: user.username, role: user.role });
         }
 
@@ -243,7 +243,7 @@ app.post('/api/admin/login', async (req, res) => {
         const settings = await loadSettings();
         const stored = settings.adminPassword || DEFAULT_ADMIN_PASSWORD;
         if (password !== stored) return res.status(401).json({ error: 'Invalid username or password' });
-        const { token, expiresAt } = issueAdminToken();
+        const { token, expiresAt } = issueAdminToken('super_admin', username || 'admin');
         res.json({ success: true, token, expiresAt: new Date(expiresAt).toISOString(), username: username || 'admin', role: 'super_admin' });
     } catch (e) {
         console.error('Login error:', e);

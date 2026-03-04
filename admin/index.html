@@ -12,10 +12,25 @@
             box-sizing: border-box;
         }
 
-        /* FullCalendar Override */
-        .fc-event {
-            cursor: pointer;
-        }
+        /* FullCalendar Professional Overrides */
+        .fc { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif; }
+        .fc-toolbar-title { font-size: 1.15rem !important; font-weight: 700; color: #0f172a; }
+        .fc-button { font-size: 0.82rem !important; font-weight: 600 !important; border-radius: 8px !important; padding: 6px 12px !important; }
+        .fc-button-primary { background: #3b82f6 !important; border-color: #3b82f6 !important; }
+        .fc-button-primary:hover { background: #2563eb !important; border-color: #2563eb !important; }
+        .fc-button-primary:not(:disabled).fc-button-active { background: #1d4ed8 !important; border-color: #1d4ed8 !important; }
+        .fc-button-primary:disabled { background: #93c5fd !important; border-color: #93c5fd !important; }
+        .fc-col-header-cell { background: #f1f5f9; }
+        .fc-col-header-cell-cushion { font-weight: 600; color: #475569; font-size: 0.82rem; padding: 8px 4px; }
+        .fc-timegrid-slot-label { font-size: 0.75rem; color: #94a3b8; }
+        .fc-event { border-radius: 6px !important; padding: 2px 5px !important; font-size: 0.78rem !important; font-weight: 600 !important; border: none !important; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+        .fc-event:hover { filter: brightness(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .fc-daygrid-event { border-radius: 5px !important; }
+        .fc-day-today { background: #eff6ff !important; }
+        .fc-scrollgrid { border-radius: 12px; overflow: hidden; border-color: #e2e8f0 !important; }
+        .fc-scrollgrid td, .fc-scrollgrid th { border-color: #e2e8f0 !important; }
+        .fc-timegrid-now-indicator-line { border-color: #ef4444; }
+        .fc-timegrid-now-indicator-arrow { border-top-color: #ef4444; }
     </style>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <style>
@@ -603,6 +618,57 @@
             text-align: center;
         }
 
+        /* Overview Stat Cards */
+        .stat-cards-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        @media (min-width: 700px) {
+            .stat-cards-row { grid-template-columns: repeat(4, 1fr); }
+        }
+        .stat-card {
+            border-radius: 16px;
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid transparent;
+        }
+        .stat-card .stat-icon { font-size: 1.5em; }
+        .stat-card .stat-value {
+            font-size: 2em;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .stat-card .stat-label {
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            opacity: 0.75;
+        }
+        .stat-card.blue { background:#e8f4fd; color:#1a6baa; border-color:#c3dff7; }
+        .stat-card.orange { background:#fff7ed; color:#c05f00; border-color:#fed7aa; }
+        .stat-card.green { background:#f0fdf4; color:#16803a; border-color:#bbf7d0; }
+        .stat-card.purple { background:#faf5ff; color:#7c22ce; border-color:#e9d5ff; }
+
+        /* Column headers */
+        .overview-col-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-weight: 700;
+            font-size: 0.95em;
+        }
+        .overview-col-header.blue { background:#e8f4fd; color:#1a6baa; }
+        .overview-col-header.teal { background:#f0fdfa; color:#0f766e; }
+
         /* Modal - Reuse logic */
         /* Modal - Reuse logic */
         #loginModal {
@@ -716,10 +782,17 @@
         </div>
         <div id="calendarTab" class="tab-content">
             <div class="section-card">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                    <h3>行事曆檢視</h3>
-                    <div>
-                        <span class="status-chip status-confirmed">點擊空格快速封鎖時段</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                    <h3 style="margin:0;">行事曆</h3>
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <!-- Color Legend -->
+                        <div style="display:flex;align-items:center;gap:10px;font-size:0.78rem;color:#64748b;">
+                            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#28a745;display:inline-block;"></span>場地 (已確認)</span>
+                            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#ffc107;display:inline-block;"></span>場地 (待處理)</span>
+                            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#007bff;display:inline-block;"></span>課程 (已確認)</span>
+                            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#6c757d;display:inline-block;"></span>課程 (待處理)</span>
+                        </div>
+                        <span style="font-size:0.78rem;color:#94a3b8;background:#f1f5f9;padding:4px 10px;border-radius:99px;">💡 點擊空格快速封鎖時段</span>
                     </div>
                 </div>
                 <div id='calendar'></div>
@@ -782,6 +855,7 @@
                                 <th>課程資訊</th>
                                 <th>客戶 / 聯絡</th>
                                 <th>人數</th>
+                                <th>提交時間</th>
                                 <th>狀態</th>
                                 <th>操作</th>
                             </tr>
@@ -792,25 +866,47 @@
             </div>
         </div>
         <div id="overviewTab" class="tab-content">
+            <!-- Quick Stats Row -->
+            <div class="stat-cards-row">
+                <div class="stat-card blue">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-value" id="statTotalToday">—</div>
+                    <div class="stat-label">今日總預約</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-value" id="statPendingToday">—</div>
+                    <div class="stat-label">待確認</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value" id="statConfirmedToday">—</div>
+                    <div class="stat-label">已確認</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value" id="statPeopleToday">—</div>
+                    <div class="stat-label">今日人次</div>
+                </div>
+            </div>
+
+            <!-- Day Detail -->
             <div class="section-card">
-                <h3>預約概覽</h3>
-                <div class="form-grid two-columns">
-                    <div class="input-group">
-                        <label>選擇日期</label>
-                        <input type="date" id="overviewDate">
-                    </div>
-                    <div class="input-group" style="display:flex;align-items:flex-end;">
-                        <button type="button" class="btn btn-secondary" onclick="refreshOverview()">重新整理</button>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
+                    <h3 style="margin:0;">預約詳情</h3>
+                    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+                        <input type="date" id="overviewDate" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95em;">
+                        <button type="button" class="btn btn-secondary" onclick="refreshOverview()" style="white-space:nowrap;">🔄 重新整理</button>
                     </div>
                 </div>
                 <div id="overviewMessage" class="message"></div>
                 <div class="overview-grid">
                     <div class="overview-column">
-                        <h4 style="color:#145da0;">場地預約</h4>
+                        <div class="overview-col-header blue">🏢 場地預約 <span id="studioCount" style="margin-left:auto;background:#1a6baa;color:#fff;border-radius:99px;padding:2px 10px;font-size:0.85em;">0</span></div>
                         <div id="overviewStudioList" class="overview-list"></div>
                     </div>
                     <div class="overview-column">
-                        <h4 style="color:#145da0;">課程預約</h4>
+                        <div class="overview-col-header teal">📚 課程預約 <span id="classCount" style="margin-left:auto;background:#0f766e;color:#fff;border-radius:99px;padding:2px 10px;font-size:0.85em;">0</span></div>
                         <div id="overviewClassList" class="overview-list"></div>
                     </div>
                 </div>
@@ -1299,6 +1395,40 @@
             classList.innerHTML = '';
 
             const studioSessions = Array.isArray(data.studioSessions) ? data.studioSessions : [];
+            const classSessions2 = Array.isArray(data.classSessions) ? data.classSessions : [];
+
+            // --- Populate stat cards ---
+            const allStudioBookings = studioSessions;
+            // For class bookings, count attendees across all class sessions
+            let totalClassBookings = 0;
+            let totalPeople = 0;
+            let totalPending = 0;
+            let totalConfirmed = 0;
+
+            allStudioBookings.forEach(s => {
+                totalPeople += Number(s.peopleCount || 0);
+                if ((s.status || '').toLowerCase() === 'pending') totalPending++;
+                if ((s.status || '').toLowerCase() === 'confirmed') totalConfirmed++;
+            });
+
+            classSessions2.forEach(cls => {
+                const attendees = Array.isArray(cls.attendees) ? cls.attendees : [];
+                totalClassBookings += attendees.length;
+                attendees.forEach(att => {
+                    totalPeople += Number(att.peopleCount || 0);
+                    if ((att.status || '').toLowerCase() === 'pending') totalPending++;
+                    if ((att.status || '').toLowerCase() === 'confirmed') totalConfirmed++;
+                });
+            });
+
+            const totalBookings = allStudioBookings.length + totalClassBookings;
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setEl('statTotalToday', totalBookings);
+            setEl('statPendingToday', totalPending);
+            setEl('statConfirmedToday', totalConfirmed);
+            setEl('statPeopleToday', totalPeople);
+            setEl('studioCount', allStudioBookings.length);
+            setEl('classCount', classSessions2.length);
             if (studioSessions.length === 0) {
                 studioList.innerHTML = '<div class="overview-empty">當日暫無場地預約。</div>';
             } else {
@@ -1321,11 +1451,10 @@
                 });
             }
 
-            const classSessions = Array.isArray(data.classSessions) ? data.classSessions : [];
-            if (classSessions.length === 0) {
+            if (classSessions2.length === 0) {
                 classList.innerHTML = '<div class="overview-empty">當日暫無課程預約。</div>';
             } else {
-                classSessions.forEach(cls => {
+                classSessions2.forEach(cls => {
                     const card = document.createElement('div');
                     card.className = 'overview-card';
                     const startLabel = formatOverviewDateTime(cls.startDateTime);
@@ -1634,7 +1763,7 @@
             if (!bookings || bookings.length === 0) {
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 6;
+                cell.colSpan = 7;
                 cell.style.textAlign = 'center';
                 cell.textContent = '暫無課程預約';
                 row.appendChild(cell);
@@ -1662,6 +1791,10 @@
                     location: booking.classLocation || ''
                 }) : null;
 
+                const createdAtDisplay = booking.createdAt
+                    ? new Date(booking.createdAt).toLocaleString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+                    : '—';
+
                 row.innerHTML = `
                     <td>${escapeHtml(String(booking.id))}</td>
                     <td>
@@ -1674,6 +1807,7 @@
                         <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.phone)}</div>
                     </td>
                     <td>${escapeHtml(String(booking.peopleCount || 0))}</td>
+                    <td style="font-size:0.82em;color:#64748b;white-space:nowrap;">${createdAtDisplay}</td>
                     <td>
                          ${statusBadge}
                          ${notes}
@@ -3040,10 +3174,22 @@
 
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'timeGridWeek',
+                locale: 'zh-tw',
+                firstDay: 1,
+                slotMinTime: '07:00:00',
+                slotMaxTime: '23:00:00',
+                slotDuration: '00:30:00',
+                nowIndicator: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    week: '週',
+                    day: '日'
                 },
                 events: async function (info, successCallback, failureCallback) {
                     try {

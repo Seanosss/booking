@@ -1283,8 +1283,14 @@
             return rows.length > 0 ? rows.join('') : '<div>請依照工作人員指示完成付款。</div>';
         }
 
-        function openPaymentReminderModal(bookingId, classInfo, customerName, peopleCount) {
+        async function openPaymentReminderModal(bookingId, classInfo, customerName, peopleCount) {
             if (!elements.paymentReminderModal) return;
+
+            // Re-fetch latest settings so payment methods are always current
+            try {
+                const freshRes = await fetch(`${API_BASE_URL}/settings`);
+                if (freshRes.ok) { state.settings = await freshRes.json(); }
+            } catch (_) { /* use cached settings if fetch fails */ }
 
             // Set booking ref
             const refEl = document.getElementById('classBookingRef');
