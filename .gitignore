@@ -1,0 +1,29 @@
+# Mac 系統檔案
+.DS_Store
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# 環境變數（不要上傳！）
+.env
+backend/.env
+*.env.local
+*.env.production
+
+# 日誌
+*.log
+
+# 編輯器
+.vscode/
+.idea/
+
+# 暫存
+*.bak
+*~
+
+# 資料檔案（會在伺服器上自動建立）
+bookings.json
+backend/bookings.json

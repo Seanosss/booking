@@ -1,0 +1,3013 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Studio Booking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* FullCalendar Override */
+        .fc-event {
+            cursor: pointer;
+        }
+    </style>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <style>
+        :root {
+            --brand-primary: #0f172a;
+            --brand-secondary: #3b82f6;
+            --surface: #f8fafc;
+            --surface-alt: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+            background: var(--surface);
+            min-height: 100vh;
+            padding: 32px;
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        a {
+            color: var(--brand-secondary);
+            text-decoration: none;
+        }
+
+        .admin-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .admin-header {
+            background: var(--surface-alt);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+            position: relative;
+            border: 1px solid var(--border);
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            padding: 10px 18px;
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--brand-secondary);
+            background: #eff6ff;
+        }
+
+        .tab-btn.active {
+            color: var(--brand-secondary);
+            background: #eff6ff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-card {
+            background: var(--surface-alt);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .section-card h3 {
+            color: var(--brand-primary);
+            margin-bottom: 24px;
+            font-size: 1.4em;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media (min-width: 860px) {
+            .form-grid.two-columns {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.9em;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 1em;
+            background: #fff;
+            color: var(--text-main);
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            border-color: var(--brand-secondary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-secondary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--brand-secondary);
+            color: var(--brand-secondary);
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn+.btn {
+            margin-left: 10px;
+        }
+
+        .btn-sm {
+            padding: 5px 11px;
+            font-size: 0.8em;
+            border-radius: 8px;
+            font-weight: 500;
+            letter-spacing: 0;
+            box-shadow: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .action-buttons .btn-sm + .btn-sm {
+            margin-left: 0;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .action-row + .action-row {
+            margin-top: 5px;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        th,
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #f8fafc;
+        }
+
+        .message {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .item-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        @media (min-width: 900px) {
+            .item-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .item-card {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .item-card:hover {
+            border-color: var(--brand-secondary);
+            box-shadow: var(--shadow);
+        }
+
+        .item-card h4 {
+            color: var(--brand-primary);
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        .item-card small {
+            color: var(--text-muted);
+        }
+
+        .item-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .stat-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (min-width: 720px) {
+            .stat-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        .stat-card {
+            background: #fff;
+            color: var(--text-main);
+            padding: 24px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 6px;
+            background: var(--brand-secondary);
+        }
+
+        .stat-card h4 {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .stat-card p {
+            font-size: 2.2em;
+            font-weight: 800;
+            color: var(--brand-primary);
+        }
+
+        .overview-grid {
+            display: grid;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        @media (min-width: 900px) {
+            .overview-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .overview-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .overview-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .overview-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 8px;
+        }
+
+        .overview-meta {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .overview-attendees {
+            margin-top: 12px;
+            padding-left: 16px;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            border-left: 2px solid var(--border);
+        }
+
+        .overview-empty {
+            padding: 24px;
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            color: var(--text-muted);
+            background: #f8fafc;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        /* Modal - Reuse logic */
+        /* Modal - Reuse logic */
+        #loginModal {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #loginModal.active {
+            display: flex !important;
+        }
+
+        /* Role Based UI */
+        body.role-receptionist .btn-danger {
+            display: none !important;
+        }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .admin-header { padding: 20px 16px; border-radius: 16px; margin-bottom: 16px; }
+            .admin-header h1 { font-size: 1.4em !important; }
+            .section-card { padding: 16px 12px !important; border-radius: 16px !important; }
+            .section-card h3 { font-size: 1.1em; }
+
+            /* Tabs: wrap and shrink */
+            .tabs { gap: 6px; padding: 6px; }
+            .tab-btn { padding: 8px 12px; font-size: 0.82em; }
+
+            /* Tables: allow horizontal scroll */
+            .section-card > div[style*="overflow-x"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+            table { min-width: 600px; }
+            th, td { padding: 10px 8px; font-size: 0.82em; }
+
+            /* Buttons: wrap and shrink */
+            .action-buttons { flex-direction: column; gap: 4px; }
+            .action-row { flex-wrap: wrap; gap: 4px; }
+            .btn-sm { padding: 4px 8px; font-size: 0.75em; }
+
+            /* Stats grid */
+            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+            .stat-card { padding: 16px 12px !important; }
+
+            /* Form grid: single column on mobile */
+            .form-grid.two-columns { grid-template-columns: 1fr !important; }
+            .form-grid { gap: 12px; }
+
+            /* Overview grid: single column */
+            .overview-grid { grid-template-columns: 1fr !important; }
+
+            /* Item list: single column */
+            .item-list { grid-template-columns: 1fr !important; }
+            .item-card { padding: 16px; }
+
+            /* Calendar: shrink header */
+            .fc-toolbar { flex-wrap: wrap; gap: 8px; }
+            .fc-toolbar-title { font-size: 1em !important; }
+            .fc-button { padding: 4px 8px !important; font-size: 0.8em !important; }
+
+            /* Export button */
+            button[onclick*="exportCSV"] { font-size: 0.82em; padding: 8px 12px; }
+        }
+
+        @media (max-width: 480px) {
+            .stat-grid { grid-template-columns: 1fr !important; }
+            .tabs { flex-direction: column; }
+            .tab-btn { width: 100%; text-align: center; }
+        }
+    </style>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+</head>
+
+<body>
+    <div id="adminContainer" class="admin-container">
+        <div class="admin-header">
+            <h1 style="color:#0b4f6c; font-size:2.2em;">Studio Booking 管理面板</h1>
+            <p style="color:#52606d;">快速管理預約、設定、課程與場地資訊。</p>
+            <p id="adminIdentity" style="color:#52606d; font-size:0.95em; margin-top:6px; display:none;"></p>
+            <div id="apiStatusMessage" class="message" style="margin-top:12px;"></div>
+            <button class="logout-btn" onclick="logout()">登出</button>
+            <div class="stat-grid">
+                <div class="stat-card" id="stat-total">
+                    <h4>總預約數</h4>
+                    <p>0</p>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);"
+                    id="stat-confirmed">
+                    <h4>已確認</h4>
+                    <p>0</p>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);"
+                    id="stat-pending">
+                    <h4>待處理</h4>
+                    <p>0</p>
+                </div>
+            </div>
+        </div>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="bookingsTab">預約列表</button>
+            <button class="tab-btn" data-tab="calendarTab">行事曆</button>
+            <button class="tab-btn" data-tab="overviewTab">預約概覽</button>
+            <button class="tab-btn" data-tab="settingsTab">系統設定</button>
+            <button class="tab-btn" data-tab="instructionsTab">預約須知</button>
+            <button class="tab-btn" data-tab="itemsTab">課程 / 場地項目</button>
+        </div>
+        <div id="calendarTab" class="tab-content">
+            <div class="section-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                    <h3>行事曆檢視</h3>
+                    <div>
+                        <span class="status-chip status-confirmed">點擊空格快速封鎖時段</span>
+                    </div>
+                </div>
+                <div id='calendar'></div>
+            </div>
+        </div>
+        <div id="bookingsTab" class="tab-content active">
+            <div class="section-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                    <h3>場地預約</h3>
+                    <button class="btn btn-secondary" onclick="exportCsv()">匯出月報表 (CSV)</button>
+                </div>
+                <div id="bookingsMessage" class="message"></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>預約編號</th>
+                                <th>客戶 / 聯絡</th>
+                                <th>項目</th>
+                                <th>總人數</th>
+                                <th>總金額</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>課程預約</h3>
+                <div id="classBookingsMessage" class="message"></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>預約編號</th>
+                                <th>課程資訊</th>
+                                <th>客戶 / 聯絡</th>
+                                <th>人數</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="classBookingsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="overviewTab" class="tab-content">
+            <div class="section-card">
+                <h3>預約概覽</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>選擇日期</label>
+                        <input type="date" id="overviewDate">
+                    </div>
+                    <div class="input-group" style="display:flex;align-items:flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="refreshOverview()">重新整理</button>
+                    </div>
+                </div>
+                <div id="overviewMessage" class="message"></div>
+                <div class="overview-grid">
+                    <div class="overview-column">
+                        <h4 style="color:#145da0;">場地預約</h4>
+                        <div id="overviewStudioList" class="overview-list"></div>
+                    </div>
+                    <div class="overview-column">
+                        <h4 style="color:#145da0;">課程預約</h4>
+                        <div id="overviewClassList" class="overview-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="settingsTab" class="tab-content">
+            <div id="settingsMessage" class="message"></div>
+            <div class="section-card">
+                <h3>管理密碼</h3>
+                <div id="passwordMessage" class="message"></div>
+                <form id="passwordForm" class="form-grid">
+                    <div class="input-group">
+                        <label>目前密碼</label>
+                        <input type="password" id="currentAdminPassword" autocomplete="current-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label>新密碼</label>
+                        <input type="password" id="newAdminPassword" autocomplete="new-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label>確認新密碼</label>
+                        <input type="password" id="confirmAdminPassword" autocomplete="new-password" required>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">更新密碼</button>
+                    </div>
+                </form>
+            </div>
+            <div class="section-card">
+                <h3>基本資料</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>英文名稱</label><input id="businessName" type="text"></div>
+                    <div class="input-group"><label>中文名稱</label><input id="businessNameZh" type="text"></div>
+                    <div class="input-group"><label>營業時間開始</label><input id="startTime" type="time"></div>
+                    <div class="input-group"><label>營業時間結束</label><input id="endTime" type="time"></div>
+                    <div class="input-group"><label>營業資訊 (中文)</label><input id="daysLabelZh" type="text"
+                            placeholder="每日營業"></div>
+                    <div class="input-group"><label>營業資訊 (英文)</label><input id="daysLabelEn" type="text"
+                            placeholder="Open Daily"></div>
+                </div>
+                <div class="form-grid two-columns" style="margin-top:18px;">
+                    <div class="input-group"><label>英文介紹</label><textarea id="businessDescription" rows="3"></textarea>
+                    </div>
+                    <div class="input-group"><label>中文介紹</label><textarea id="businessDescriptionZh"
+                            rows="3"></textarea></div>
+                </div>
+            </div>
+            <!-- Interface Settings -->
+            <div class="section-card">
+                <h3>🎨 介面與外觀 (Interface)</h3>
+                <h4 style="color:var(--brand-primary); margin-top:16px; margin-bottom:12px;">首頁橫幅 (Hero Section)</h4>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>標題 (Title) - ZH</label>
+                        <input id="uiHeroTitleZh" type="text" placeholder="例如: 24小時自助預約">
+                    </div>
+                    <div class="input-group">
+                        <label>副標題 (Subtitle) - ZH</label>
+                        <input id="uiHeroSubtitleZh" type="text" placeholder="例如: 輕鬆預約您的專屬空間">
+                    </div>
+                </div>
+
+                <h4 style="color:var(--brand-primary); margin-top:20px; margin-bottom:12px;">全站公告 (Announcement)</h4>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>公告內容</label>
+                        <input id="uiAnnouncementText" type="text" placeholder="例如: 系統維護通知...">
+                    </div>
+                    <div class="input-group">
+                        <label class="checkbox-label" style="justify-content:flex-start; margin-top:8px;">
+                            <input type="checkbox" id="uiAnnouncementActive"> 顯示公告
+                        </label>
+                    </div>
+                </div>
+
+                <h4 style="color:var(--brand-primary); margin-top:20px; margin-bottom:12px;">品牌色系 (Theme)</h4>
+                <div class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>主色 (Primary Color)</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input id="uiPrimaryColor" type="color" value="#3b82f6"
+                                style="height:40px; width:60px; padding:0; border:none; background:none;">
+                            <span id="uiPrimaryColorValue" style="color:#666;">#3b82f6</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>頁尾文字 (Footer)</label>
+                        <input id="uiFooterText" type="text" placeholder="© 2024 Your Studio">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3>聯絡資訊</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>WhatsApp</label><input id="contactWhatsapp" type="text"></div>
+                    <div class="input-group"><label>電話</label><input id="contactPhone" type="text"></div>
+                    <div class="input-group"><label>Email</label><input id="contactEmail" type="email"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>付款方式</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>銀行轉帳啟用</label><select id="paymentBankEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>PayMe 啟用</label><select id="paymentPaymeEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>銀行名稱</label><input id="paymentBankName" type="text"></div>
+                    <div class="input-group"><label>銀行戶口號碼</label><input id="paymentBankAccount" type="text"></div>
+                    <div class="input-group"><label>戶口名稱</label><input id="paymentBankAccountName" type="text"></div>
+                    <div class="input-group"><label>PayMe 顯示名稱</label><input id="paymentPaymeDisplayName" type="text">
+                    </div>
+                    <div class="input-group"><label>PayMe 電話</label><input id="paymentPaymePhone" type="text"></div>
+                    <div class="input-group"><label>FPS 啟用</label><select id="paymentFpsEnabled">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>FPS 號碼</label><input id="paymentFpsNumber" type="text"></div>
+                    <div class="input-group"><label>FPS 顯示名稱</label><input id="paymentFpsDisplayName" type="text"
+                            placeholder="例如 FPS 轉數快"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>預約規則</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>最少提前天數</label><input id="bookingMinAdvance" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>最多提前天數</label><input id="bookingMaxAdvance" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>時段間隔 (分鐘)</label><input id="bookingSlotInterval" type="number"
+                            min="5" step="5"></div>
+                    <div class="input-group"><label>自動確認預約</label><select id="bookingAutoConfirm">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select></div>
+                    <div class="input-group"><label>需要付款證明</label><select id="bookingRequirePaymentProof">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>價格設定</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>一般時段 (≤10人)</label><input id="normalUpTo10" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>一般時段 (11-18人)</label><input id="normalUpTo18" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段 (≤10人)</label><input id="peakUpTo10" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段 (11-18人)</label><input id="peakUpTo18" type="number" min="0">
+                    </div>
+                    <div class="input-group"><label>高峰時段適用星期 (以逗號分隔，例如 fri,sat,sun)</label><input id="peakDays"
+                            type="text"></div>
+                    <div class="input-group"><label>高峰開始時間</label><input id="peakStart" type="time"></div>
+                    <div class="input-group"><label>高峰結束時間</label><input id="peakEnd" type="time"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>行銷與顯示設定 (Marketing)</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>啟用熱門時段標籤</label><select id="marketingEnableHotTags">
+                            <option value="true">啟用</option>
+                            <option value="false">停用</option>
+                        </select></div>
+                    <div class="input-group"><label>標籤文字</label><input id="marketingHotTagText" type="text"
+                            placeholder="🔥 熱門"></div>
+                    <div class="input-group"><label>熱門時段開始</label><input id="marketingHotStartTime" type="time"></div>
+                    <div class="input-group"><label>熱門時段結束</label><input id="marketingHotEndTime" type="time"></div>
+                </div>
+            </div>
+            <div id="userManagementSection" class="section-card" style="display:none;">
+                <h3>使用者管理</h3>
+                <div id="userMessage" class="message"></div>
+                <form id="userForm" class="form-grid two-columns">
+                    <div class="input-group">
+                        <label>使用者名稱</label>
+                        <input id="newUsername" type="text" autocomplete="off" placeholder="例如：receptionist1">
+                    </div>
+                    <div class="input-group">
+                        <label>密碼</label>
+                        <input id="newUserPassword" type="password" autocomplete="new-password" placeholder="請設定密碼">
+                    </div>
+                    <div class="input-group">
+                        <label>角色</label>
+                        <select id="newUserRole">
+                            <option value="receptionist">接待員 (Receptionist)</option>
+                            <option value="super_admin">超級管理員 (Super Admin)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="display:flex;align-items:flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="createNewUser()">建立使用者</button>
+                    </div>
+                </form>
+            </div>
+            <div style="margin:18px 0 24px;">
+                <button class="btn btn-primary" type="button" onclick="saveSettings()">儲存設定</button>
+            </div>
+        </div>
+
+
+
+        <!-- Notes Modal -->
+        <div id="notesModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:24px;">
+            <div class="modal-content" style="background:#fff; padding:32px; border-radius:16px; width:90%; max-width:480px; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+                <span class="close-modal" onclick="closeNotesModal()">&times;</span>
+                <h3 style="margin-bottom:18px;color:#0b4f6c;">編輯備註</h3>
+                <input type="hidden" id="noteBookingId">
+                <div class="input-group">
+                    <textarea id="noteText" rows="5" placeholder="輸入備註..."></textarea>
+                </div>
+                <div style="margin-top:18px;text-align:right;">
+                    <button class="btn btn-secondary" onclick="closeNotesModal()">取消</button>
+                    <button class="btn btn-primary" onclick="saveNote()">儲存</button>
+                </div>
+            </div>
+        </div>
+        <div id="instructionsTab" class="tab-content">
+            <div id="instructionsMessage" class="message"></div>
+            <div class="section-card">
+                <h3>預約須知內容</h3>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>標題 (中文)</label><input id="titleZh" type="text"></div>
+                    <div class="input-group"><label>標題 (英文)</label><input id="titleEn" type="text"></div>
+                </div>
+                <div class="form-grid two-columns" style="margin-top:18px;">
+                    <div class="input-group"><label>步驟 1 (中文)</label><textarea id="instruction1Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 1 (英文)</label><textarea id="instruction1En"></textarea></div>
+                    <div class="input-group"><label>步驟 2 (中文)</label><textarea id="instruction2Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 2 (英文)</label><textarea id="instruction2En"></textarea></div>
+                    <div class="input-group"><label>步驟 3 (中文)</label><textarea id="instruction3Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 3 (英文)</label><textarea id="instruction3En"></textarea></div>
+                    <div class="input-group"><label>步驟 4 (中文)</label><textarea id="instruction4Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 4 (英文)</label><textarea id="instruction4En"></textarea></div>
+                    <div class="input-group"><label>步驟 5 (中文)</label><textarea id="instruction5Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 5 (英文)</label><textarea id="instruction5En"></textarea></div>
+                    <div class="input-group"><label>步驟 6 (中文)</label><textarea id="instruction6Zh"></textarea></div>
+                    <div class="input-group"><label>步驟 6 (英文)</label><textarea id="instruction6En"></textarea></div>
+                </div>
+                <div style="margin-top:18px;"><button class="btn btn-primary" onclick="saveInstructions()">儲存須知</button>
+                </div>
+            </div>
+        </div>
+        <div id="itemsTab" class="tab-content">
+            <div class="section-card">
+                <h3>課程排程</h3>
+                <div id="classesMessage" class="message"></div>
+                <form id="classForm">
+                    <input type="hidden" id="classId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>課程名稱</label><input id="className" type="text" required></div>
+                        <div class="input-group"><label>導師</label><input id="classInstructor" type="text"></div>
+                        <div class="input-group"><label>地點</label><input id="classLocation" type="text"></div>
+                        <div class="input-group"><label>開始時間</label><input id="classStart" type="datetime-local"
+                                required></div>
+                        <div class="input-group"><label>結束時間</label><input id="classEnd" type="datetime-local" required>
+                        </div>
+                        <div class="input-group"><label>價格 (每人)</label><input id="classPrice" type="number" min="0"
+                                step="1" required></div>
+                        <div class="input-group"><label>兩人同行優惠價 (選填)</label><input id="classSpecialPriceForTwo"
+                                type="number" min="0" step="1" placeholder="填寫兩人合計價"></div>
+                        <div class="input-group"><label>人數上限</label><input id="classCapacity" type="number" min="1"
+                                required></div>
+                        <div class="input-group"><label>是否為體驗限定</label><select id="classIsTrialOnly">
+                                <option value="false">否</option>
+                                <option value="true">是</option>
+                            </select></div>
+                        <div class="input-group"><label>標籤 (逗號分隔)</label><input id="classTags" type="text"
+                                placeholder="例如 beginner,evening"></div>
+                    </div>
+                    <div class="form-grid" style="margin-top:18px;">
+                        <div class="input-group"><label>課程介紹</label><textarea id="classDescription"></textarea></div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存課程</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetClassForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有課程</h4>
+                <div id="classesList" class="item-list"></div>
+            </div>
+            <div class="section-card">
+                <h3>課程方案 / 體驗方案</h3>
+                <div id="classProductsMessage" class="message"></div>
+                <form id="classProductForm">
+                    <input type="hidden" id="classProductId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>類型</label><select id="classProductType">
+                                <option value="package">課程方案</option>
+                                <option value="trial">體驗方案</option>
+                            </select></div>
+                        <div class="input-group"><label>名稱</label><input id="classProductName" type="text" required>
+                        </div>
+                        <div class="input-group"><label>價格</label><input id="classProductPrice" type="number" min="0"
+                                step="1" required></div>
+                        <div class="input-group"><label>堂數</label><input id="classProductCount" type="number" min="1"
+                                required></div>
+                        <div class="input-group"><label>有效期 (天)</label><input id="classProductValidity" type="number"
+                                min="1"></div>
+                    </div>
+                    <div class="form-grid" style="margin-top:18px;">
+                        <div class="input-group"><label>方案介紹</label><textarea id="classProductDescription"></textarea>
+                        </div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存方案</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetClassProductForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有方案</h4>
+                <div id="classProductsList" class="item-list">
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>場地租用項目</h3>
+                <div id="rentalItemsMessage" class="message"></div>
+                <form id="rentalItemForm">
+                    <input type="hidden" id="rentalItemId">
+                    <div class="form-grid two-columns">
+                        <div class="input-group"><label>名稱 *</label><input id="rentalItemName" type="text" required></div>
+                        <div class="input-group"><label>開始供應日期 (選填)</label><input id="rentalItemStart" type="datetime-local"></div>
+                        <div class="input-group"><label>結束供應日期 (選填)</label><input id="rentalItemEnd" type="datetime-local"></div>
+                        <div class="input-group"><label>預設時長 (分鐘, 選填)</label><input id="rentalItemDuration" type="number" min="1"></div>
+                        <div class="input-group"><label>每小時價錢 (選填)</label><input id="rentalItemPrice" type="number" min="0" step="1"></div>
+                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
+                        </div>
+                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
+                                required></div>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <button type="submit" class="btn btn-primary">儲存場地項目</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
+                    </div>
+                </form>
+                <h4 style="margin-top:24px;color:#145da0;">現有場地項目</h4>
+                <div id="rentalItemsList" class="item-list">
+            </div>
+        </div>
+    </div>
+    </div>
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            // Note: Alerts are annoying but effective for "blank page" debugging
+            // console.error(msg, url, line);
+            // alert('Error: ' + msg + ' at ' + line);
+        };
+        // const API_BASE_URL = 'https://booking-ub69.onrender.com/api';
+        const API_BASE_URL = '/api'; // Relative path for local/prod compatibility
+
+        const DEV_AUTH_DISABLED = true; // Toggle to true to disable admin authentication (development only)
+        function isAuthDisabled() { return DEV_AUTH_DISABLED; }
+
+
+
+        let refreshIntervalId = null;
+        let currentSettings = {};
+        let currentRentalItems = [];
+        let currentClasses = [];
+        let currentClassProducts = [];
+
+        async function checkApiHealth() {
+            const statusEl = document.getElementById('apiStatusMessage');
+            if (!statusEl) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                statusEl.className = 'message success';
+                statusEl.textContent = '已連線至後端 API。';
+                statusEl.style.display = 'block';
+                console.log('Connected to backend API');
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 4000);
+            } catch (error) {
+                console.error('API health check failed:', error);
+                statusEl.className = 'message error';
+                statusEl.textContent = '後端 API 無法連線，請檢查 API_BASE_URL 設定或 Render 服務是否正常。';
+                statusEl.style.display = 'block';
+            }
+        }
+
+        const HTML_ESCAPES = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return value.toString().replace(/[&<>"']/g, (match) => HTML_ESCAPES[match] || match);
+        }
+
+        function makeGCalUrl({ title, startISO, endISO, details, location }) {
+            function toGCalDate(iso) {
+                return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+            }
+            const params = new URLSearchParams({
+                action: 'TEMPLATE',
+                text: title,
+                dates: `${toGCalDate(startISO)}/${toGCalDate(endISO)}`,
+                details: details || '',
+                location: location || ''
+            });
+            return `https://calendar.google.com/calendar/render?${params.toString()}`;
+        }
+
+        function formatDateOnly(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+                return '';
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function setOverviewDateToToday() {
+            const input = document.getElementById('overviewDate');
+            if (!input || input.value) return;
+            input.value = formatDateOnly(new Date());
+        }
+
+        function formatOverviewDateTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) return '';
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${hh}:${mm}`;
+        }
+
+        function formatOverviewTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            if (Number.isNaN(date.getTime())) return '';
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+
+        async function loadBookingOverview(date) {
+            const targetDate = date || document.getElementById('overviewDate')?.value;
+            if (!targetDate) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/bookings/overview?date=${targetDate}`);
+                if (response.status === 401) return logout();
+                const result = await response.json();
+                if (response.ok) {
+                    renderBookingOverview(result);
+                } else {
+                    showOverviewMessage('error', result.error || '無法載入概覽。');
+                }
+            } catch (error) {
+                console.error('Error loading booking overview:', error);
+                showOverviewMessage('error', '無法載入概覽，請稍後再試。');
+            }
+        }
+
+        function renderBookingOverview(data) {
+            const studioList = document.getElementById('overviewStudioList');
+            const classList = document.getElementById('overviewClassList');
+            const messageEl = document.getElementById('overviewMessage');
+            if (messageEl) { messageEl.style.display = 'none'; }
+            if (!studioList || !classList) return;
+            studioList.innerHTML = '';
+            classList.innerHTML = '';
+
+            const studioSessions = Array.isArray(data.studioSessions) ? data.studioSessions : [];
+            if (studioSessions.length === 0) {
+                studioList.innerHTML = '<div class="overview-empty">當日暫無場地預約。</div>';
+            } else {
+                studioSessions.forEach(session => {
+                    const card = document.createElement('div');
+                    card.className = 'overview-card';
+                    const timeLabel = `${session.startTime || ''} - ${session.endTime || ''}`.trim();
+                    const notesRow = session.notes ? `<div>備註：${escapeHtml(session.notes)}</div>` : '';
+                    card.innerHTML = `
+                        <h4>${escapeHtml(timeLabel)}</h4>
+                        <div class="overview-meta">
+                            <div>預約編號：${escapeHtml(session.bookingId)}</div>
+                            <div>${escapeHtml(session.customerName || '—')}｜${escapeHtml(String(session.peopleCount || 0))} 人</div>
+                            <div>狀態：${escapeHtml(session.status || '')}</div>
+                            <div>${escapeHtml(session.email || '')}<br>${escapeHtml(session.phone || '')}</div>
+                            ${notesRow}
+                        </div>
+                    `;
+                    studioList.appendChild(card);
+                });
+            }
+
+            const classSessions = Array.isArray(data.classSessions) ? data.classSessions : [];
+            if (classSessions.length === 0) {
+                classList.innerHTML = '<div class="overview-empty">當日暫無課程預約。</div>';
+            } else {
+                classSessions.forEach(cls => {
+                    const card = document.createElement('div');
+                    card.className = 'overview-card';
+                    const startLabel = formatOverviewDateTime(cls.startDateTime);
+                    const endLabel = formatOverviewTime(cls.endDateTime);
+                    const scheduleLabel = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+                    const descriptionRow = cls.description ? `<div style="margin-top:6px;">${escapeHtml(cls.description)}</div>` : '';
+                    const attendees = Array.isArray(cls.attendees) ? cls.attendees : [];
+                    const attendeesRows = attendees.map(att => {
+                        return `<div>• ${escapeHtml(att.customerName || '—')}｜${escapeHtml(String(att.peopleCount || 0))} 人｜${escapeHtml(att.status || '')}</div>`;
+                    }).join('');
+                    const attendeesHtml = attendees.length === 0
+                        ? '<div class="overview-empty" style="margin-top:10px;">尚未有參加者。</div>'
+                        : `<div class="overview-attendees">${attendeesRows}</div>`;
+                    card.innerHTML = `
+                        <h4>${escapeHtml(cls.name)}</h4>
+                        <div class="overview-meta">
+                            <div>${escapeHtml(scheduleLabel)}</div>
+                            ${cls.instructorName ? `<div>導師：${escapeHtml(cls.instructorName)}</div>` : ''}
+                        </div>
+                        <div class="overview-meta" style="margin-top:6px;">
+                            <div>報名：${escapeHtml(String(cls.totalParticipants || 0))} / ${escapeHtml(String(cls.capacity || 0))}（剩餘 ${escapeHtml(String(cls.seatsRemaining || 0))}）</div>
+                            ${descriptionRow}
+                        </div>
+                        ${attendeesHtml}
+                    `;
+                    classList.appendChild(card);
+                });
+            }
+        }
+
+        function refreshOverview() {
+            const date = document.getElementById('overviewDate')?.value;
+            loadBookingOverview(date);
+        }
+
+        function showOverviewMessage(type, message) {
+            showMessage('overviewMessage', type, message);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkApiHealth();
+            if (typeof checkAuthentication === 'function') {
+                checkAuthentication();
+            }
+
+            // Event Listeners for Tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', handleTabClick));
+
+            // Event Listeners for Forms
+            const classForm = document.getElementById('classForm');
+            if (classForm) classForm.addEventListener('submit', submitClassForm);
+
+            const classProductForm = document.getElementById('classProductForm');
+            if (classProductForm) classProductForm.addEventListener('submit', submitClassProductForm);
+
+            const rentalItemForm = document.getElementById('rentalItemForm');
+            if (rentalItemForm) rentalItemForm.addEventListener('submit', submitRentalItemForm);
+
+            const passwordForm = document.getElementById('passwordForm');
+            if (passwordForm) passwordForm.addEventListener('submit', handlePasswordChange);
+
+            // User Management Form (New)
+            // Note: createNewUser is called via onclick in the HTML, so no listener needed here, 
+            // but if we change to onsubmit in future, add it here.
+
+            // Date Input Listeners
+            const overviewDateInput = document.getElementById('overviewDate');
+            if (overviewDateInput) {
+                overviewDateInput.addEventListener('change', () => loadBookingOverview(overviewDateInput.value));
+            }
+
+            // Initial Auth Check is triggered by script end, or we can trigger here if preferred.
+            // checkAuthentication() is already called at the end of the script.
+        });
+
+        // Removed legacy auth functions (performAdminLogin, showAdminPanel, old logout, old authHeaders)
+
+        // 401 Interceptor wrapper
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('adminToken');
+            if (!token && !url.includes('/login')) {
+                throw new Error('No token found');
+            }
+
+            const headers = { ...options.headers };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(url, { ...options, headers });
+
+            if (response.status === 401) {
+                // Token Expired or Invalid
+                logout();
+                throw new Error('Session expired');
+            }
+
+            return response;
+        }
+
+        async function loadStats() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/stats`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load stats:', response.status, errorPayload);
+                    showMessage('bookingsMessage', 'error', errorPayload.error || '無法載入統計資料，請稍後再試。');
+                    return;
+                }
+                const stats = await response.json();
+                document.getElementById('stat-total').querySelector('p').textContent = stats.total;
+                document.getElementById('stat-confirmed').querySelector('p').textContent = stats.confirmed;
+                document.getElementById('stat-pending').querySelector('p').textContent = stats.pending;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                showMessage('bookingsMessage', 'error', '無法載入統計資料，請稍後再試。');
+            }
+        }
+
+        async function loadBookings() {
+            await Promise.all([loadRentalBookings(), loadClassBookings()]);
+        }
+
+        async function loadRentalBookings() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/bookings`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load bookings:', response.status, errorPayload);
+                    showMessage('bookingsMessage', 'error', errorPayload.error || '無法載入預約資料，請稍後再試。');
+                    return;
+                }
+                const bookings = await response.json();
+                renderRentalBookings(bookings);
+                hideMessage('bookingsMessage');
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                showMessage('bookingsMessage', 'error', '無法載入預約資料，請稍後再試。');
+            }
+        }
+
+        function renderRentalBookings(bookings) {
+            const statusMap = {
+                pending: '待處理',
+                confirmed: '已確認',
+                cancelled: '已取消'
+            };
+            const tbody = document.getElementById('bookingsTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!bookings || bookings.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 7;
+                cell.style.textAlign = 'center';
+                cell.textContent = '暫無預約資料';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                return;
+            }
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                const itemsHtml = (booking.items || []).map(item => {
+                    const peopleCount = Number.isFinite(Number(item.peopleCount)) && Number(item.peopleCount) > 0
+                        ? Number(item.peopleCount)
+                        : 1;
+                    const label = item.itemType === 'workshop_class' ? '課程' : '場地';
+                    return `<div><strong>${label}:</strong> ${item.date} ${item.startTime}–${item.endTime} (${peopleCount}人)</div>`;
+                }).join('');
+                const totalPeopleValue = Number.isFinite(Number(booking.totalPeople)) && Number(booking.totalPeople) > 0
+                    ? Number(booking.totalPeople)
+                    : 1;
+                const statusBadge = `<span class="status-chip status-${booking.status}">${statusMap[booking.status] || booking.status}</span>`;
+                const notes = booking.adminNotes ? `<div style="font-size:0.85em;color:#666;margin-top:4px;">📝 ${escapeHtml(booking.adminNotes)}</div>` : '';
+                const firstItem = (booking.items || [])[0];
+                const rentalGCalUrl = firstItem ? makeGCalUrl({
+                    title: `場地預約 - ${booking.customerName}`,
+                    startISO: `${firstItem.date}T${firstItem.startTime}:00+08:00`,
+                    endISO: `${firstItem.date}T${firstItem.endTime}:00+08:00`,
+                    details: `客戶: ${booking.customerName}\n人數: ${totalPeopleValue}`,
+                    location: ''
+                }) : null;
+
+                row.innerHTML = `
+                    <td>${escapeHtml(booking.id.slice(0, 8))}...</td>
+                    <td>${formatDateTime(new Date(booking.createdAt))}</td>
+                    <td>
+                        <div>${escapeHtml(booking.customerName)}</div>
+                        <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.phone)}</div>
+                    </td>
+                    <td>
+                        ${itemsHtml || '—'}
+                        ${notes}
+                    </td>
+                    <td>HK$${Number(booking.totalPrice || 0).toFixed(2)}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <div class="action-row">
+                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'confirmed')">確認</button>
+                                <button class="btn btn-sm btn-secondary" onclick="updateBookingStatus('${booking.id}', 'pending')">待處理</button>
+                                <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('${booking.id}', 'cancelled')">取消</button>
+                            </div>
+                            <div class="action-row">
+                                ${rentalGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${rentalGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'rental', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteRentalBooking('${booking.id}')">刪除</button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function loadClassBookings() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load class bookings:', response.status, errorPayload);
+                    showMessage('classBookingsMessage', 'error', errorPayload.error || '無法載入課程預約資料，請稍後再試。');
+                    return;
+                }
+                const bookings = await response.json();
+                renderClassBookings(bookings);
+                hideMessage('classBookingsMessage');
+            } catch (error) {
+                console.error('Error loading class bookings:', error);
+                showMessage('classBookingsMessage', 'error', '無法載入課程預約資料，請稍後再試。');
+            }
+        }
+
+        function renderClassBookings(bookings) {
+            const tbody = document.getElementById('classBookingsTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!bookings || bookings.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 6;
+                cell.style.textAlign = 'center';
+                cell.textContent = '暫無課程預約';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                return;
+            }
+            const statusMap = {
+                'pending': '待處理',
+                'confirmed': '已確認',
+                'cancelled': '已取消'
+            };
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                const startLabel = booking.classStartTime ? formatOverviewDateTime(booking.classStartTime) : '';
+                const endLabel = booking.classEndTime ? formatOverviewTime(booking.classEndTime) : '';
+                const scheduleDisplay = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+                const locationHtml = booking.classLocation ? `<br><small>${escapeHtml(booking.classLocation)}</small>` : '';
+                const statusBadge = `<span class="status-chip status-${booking.status}">${statusMap[booking.status] || booking.status}</span>`;
+                const notes = booking.adminNotes ? `<div style="font-size:0.85em;color:#666;margin-top:4px;">📝 ${escapeHtml(booking.adminNotes)}</div>` : '';
+                const classGCalUrl = (booking.classStartTime && booking.classEndTime) ? makeGCalUrl({
+                    title: `課程 - ${booking.customerName}`,
+                    startISO: booking.classStartTime,
+                    endISO: booking.classEndTime,
+                    details: `學員: ${booking.customerName}\n人數: ${booking.peopleCount || 1}`,
+                    location: booking.classLocation || ''
+                }) : null;
+
+                row.innerHTML = `
+                    <td>${escapeHtml(String(booking.id))}</td>
+                    <td>
+                        <div>${scheduleDisplay}</div>
+                        ${locationHtml}
+                    </td>
+                    <td>
+                        <div>${escapeHtml(booking.customerName)}</div>
+                        <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.email)}</div>
+                        <div style="font-size:0.9em;color:#666;">${escapeHtml(booking.phone)}</div>
+                    </td>
+                    <td>${escapeHtml(String(booking.peopleCount || 0))}</td>
+                    <td>
+                         ${statusBadge}
+                         ${notes}
+                    </td>
+                    <td>
+                         <div class="action-buttons">
+                            <div class="action-row">
+                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'confirmed')">確認</button>
+                                <button class="btn btn-sm btn-secondary" onclick="updateClassBookingStatus('${booking.id}', 'pending')">待處理</button>
+                                <button class="btn btn-sm btn-danger" onclick="updateClassBookingStatus('${booking.id}', 'cancelled')">取消</button>
+                            </div>
+                            <div class="action-row">
+                                ${classGCalUrl ? `<a class="btn btn-sm btn-secondary" href="${classGCalUrl}" target="_blank" rel="noopener">📅 GCal</a>` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="editAdminNote('${booking.id}', 'class', '${booking.status}', '${escapeHtml(booking.adminNotes || '').replace(/'/g, "\\'")}')">備註</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteClassBooking('${booking.id}')">刪除</button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function updateBookingStatus(id, status) {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/bookings/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+                const result = await response.json();
+                if (response.ok) {
+                    showMessage('bookingsMessage', 'success', result.message || '更新成功');
+                    loadRentalBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                    loadStats();
+                    if (calendar) calendar.refetchEvents();
+                } else {
+                    showMessage('bookingsMessage', 'error', result.error || '更新失敗');
+                }
+            } catch (error) {
+                console.error('Error updating booking status:', error);
+                showMessage('bookingsMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function deleteRentalBooking(id) {
+            if (!confirm('確定要刪除此預約記錄嗎？此動作無法復原。')) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/bookings/${id}`, { method: 'DELETE' });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('bookingsMessage', 'success', result.message || '預約記錄已刪除');
+                    loadRentalBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                    loadStats();
+                    if (calendar) calendar.refetchEvents();
+                } else {
+                    showMessage('bookingsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                showMessage('bookingsMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        async function updateClassBookingStatus(id, status) {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings/${id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('classBookingsMessage', 'success', result.message || '更新成功');
+                    loadClassBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    showMessage('classBookingsMessage', 'error', result.error || '更新失敗');
+                }
+            } catch (error) {
+                console.error('Error updating class booking status:', error);
+                showMessage('classBookingsMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function deleteClassBooking(id) {
+            if (!confirm('確定要刪除此課程預約？')) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-bookings/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showMessage('classBookingsMessage', 'success', '課程預約已刪除');
+                    loadClassBookings();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classBookingsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class booking:', error);
+                showMessage('classBookingsMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+
+            errorEl.style.display = 'none';
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '連線中，請稍候…'; }
+
+            // Retry up to 2 times (handles Render free-tier cold start ~50s)
+            let lastError;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    if (attempt === 2) {
+                        errorEl.textContent = '伺服器正在啟動中，再試一次…（免費伺服器需約 50 秒熱身）';
+                        errorEl.style.display = 'block';
+                    }
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+                    const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        localStorage.setItem('adminToken', result.token);
+                        localStorage.setItem('adminRole', result.role || 'super_admin');
+                        localStorage.setItem('adminUsername', result.username || username);
+
+                        const loginModal = document.getElementById('loginModal');
+                        if (loginModal) {
+                            loginModal.classList.remove('active');
+                            loginModal.style.display = 'none';
+                        }
+
+                        document.getElementById('adminContainer').style.display = 'block';
+
+                        if (typeof loadDashboardData === 'function') {
+                            loadDashboardData();
+                        }
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
+                        return;
+                    } else {
+                        errorEl.textContent = result.error || '登入失敗';
+                        errorEl.style.display = 'block';
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
+                        return;
+                    }
+                } catch (error) {
+                    lastError = error;
+                    if (attempt < 2) await new Promise(r => setTimeout(r, 3000)); // wait 3s before retry
+                }
+            }
+            console.error('Login error:', lastError);
+            errorEl.textContent = '連線失敗。伺服器可能正在啟動，請等 30 秒後再試。';
+            errorEl.style.display = 'block';
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '登入'; }
+        }
+
+        function showLoginModal() {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.style.display = '';   // clear any inline style
+                loginModal.classList.add('active');
+            }
+            const adminContainer = document.getElementById('adminContainer');
+            if (adminContainer) adminContainer.style.display = 'none';
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRole');
+            localStorage.removeItem('adminUsername');
+            document.getElementById('adminContainer').style.display = 'none';
+            showLoginModal();
+        }
+
+        function updateAdminUI() {
+            const role = localStorage.getItem('adminRole'); // 'super_admin' or 'receptionist'
+            const username = localStorage.getItem('adminUsername');
+
+            const adminIdentity = document.getElementById('adminIdentity');
+            if (adminIdentity) {
+                adminIdentity.textContent = `User: ${username} (${role})`;
+                adminIdentity.style.display = 'block';
+            }
+
+            // Hide Settings Tab for non-super_admin
+            const settingsBtn = document.querySelector('button[data-tab="settingsTab"]');
+            if (settingsBtn) {
+                settingsBtn.style.display = role === 'super_admin' ? 'inline-block' : 'none';
+            }
+
+            // Hide Revenue/Total Stats for non-super_admin (Allow Pending count only?)
+            // Requirement: "Restrict 'Settings', 'Financial Stats' ... to super_admin"
+            // Let's hide the total and confirmed revenue cards if not super_admin?
+            // Or just hide the stats API call? The API is protected now.
+            // If API fails (403), stats won't load. Ideally hide the UI too.
+            if (role !== 'super_admin') {
+                const statTotal = document.getElementById('stat-total');
+                const statConfirmed = document.getElementById('stat-confirmed');
+                if (statTotal) statTotal.style.visibility = 'hidden';
+                if (statConfirmed) statConfirmed.style.visibility = 'hidden';
+                // Keep 'stat-pending' visible as receptionist needs to see pending tasks?
+            } else {
+                const statTotal = document.getElementById('stat-total');
+                const statConfirmed = document.getElementById('stat-confirmed');
+                if (statTotal) statTotal.style.visibility = 'visible';
+                if (statConfirmed) statConfirmed.style.visibility = 'visible';
+            }
+
+            // Delete buttons dynamic hiding is harder in table render, 
+            // but we can add a global style or class to body?
+            if (role === 'super_admin') {
+                document.body.classList.add('role-super-admin');
+                document.body.classList.remove('role-receptionist');
+            } else {
+                document.body.classList.add('role-receptionist');
+                document.body.classList.remove('role-super-admin');
+            }
+        }
+        function applyRolePermissions() {
+            const role = localStorage.getItem('adminRole');
+            const username = localStorage.getItem('adminUsername');
+
+            const identityEl = document.getElementById('adminIdentity');
+            if (identityEl) {
+                identityEl.textContent = `已登入: ${username} (${role === 'super_admin' ? '超級管理員' : '接待員'})`;
+                identityEl.style.display = 'block';
+            }
+
+            // Elements to hide/show based on role
+            const settingsTabBtn = document.querySelector('button[data-tab="settingsTab"]');
+            const totalRevenueCard = document.getElementById('stat-total-revenue'); // Need to ID this if exists, or just hide specific stats
+            const userManagementSection = document.getElementById('userManagementSection');
+
+            // Receptionist Restrictions
+            if (role === 'receptionist') {
+                if (settingsTabBtn) settingsTabBtn.style.display = 'none';
+                if (userManagementSection) userManagementSection.style.display = 'none';
+
+                // Hide Create/Edit/Delete actions in Lists (CSS or DOM removal)
+                document.body.classList.add('role-receptionist');
+                // We'll handle this by checking role in render functions or adding CSS
+                const style = document.createElement('style');
+                style.id = 'rbac-style';
+                style.innerHTML = `
+                    .role-receptionist .btn-danger, 
+                    .role-receptionist button[onclick*="delete"],
+                    .role-receptionist button[onclick*="edit"],
+                    .role-receptionist button[type="submit"], 
+                    .role-receptionist #classForm button,
+                    .role-receptionist #rentalItemForm button,
+                    .role-receptionist #classProductForm button { display: none !important; }
+                    
+                    /* Exception: Allow updating status? User said "Allow receptionist to access Bookings (GET, PATCH status)" */
+                    /* So we should NOT hide booking status buttons. But Classes/Items are "View Only" */
+                    
+                    .role-receptionist #itemsTab .btn { display: none !important; }
+                    .role-receptionist #itemsTab form { pointer-events: none; opacity: 0.6; }
+                `;
+                if (!document.getElementById('rbac-style')) document.head.appendChild(style);
+
+            } else {
+                // Super Admin
+                if (settingsTabBtn) settingsTabBtn.style.display = 'block';
+                if (userManagementSection) userManagementSection.style.display = 'block';
+                document.body.classList.remove('role-receptionist');
+                const style = document.getElementById('rbac-style');
+                if (style) style.remove();
+            }
+        }
+
+        async function createNewUser() {
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            const msgEl = document.getElementById('userMessage');
+
+            if (!username || !password) {
+                msgEl.className = 'message error';
+                msgEl.textContent = '請填寫使用者名稱與密碼';
+                msgEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    msgEl.className = 'message success';
+                    msgEl.textContent = `使用者 ${username} 建立成功`;
+                    msgEl.style.display = 'block';
+                    document.getElementById('userForm').reset();
+                    setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+                } else {
+                    msgEl.className = 'message error';
+                    msgEl.textContent = result.error || '建立失敗';
+                    msgEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Create user error:', error);
+                msgEl.className = 'message error';
+                msgEl.textContent = '建立失敗';
+                msgEl.style.display = 'block';
+            }
+        }
+
+        // Use relative path for Render compatibility
+        // const API_BASE_URL = '/api'; // Already defined at top of script
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Admin Panel Initializing...');
+
+            // 1. Immediately show Loading or default state if needed
+            // But crucially, run auth check immediately
+            checkAuthentication();
+
+            // 2. Check API Health in the background (Non-blocking)
+            checkApiHealth();
+        });
+
+        async function checkApiHealth() {
+            const statusEl = document.getElementById('apiStatusMessage');
+            if (!statusEl) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/health`);
+                if (res.ok) {
+                    statusEl.textContent = 'System Online';
+                    statusEl.className = 'message success';
+                    statusEl.style.display = 'block';
+                    setTimeout(() => statusEl.style.display = 'none', 3000);
+                }
+            } catch (e) {
+                console.error('API Check Failed:', e);
+                // Don't block the UI, just show a warning
+                statusEl.textContent = '⚠️ API 連線失敗 (Offline)';
+                statusEl.className = 'message error';
+                statusEl.style.display = 'block';
+            }
+        }
+
+        function checkAuthentication() {
+            const token = localStorage.getItem('adminToken');
+            const loginModal = document.getElementById('loginModal');
+            const adminContainer = document.getElementById('adminContainer');
+
+            // 1. Check for Token
+            if (!token) {
+                console.log('No token found. Showing login.');
+                if (loginModal) loginModal.classList.add('active');
+                if (adminContainer) adminContainer.style.display = 'none';
+                return; // STOP execution
+            }
+
+            // 2. Token exists -> Show Dashboard
+            if (loginModal) {
+                loginModal.classList.remove('active');
+                loginModal.style.display = 'none';
+            }
+            if (adminContainer) {
+                adminContainer.style.display = 'block';
+
+                // 3. Load Data ONLY now
+                if (typeof loadDashboardData === 'function') {
+                    loadDashboardData();
+                }
+            }
+        }
+
+        function loadDashboardData() {
+            applyRolePermissions();
+            setOverviewDateToToday();
+
+            // Load initial data
+            loadStats();
+            loadRentalBookings();
+            loadBookingOverview(document.getElementById('overviewDate')?.value);
+
+            // Only load settings if allowed
+            if (localStorage.getItem('adminRole') === 'super_admin') {
+                loadSettings();
+            }
+
+            // Load other data
+            loadClasses();
+            loadClassProducts();
+            loadRentalItems();
+            loadClassBookings();
+
+            if (refreshIntervalId) clearInterval(refreshIntervalId);
+            refreshIntervalId = setInterval(() => {
+                loadStats();
+                loadRentalBookings();
+                loadClassBookings();
+                loadBookingOverview(document.getElementById('overviewDate')?.value);
+            }, 30000);
+
+            if (typeof calendar !== 'undefined' && calendar) calendar.refetchEvents();
+        }
+
+        async function handlePasswordChange(event) {
+            event.preventDefault();
+            if (isAuthDisabled()) {
+                showMessage('passwordMessage', 'success', '開發模式：目前已停用管理密碼驗證。');
+                event.target.reset();
+                return;
+            }
+            const current = document.getElementById('currentAdminPassword').value;
+            const nextPassword = document.getElementById('newAdminPassword').value;
+            const confirmPassword = document.getElementById('confirmAdminPassword').value;
+
+            if (!current || !nextPassword || !confirmPassword) {
+                showMessage('passwordMessage', 'error', '請填寫所有欄位');
+                return;
+            }
+
+            if (nextPassword !== confirmPassword) {
+                showMessage('passwordMessage', 'error', '新密碼與確認密碼不一致');
+                return;
+            }
+
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword: current, newPassword: nextPassword })
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (response.status === 401) {
+                    showMessage('passwordMessage', 'error', result.error || '驗證失敗，請重新登入');
+                    setTimeout(() => logout(), 1500);
+                    return;
+                }
+
+                if (response.ok && result.success) {
+                    showMessage('passwordMessage', 'success', '密碼已更新，請重新登入');
+                    event.target.reset();
+                    setTimeout(() => {
+                        logout();
+                    }, 1500);
+                } else {
+                    showMessage('passwordMessage', 'error', result.error || '更新失敗，請稍後再試');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showMessage('passwordMessage', 'error', '更新失敗，請稍後再試');
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
+                if (!response.ok) throw new Error('Failed to load settings');
+
+                const settings = await response.json();
+                currentSettings = settings;
+
+                // Basic Info
+                document.getElementById('businessName').value = settings.businessName || '';
+                document.getElementById('businessNameZh').value = settings.businessNameZh || '';
+                document.getElementById('businessDescription').value = settings.businessDescription || '';
+                document.getElementById('businessDescriptionZh').value = settings.businessDescriptionZh || '';
+
+                if (settings.operatingHours) {
+                    document.getElementById('startTime').value = settings.operatingHours.startTime || '';
+                    document.getElementById('endTime').value = settings.operatingHours.endTime || '';
+                    document.getElementById('daysLabelZh').value = settings.operatingHours.daysLabelZh || '';
+                    document.getElementById('daysLabelEn').value = settings.operatingHours.daysLabelEn || '';
+                }
+
+                // Contact
+                if (settings.contactInfo) {
+                    document.getElementById('contactWhatsapp').value = settings.contactInfo.whatsapp || '';
+                    document.getElementById('contactPhone').value = settings.contactInfo.phone || '';
+                    document.getElementById('contactEmail').value = settings.contactInfo.email || '';
+                }
+
+                // Interface / CMS
+                if (settings.ui) {
+                    document.getElementById('uiHeroTitleZh').value = settings.ui.heroTitleZh || '';
+                    document.getElementById('uiHeroSubtitleZh').value = settings.ui.heroSubtitleZh || '';
+                    document.getElementById('uiAnnouncementText').value = settings.ui.announcementText || '';
+                    document.getElementById('uiAnnouncementActive').checked = settings.ui.announcementActive === true;
+                    document.getElementById('uiPrimaryColor').value = settings.ui.primaryColor || '#3b82f6';
+                    document.getElementById('uiPrimaryColorValue').textContent = settings.ui.primaryColor || '#3b82f6';
+                    document.getElementById('uiFooterText').value = settings.ui.footerText || '';
+                }
+
+                // Color Picker Listener
+                const colorInput = document.getElementById('uiPrimaryColor');
+                if (colorInput) {
+                    colorInput.oninput = (e) => {
+                        document.getElementById('uiPrimaryColorValue').textContent = e.target.value;
+                    };
+                }
+
+                // Payment
+                if (settings.paymentMethods) {
+                    const pm = settings.paymentMethods;
+                    if (pm.bankTransfer) {
+                        document.getElementById('paymentBankEnabled').value = pm.bankTransfer.enabled ? 'true' : 'false';
+                        document.getElementById('paymentBankName').value = pm.bankTransfer.bankName || '';
+                        document.getElementById('paymentBankAccount').value = pm.bankTransfer.accountNumber || '';
+                        document.getElementById('paymentBankAccountName').value = pm.bankTransfer.accountName || '';
+                    }
+                    if (pm.payme) {
+                        document.getElementById('paymentPaymeEnabled').value = pm.payme.enabled ? 'true' : 'false';
+                        document.getElementById('paymentPaymeDisplayName').value = pm.payme.displayName || '';
+                        document.getElementById('paymentPaymePhone').value = pm.payme.phoneNumber || '';
+                    }
+                    if (pm.fps) {
+                        document.getElementById('paymentFpsEnabled').value = pm.fps.enabled ? 'true' : 'false';
+                        document.getElementById('paymentFpsNumber').value = pm.fps.fpsNumber || '';
+                        document.getElementById('paymentFpsDisplayName').value = pm.fps.displayName || '';
+                    }
+                }
+
+                // Booking Rules
+                if (settings.bookingRules) {
+                    const br = settings.bookingRules;
+                    document.getElementById('bookingMinAdvance').value = br.minAdvanceBooking || 0;
+                    document.getElementById('bookingMaxAdvance').value = br.maxAdvanceBooking || 30;
+                    document.getElementById('bookingSlotInterval').value = br.slotInterval || 30;
+                    document.getElementById('bookingAutoConfirm').value = br.autoConfirm ? 'true' : 'false';
+                    document.getElementById('bookingRequirePaymentProof').value = br.requirePaymentProof ? 'true' : 'false';
+
+                    // Marketing Settings Mappings
+                    const marketing = br.marketing || {};
+                    if (document.getElementById('marketingEnableHotTags')) {
+                        document.getElementById('marketingEnableHotTags').value = marketing.enableHotTags ? 'true' : 'false';
+                        document.getElementById('marketingHotTagText').value = marketing.hotTagText || '🔥 熱門';
+                        document.getElementById('marketingHotStartTime').value = marketing.startTime || '18:00';
+                        document.getElementById('marketingHotEndTime').value = marketing.endTime || '22:00';
+                    }
+                }
+
+                // Pricing
+                if (settings.pricing) {
+                    document.getElementById('normalUpTo10').value = settings.pricing.normalUpTo10 || 0;
+                    document.getElementById('normalUpTo18').value = settings.pricing.normalUpTo18 || 0;
+                    document.getElementById('peakUpTo10').value = settings.pricing.peakUpTo10 || 0;
+                    document.getElementById('peakUpTo18').value = settings.pricing.peakUpTo18 || 0;
+
+                    if (settings.pricing.peakSchedule) {
+                        document.getElementById('peakDays').value = (settings.pricing.peakSchedule.days || []).join(',');
+                        document.getElementById('peakStart').value = settings.pricing.peakSchedule.startTime || '';
+                        document.getElementById('peakEnd').value = settings.pricing.peakSchedule.endTime || '';
+                    }
+                }
+
+                hideMessage('settingsMessage');
+            } catch (error) {
+                console.error(error);
+                showMessage('settingsMessage', 'error', '無法載入設定');
+            }
+        }
+
+        async function saveSettings() {
+            // Gather existing settings
+            const marketingSettings = {
+                enableHotTags: document.getElementById('marketingEnableHotTags').value === 'true',
+                hotTagText: document.getElementById('marketingHotTagText').value,
+                startTime: document.getElementById('marketingHotStartTime').value,
+                endTime: document.getElementById('marketingHotEndTime').value
+            };
+
+            // Merge into bookingRules
+            const updatedBookingRules = {
+                ...(currentSettings.bookingRules || {}),
+                marketing: marketingSettings,
+                minAdvanceBooking: Number(document.getElementById('bookingMinAdvance')?.value),
+                maxAdvanceBooking: Number(document.getElementById('bookingMaxAdvance')?.value),
+                slotInterval: Number(document.getElementById('bookingSlotInterval')?.value),
+                autoConfirm: document.getElementById('bookingAutoConfirm')?.value === 'true',
+                requirePaymentProof: document.getElementById('bookingRequirePaymentProof')?.value === 'true'
+            };
+
+            const payload = {
+                ...currentSettings,
+                businessName: document.getElementById('businessName').value,
+                businessNameZh: document.getElementById('businessNameZh').value,
+                businessDescription: document.getElementById('businessDescription').value,
+                businessDescriptionZh: document.getElementById('businessDescriptionZh').value,
+                operatingHours: {
+                    startTime: document.getElementById('startTime').value,
+                    endTime: document.getElementById('endTime').value,
+                    daysLabelZh: document.getElementById('daysLabelZh').value,
+                    daysLabelEn: document.getElementById('daysLabelEn').value
+                },
+                contactInfo: {
+                    whatsapp: document.getElementById('contactWhatsapp').value,
+                    phone: document.getElementById('contactPhone').value,
+                    email: document.getElementById('contactEmail').value
+                },
+
+                // Interface / CMS
+                ui: {
+                    heroTitleZh: document.getElementById('uiHeroTitleZh').value,
+                    heroSubtitleZh: document.getElementById('uiHeroSubtitleZh').value,
+                    announcementText: document.getElementById('uiAnnouncementText').value,
+                    announcementActive: document.getElementById('uiAnnouncementActive').checked,
+                    primaryColor: document.getElementById('uiPrimaryColor').value,
+                    footerText: document.getElementById('uiFooterText').value
+                },
+                paymentMethods: {
+                    bankTransfer: {
+                        enabled: document.getElementById('paymentBankEnabled').value === 'true',
+                        bankName: document.getElementById('paymentBankName').value,
+                        accountNumber: document.getElementById('paymentBankAccount').value,
+                        accountName: document.getElementById('paymentBankAccountName').value
+                    },
+                    payme: {
+                        enabled: document.getElementById('paymentPaymeEnabled').value === 'true',
+                        displayName: document.getElementById('paymentPaymeDisplayName').value,
+                        phoneNumber: document.getElementById('paymentPaymePhone').value
+                    },
+                    fps: {
+                        enabled: document.getElementById('paymentFpsEnabled').value === 'true',
+                        fpsNumber: document.getElementById('paymentFpsNumber').value,
+                        displayName: document.getElementById('paymentFpsDisplayName').value
+                    }
+                },
+                bookingRules: updatedBookingRules,
+                pricing: {
+                    normalUpTo10: Number(document.getElementById('normalUpTo10').value),
+                    normalUpTo18: Number(document.getElementById('normalUpTo18').value),
+                    peakUpTo10: Number(document.getElementById('peakUpTo10').value),
+                    peakUpTo18: Number(document.getElementById('peakUpTo18').value),
+                    peakSchedule: {
+                        days: document.getElementById('peakDays').value.split(',').map(d => d.trim()).filter(Boolean),
+                        startTime: document.getElementById('peakStart').value,
+                        endTime: document.getElementById('peakEnd').value
+                    }
+                }
+            };
+
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentSettings = data.settings;
+                    showMessage('settingsMessage', 'success', '設定已儲存');
+                } else {
+                    showMessage('settingsMessage', 'error', '儲存失敗');
+                }
+            } catch (e) {
+                console.error(e);
+                showMessage('settingsMessage', 'error', '儲存錯誤');
+            }
+        }
+
+        async function loadInstructions() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load instructions:', response.status, errorPayload);
+                    showMessage('instructionsMessage', 'error', errorPayload.error || '無法載入預約須知，請稍後再試。');
+                    return;
+                }
+                const settings = await response.json();
+                const instructions = settings.bookingInstructions || {};
+                document.getElementById('titleZh').value = instructions.titleZh || '';
+                document.getElementById('titleEn').value = instructions.titleEn || '';
+                for (let i = 1; i <= 6; i++) {
+                    document.getElementById(`instruction${i}Zh`).value = instructions[`instruction${i}Zh`] || '';
+                    document.getElementById(`instruction${i}En`).value = instructions[`instruction${i}En`] || '';
+                }
+                hideMessage('instructionsMessage');
+            } catch (error) {
+                console.error('Error loading instructions:', error);
+                showMessage('instructionsMessage', 'error', '無法載入預約須知，請稍後再試。');
+            }
+        }
+
+        async function saveInstructions() {
+            const bookingInstructions = { titleZh: document.getElementById('titleZh').value, titleEn: document.getElementById('titleEn').value };
+            for (let i = 1; i <= 6; i++) {
+                bookingInstructions[`instruction${i}Zh`] = document.getElementById(`instruction${i}Zh`).value;
+                bookingInstructions[`instruction${i}En`] = document.getElementById(`instruction${i}En`).value;
+            }
+            const payload = { ...currentSettings, bookingInstructions };
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (response.ok) {
+                    currentSettings = (await response.json()).settings || payload;
+                    showMessage('instructionsMessage', 'success', '須知已更新');
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    console.error('Failed to save instructions:', response.status, result);
+                    showMessage('instructionsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving instructions:', error);
+                showMessage('instructionsMessage', 'error', '儲存失敗');
+            }
+        }
+
+        async function loadClasses() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/classes?includePast=true`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load classes:', response.status, errorPayload);
+                    showMessage('classesMessage', 'error', errorPayload.error || '無法載入課程資料，請稍後再試。');
+                    return;
+                }
+                currentClasses = await response.json();
+                renderClasses();
+                hideMessage('classesMessage');
+            } catch (error) {
+                console.error('Error loading classes:', error);
+                showMessage('classesMessage', 'error', '無法載入課程資料，請稍後再試。');
+            }
+        }
+
+        function renderClasses() {
+            const container = document.getElementById('classesList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!currentClasses || currentClasses.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#516273';
+                empty.textContent = '目前沒有課程';
+                container.appendChild(empty);
+                return;
+            }
+
+            currentClasses.forEach(cls => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const start = cls.startTime ? new Date(cls.startTime) : null;
+                const end = cls.endTime ? new Date(cls.endTime) : null;
+                const capacity = cls.capacity || 0;
+                const remaining = cls.seatsRemaining != null
+                    ? cls.seatsRemaining
+                    : Math.max(capacity - (cls.usedCapacity || 0), 0);
+                const tags = Array.isArray(cls.tags) ? cls.tags.filter(Boolean) : [];
+                const priceLine = cls.specialPriceForTwo != null
+                    ? `價格：HK$${Number(cls.price || 0).toFixed(2)} /人｜兩人同行 HK$${Number(cls.specialPriceForTwo).toFixed(2)}`
+                    : `價格：HK$${Number(cls.price || 0).toFixed(2)}`;
+                const tagsRow = tags.length ? `<small>標籤：${tags.map(tag => escapeHtml(tag)).join(', ')}</small>` : '';
+                const trialLabel = cls.isTrialOnly ? '<small style="color:#f2545b;">體驗限定</small>' : '';
+
+                card.innerHTML = `
+                    <h4>${escapeHtml(cls.name)} ${trialLabel}</h4>
+                    <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
+                    <small>地點：${escapeHtml(cls.location || '—')}</small>
+                    <small>導師：${escapeHtml(cls.instructor || '—')}</small>
+                    <small>${priceLine}</small>
+                    <small>人數：${escapeHtml(String(capacity))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
+                    ${tagsRow}
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-secondary';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => editClass(cls));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteClass(cls.id));
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        function editClass(cls) {
+            document.getElementById('classId').value = cls.id;
+            document.getElementById('className').value = cls.name || '';
+            document.getElementById('classInstructor').value = cls.instructor || '';
+            document.getElementById('classLocation').value = cls.location || '';
+            document.getElementById('classStart').value = cls.startTime ? cls.startTime.slice(0, 16) : '';
+            document.getElementById('classEnd').value = cls.endTime ? cls.endTime.slice(0, 16) : '';
+            document.getElementById('classPrice').value = cls.price != null ? cls.price : '';
+            document.getElementById('classSpecialPriceForTwo').value = cls.specialPriceForTwo != null ? cls.specialPriceForTwo : '';
+            document.getElementById('classCapacity').value = cls.capacity != null ? cls.capacity : '';
+            document.getElementById('classDescription').value = cls.description || '';
+            document.getElementById('classTags').value = Array.isArray(cls.tags) ? cls.tags.join(',') : '';
+            document.getElementById('classIsTrialOnly').value = cls.isTrialOnly ? 'true' : 'false';
+        }
+
+        function resetClassForm() {
+            const form = document.getElementById('classForm');
+            if (form) form.reset();
+            document.getElementById('classId').value = '';
+            document.getElementById('classSpecialPriceForTwo').value = '';
+            document.getElementById('classIsTrialOnly').value = 'false';
+        }
+
+        async function submitClassForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('classId').value;
+            const name = document.getElementById('className').value.trim();
+            const startValue = document.getElementById('classStart').value;
+            const endValue = document.getElementById('classEnd').value;
+            const priceValue = Number.parseFloat(document.getElementById('classPrice').value);
+            const specialPriceValueRaw = document.getElementById('classSpecialPriceForTwo').value;
+            const specialPriceValue = specialPriceValueRaw === ''
+                ? null
+                : Number.parseFloat(specialPriceValueRaw);
+            const capacityValue = Number.parseInt(document.getElementById('classCapacity').value, 10);
+
+            if (!name) {
+                showMessage('classesMessage', 'error', '請輸入課程名稱');
+                return;
+            }
+            if (!startValue || !endValue) {
+                showMessage('classesMessage', 'error', '請選擇開始與結束時間');
+                return;
+            }
+            const startTime = new Date(startValue);
+            const endTime = new Date(endValue);
+            if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+                showMessage('classesMessage', 'error', '請輸入有效的日期時間');
+                return;
+            }
+            if (startTime >= endTime) {
+                showMessage('classesMessage', 'error', '結束時間需晚於開始時間');
+                return;
+            }
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                showMessage('classesMessage', 'error', '請輸入有效的價格');
+                return;
+            }
+            if (specialPriceValue !== null && (!Number.isFinite(specialPriceValue) || specialPriceValue < 0)) {
+                showMessage('classesMessage', 'error', '兩人同行價需為有效數字');
+                return;
+            }
+            if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
+                showMessage('classesMessage', 'error', '請輸入有效的人數上限');
+                return;
+            }
+
+            const payload = {
+                name,
+                description: document.getElementById('classDescription').value,
+                instructor: document.getElementById('classInstructor').value,
+                location: document.getElementById('classLocation').value,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                price: priceValue,
+                specialPriceForTwo: specialPriceValue,
+                capacity: capacityValue,
+                tags: document.getElementById('classTags').value.split(',').map(tag => tag.trim()).filter(Boolean),
+                isTrialOnly: document.getElementById('classIsTrialOnly').value === 'true'
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const endpoint = id ? `${API_BASE_URL}/admin/classes/${id}` : `${API_BASE_URL}/admin/classes`;
+                const response = await authenticatedFetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('classesMessage', 'success', '課程已儲存');
+                    resetClassForm();
+                    loadClasses();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    console.error('Failed to save class:', response.status, result);
+                    showMessage('classesMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving class:', error);
+                showMessage('classesMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function deleteClass(id) {
+            if (!confirm('確定要刪除此課程？')) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/classes/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showMessage('classesMessage', 'success', '課程已刪除');
+                    loadClasses();
+                    loadBookingOverview(document.getElementById('overviewDate')?.value);
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classesMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class:', error);
+                showMessage('classesMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        async function loadClassProducts() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-products`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load class products:', response.status, errorPayload);
+                    showMessage('classProductsMessage', 'error', errorPayload.error || '無法載入方案資料，請稍後再試。');
+                    return;
+                }
+                currentClassProducts = await response.json();
+                renderClassProducts();
+                hideMessage('classProductsMessage');
+            } catch (error) {
+                console.error('Error loading class products:', error);
+                showMessage('classProductsMessage', 'error', '無法載入方案資料，請稍後再試。');
+            }
+        }
+
+        function renderClassProducts() {
+            const container = document.getElementById('classProductsList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!currentClassProducts || currentClassProducts.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#516273';
+                empty.textContent = '目前沒有方案';
+                container.appendChild(empty);
+                return;
+            }
+
+            currentClassProducts.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const typeLabel = product.type === 'trial' ? '體驗方案' : '課程方案';
+                card.innerHTML = `
+                    <h4>${escapeHtml(product.name)} <small>(${typeLabel})</small></h4>
+                    <small>價格：HK$${Number(product.price || 0).toFixed(2)}｜堂數：${escapeHtml(String(product.numberOfClasses || 0))}</small>
+                    <small>有效期：${product.validityPeriodDays ? `${escapeHtml(String(product.validityPeriodDays))} 天` : '—'}</small>
+                    <small>${escapeHtml(product.description || '無介紹')}</small>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-secondary';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => editClassProduct(product));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteClassProduct(product.id));
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        function editClassProduct(product) {
+            document.getElementById('classProductId').value = product.id;
+            document.getElementById('classProductType').value = product.type || 'package';
+            document.getElementById('classProductName').value = product.name || '';
+            document.getElementById('classProductPrice').value = product.price != null ? product.price : '';
+            document.getElementById('classProductCount').value = product.numberOfClasses || '';
+            document.getElementById('classProductValidity').value = product.validityPeriodDays != null ? product.validityPeriodDays : '';
+            document.getElementById('classProductDescription').value = product.description || '';
+        }
+
+        function resetClassProductForm() {
+            const form = document.getElementById('classProductForm');
+            if (form) form.reset();
+            document.getElementById('classProductId').value = '';
+            document.getElementById('classProductType').value = 'package';
+        }
+
+        async function submitClassProductForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('classProductId').value;
+            const name = document.getElementById('classProductName').value.trim();
+            const priceValue = Number.parseFloat(document.getElementById('classProductPrice').value);
+            const countValue = Number.parseInt(document.getElementById('classProductCount').value, 10);
+            const validityValueRaw = document.getElementById('classProductValidity').value;
+            const validityValue = validityValueRaw ? Number.parseInt(validityValueRaw, 10) : null;
+
+            if (!name) {
+                showMessage('classProductsMessage', 'error', '請輸入方案名稱');
+                return;
+            }
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                showMessage('classProductsMessage', 'error', '請輸入有效的價格');
+                return;
+            }
+            if (!Number.isInteger(countValue) || countValue <= 0) {
+                showMessage('classProductsMessage', 'error', '請輸入有效的堂數');
+                return;
+            }
+            if (validityValueRaw && (!Number.isInteger(validityValue) || validityValue <= 0)) {
+                showMessage('classProductsMessage', 'error', '有效期需為正整數');
+                return;
+            }
+
+            const payload = {
+                type: document.getElementById('classProductType').value,
+                name,
+                description: document.getElementById('classProductDescription').value,
+                price: priceValue,
+                numberOfClasses: countValue,
+                validityPeriodDays: validityValue
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const endpoint = id ? `${API_BASE_URL}/admin/class-products/${id}` : `${API_BASE_URL}/admin/class-products`;
+                const response = await authenticatedFetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('classProductsMessage', 'success', '方案已儲存');
+                    resetClassProductForm();
+                    loadClassProducts();
+                } else {
+                    console.error('Failed to save class product:', response.status, result);
+                    showMessage('classProductsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving class product:', error);
+                showMessage('classProductsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function deleteClassProduct(id) {
+            if (!confirm('確定要刪除此方案？')) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/class-products/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showMessage('classProductsMessage', 'success', '方案已刪除');
+                    loadClassProducts();
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('classProductsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting class product:', error);
+                showMessage('classProductsMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        async function loadRentalItems() {
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/items`);
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    console.error('Failed to load rental items:', response.status, errorPayload);
+                    showMessage('rentalItemsMessage', 'error', errorPayload.error || '無法載入場地項目，請稍後再試。');
+                    return;
+                }
+                const items = await response.json();
+                currentRentalItems = (items || []).filter(item => item.type === 'room_rental');
+                renderRentalItems();
+                hideMessage('rentalItemsMessage');
+            } catch (error) {
+                console.error('Error loading rental items:', error);
+                showMessage('rentalItemsMessage', 'error', '無法載入場地項目，請稍後再試。');
+            }
+        }
+
+        function renderRentalItems() {
+            const container = document.getElementById('rentalItemsList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!currentRentalItems || currentRentalItems.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#516273';
+                empty.textContent = '目前沒有場地項目';
+                container.appendChild(empty);
+                return;
+            }
+
+            currentRentalItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                const start = item.startDateTime ? new Date(item.startDateTime) : null;
+                const end = item.endDateTime ? new Date(item.endDateTime) : null;
+                const remaining = item.availableCapacity != null
+                    ? item.availableCapacity
+                    : Math.max((item.capacity || 0) - (item.usedCapacity || 0), 0);
+                card.innerHTML = `
+                    <h4>${escapeHtml(item.name)}</h4>
+                    <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
+                    <small>時長：${escapeHtml(String(item.duration || 0))} 分鐘｜價錢：HK$${Number(item.price || 0).toFixed(2)}</small>
+                    <small>人數上限：${escapeHtml(String(item.capacity || 0))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-secondary';
+                editBtn.textContent = '編輯';
+                editBtn.addEventListener('click', () => editRentalItem(item));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '刪除';
+                deleteBtn.addEventListener('click', () => deleteRentalItem(item.id));
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        function editRentalItem(item) {
+            document.getElementById('rentalItemId').value = item.id;
+            document.getElementById('rentalItemName').value = item.name || '';
+            document.getElementById('rentalItemStart').value = item.startDateTime ? item.startDateTime.slice(0, 16) : '';
+            document.getElementById('rentalItemEnd').value = item.endDateTime ? item.endDateTime.slice(0, 16) : '';
+            document.getElementById('rentalItemDuration').value = item.duration || '';
+            document.getElementById('rentalItemPrice').value = item.price != null ? item.price : '';
+            document.getElementById('rentalItemInstructor').value = item.instructorName || '';
+            document.getElementById('rentalItemCapacity').value = item.capacity != null ? item.capacity : '';
+        }
+
+        function resetRentalItemForm() {
+            const form = document.getElementById('rentalItemForm');
+            if (form) form.reset();
+            document.getElementById('rentalItemId').value = '';
+        }
+
+        async function submitRentalItemForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('rentalItemId').value;
+            const name = document.getElementById('rentalItemName').value.trim();
+            const startDateTime = document.getElementById('rentalItemStart').value;
+            const endDateTime = document.getElementById('rentalItemEnd').value;
+            const durationValue = Number.parseInt(document.getElementById('rentalItemDuration').value, 10);
+            const priceValue = Number.parseFloat(document.getElementById('rentalItemPrice').value);
+            const capacityValue = Number.parseInt(document.getElementById('rentalItemCapacity').value, 10);
+
+            if (!name) {
+                showMessage('rentalItemsMessage', 'error', '請輸入項目名稱');
+                return;
+            }
+            // start/end datetime are optional for room_rental items (rooms are always available)
+            if (startDateTime && endDateTime) {
+                const rentalStart = new Date(startDateTime);
+                const rentalEnd = new Date(endDateTime);
+                if (Number.isNaN(rentalStart.getTime()) || Number.isNaN(rentalEnd.getTime())) {
+                    showMessage('rentalItemsMessage', 'error', '請輸入有效的日期時間');
+                    return;
+                }
+                if (rentalStart >= rentalEnd) {
+                    showMessage('rentalItemsMessage', 'error', '結束時間需晚於開始時間');
+                    return;
+                }
+            }
+            if (durationValue && (!Number.isInteger(durationValue) || durationValue <= 0)) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的時長 (分鐘)');
+                return;
+            }
+            if (priceValue !== null && !Number.isNaN(priceValue) && priceValue < 0) {
+                showMessage('rentalItemsMessage', 'error', '價格不可小於 0');
+                return;
+            }
+            if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
+                showMessage('rentalItemsMessage', 'error', '請輸入有效的人數上限');
+                return;
+            }
+
+            const payload = {
+                type: 'room_rental',
+                name,
+                startDateTime: startDateTime || null,
+                endDateTime: endDateTime || null,
+                duration: durationValue || 60,
+                price: Number.isFinite(priceValue) ? priceValue : 0,
+                instructorName: document.getElementById('rentalItemInstructor').value,
+                capacity: capacityValue
+            };
+
+            try {
+                const method = id ? 'PUT' : 'POST';
+                const endpoint = id ? `${API_BASE_URL}/admin/items/${id}` : `${API_BASE_URL}/admin/items`;
+                const response = await authenticatedFetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showMessage('rentalItemsMessage', 'success', '場地項目已儲存');
+                    resetRentalItemForm();
+                    loadRentalItems();
+                } else {
+                    console.error('Failed to save rental item:', response.status, result);
+                    showMessage('rentalItemsMessage', 'error', result.error || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Error saving rental item:', error);
+                showMessage('rentalItemsMessage', 'error', '儲存失敗，請稍後再試');
+            }
+        }
+
+        async function deleteRentalItem(id) {
+            if (!confirm('確定要刪除此場地項目？')) return;
+            try {
+                const response = await authenticatedFetch(`${API_BASE_URL}/admin/items/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showMessage('rentalItemsMessage', 'success', '場地項目已刪除');
+                    loadRentalItems();
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showMessage('rentalItemsMessage', 'error', result.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('Error deleting rental item:', error);
+                showMessage('rentalItemsMessage', 'error', '刪除失敗，請稍後再試');
+            }
+        }
+
+        function formatDateTime(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${formatTime(date)}`; }
+        function formatTime(date) { return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
+
+        function hideMessage(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.className = 'message';
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+
+        function showMessage(elementId, type, message) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.className = `message ${type}`;
+            el.textContent = message;
+            el.style.display = 'block';
+            if (type === 'success') {
+                setTimeout(() => { el.style.display = 'none'; }, 4000);
+            }
+        }
+
+        // --- New Features ---
+
+        function exportCsv() {
+            const token = localStorage.getItem('adminToken');
+            window.open(`${API_BASE_URL}/admin/reports/csv?token=${token}`, '_blank');
+        }
+
+        let calendar;
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: async function (info, successCallback, failureCallback) {
+                    try {
+                        const [bookingsRes, classesRes] = await Promise.all([
+                            authenticatedFetch(`${API_BASE_URL}/bookings`),
+                            authenticatedFetch(`${API_BASE_URL}/admin/class-bookings`)
+                        ]);
+
+                        const events = [];
+
+                        if (bookingsRes.ok) {
+                            const bookings = await bookingsRes.json();
+                            bookings.forEach(b => {
+                                (b.items || []).forEach(item => {
+                                    events.push({
+                                        id: `rental-${b.id}`,
+                                        title: `${b.customerName} (${item.startTime}-${item.endTime})`,
+                                        start: `${item.date}T${item.startTime}`,
+                                        end: `${item.date}T${item.endTime}`,
+                                        backgroundColor: b.status === 'confirmed' ? '#28a745' : '#ffc107',
+                                        borderColor: b.status === 'confirmed' ? '#28a745' : '#ffc107',
+                                        extendedProps: { type: 'rental', data: b }
+                                    });
+                                });
+                            });
+                        }
+
+                        if (classesRes.ok) {
+                            const classBookings = await classesRes.json();
+                            classBookings.forEach(cb => {
+                                events.push({
+                                    id: `class-${cb.id}`,
+                                    title: `${cb.className} (${cb.customerName})`,
+                                    start: cb.classStartTime,
+                                    end: cb.classEndTime,
+                                    backgroundColor: cb.status === 'confirmed' ? '#007bff' : '#6c757d',
+                                    borderColor: cb.status === 'confirmed' ? '#007bff' : '#6c757d',
+                                    extendedProps: { type: 'class', data: cb }
+                                });
+                            });
+                        }
+
+                        successCallback(events);
+                    } catch (e) {
+                        failureCallback(e);
+                    }
+                },
+                dateClick: async function (info) {
+                    if (confirm(`要在 ${info.dateStr} 建立"維護"封鎖時段嗎？`)) {
+                        // Quick Block
+                        // Create dummy booking
+                        try {
+                            const res = await authenticatedFetch(`${API_BASE_URL}/bookings`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    customerName: 'Maintenance',
+                                    email: 'admin@studio.com',
+                                    phone: '00000000',
+                                    date: info.dateStr,
+                                    startTime: '00:00',
+                                    endTime: '23:59',
+                                    itemType: 'room_rental',
+                                    deposit: 0,
+                                    paymentMethod: 'cash',
+                                    adminNotes: 'Quick Block',
+                                    status: 'confirmed' // Auto-confirm for quick block
+                                })
+                            });
+                            if (res.ok) {
+                                showMessage('bookingsMessage', 'success', '已成功封鎖時段');
+                                calendar.refetchEvents();
+                                loadRentalBookings(); // Refresh bookings table
+                            } else {
+                                const errorData = await res.json();
+                                showMessage('bookingsMessage', 'error', errorData.error || '封鎖失敗');
+                            }
+                        } catch (e) {
+                            console.error('Failed to block:', e);
+                            showMessage('bookingsMessage', 'error', '封鎖失敗');
+                        }
+                    }
+                },
+                eventClick: function (info) {
+                    const props = info.event.extendedProps;
+                    const startISO = info.event.startStr;
+                    const endISO = info.event.endStr;
+                    const statusLabel = { confirmed: '已確認', pending: '待處理', cancelled: '已取消' };
+
+                    let title = '';
+                    let detailsHtml = '';
+                    let gCalUrl = null;
+
+                    if (props.type === 'rental') {
+                        const b = props.data;
+                        title = '場地預約';
+                        detailsHtml = `
+                            <p style="margin:6px 0;"><strong>客戶：</strong>${escapeHtml(b.customerName)}</p>
+                            <p style="margin:6px 0;"><strong>狀態：</strong>${statusLabel[b.status] || b.status}</p>
+                            ${b.adminNotes ? `<p style="margin:6px 0;"><strong>備註：</strong>${escapeHtml(b.adminNotes)}</p>` : ''}
+                        `;
+                        if (startISO && endISO) {
+                            gCalUrl = makeGCalUrl({
+                                title: `場地預約 - ${b.customerName}`,
+                                startISO,
+                                endISO,
+                                details: `客戶: ${b.customerName}`,
+                                location: ''
+                            });
+                        }
+                    } else if (props.type === 'class') {
+                        const cb = props.data;
+                        title = '課程預約';
+                        detailsHtml = `
+                            <p style="margin:6px 0;"><strong>課程：</strong>${escapeHtml(cb.className || '')}</p>
+                            <p style="margin:6px 0;"><strong>客戶：</strong>${escapeHtml(cb.customerName)}</p>
+                            <p style="margin:6px 0;"><strong>狀態：</strong>${statusLabel[cb.status] || cb.status}</p>
+                        `;
+                        if (startISO && endISO) {
+                            gCalUrl = makeGCalUrl({
+                                title: `課程: ${cb.className} - ${cb.customerName}`,
+                                startISO,
+                                endISO,
+                                details: `學員: ${cb.customerName}`,
+                                location: cb.classLocation || ''
+                            });
+                        }
+                    }
+
+                    // Remove existing popup
+                    const existing = document.getElementById('calEventPopup');
+                    if (existing) existing.remove();
+
+                    const popup = document.createElement('div');
+                    popup.id = 'calEventPopup';
+                    popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);padding:24px;z-index:9999;min-width:280px;max-width:400px;font-size:0.95em;';
+                    popup.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <strong style="font-size:1.1em;">${title}</strong>
+                            <button onclick="document.getElementById('calEventPopup').remove()" style="background:none;border:none;font-size:1.5em;cursor:pointer;color:#888;line-height:1;">×</button>
+                        </div>
+                        ${detailsHtml}
+                        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                            ${gCalUrl ? `<a href="${gCalUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-secondary" style="display:inline-flex;align-items:center;gap:5px;">📅 加入 Google Calendar</a>` : ''}
+                            <button onclick="document.getElementById('calEventPopup').remove()" class="btn btn-sm btn-secondary">關閉</button>
+                        </div>
+                    `;
+                    document.body.appendChild(popup);
+
+                    // Click outside to close
+                    setTimeout(() => {
+                        function outsideHandler(e) {
+                            if (!popup.contains(e.target)) {
+                                popup.remove();
+                                document.removeEventListener('click', outsideHandler);
+                            }
+                        }
+                        document.addEventListener('click', outsideHandler);
+                    }, 100);
+                }
+            });
+            calendar.render();
+        }
+
+        // Notes Modal Logic
+        function openNotesModal(id, currentNote) {
+            document.getElementById('noteBookingId').value = id;
+            document.getElementById('noteText').value = currentNote || '';
+            const modal = document.getElementById('notesModal');
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+        }
+
+        function closeNotesModal() {
+            document.getElementById('notesModal').style.display = 'none';
+            document.getElementById('notesModal').classList.remove('show');
+        }
+
+        async function saveNote() {
+            const id = document.getElementById('noteBookingId').value;
+            const note = document.getElementById('noteText').value;
+
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/bookings/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminNotes: note })
+                });
+
+                if (res.ok) {
+                    closeNotesModal();
+                    loadRentalBookings(); // Refresh table
+                    if (calendar) calendar.refetchEvents();
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || '儲存失敗');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('錯誤');
+            }
+        }
+
+        async function exportCsv() {
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/reports/csv`);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bookings_report_${new Date().toISOString().slice(0, 7)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || '匯出失敗');
+                }
+            } catch (e) { console.error(e); alert('匯出錯誤'); }
+        }
+
+        function handleTabClick(event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            const targetId = event.target.dataset.tab;
+            document.getElementById(targetId).classList.add('active');
+            if (targetId === 'overviewTab') {
+                setOverviewDateToToday();
+                loadBookingOverview(document.getElementById('overviewDate')?.value);
+            } else if (targetId === 'calendarTab') {
+                // Delay slightly to ensure visibility for rendering
+                setTimeout(() => {
+                    if (!calendar) initCalendar();
+                    else calendar.render();
+                }, 50);
+            }
+        }
+    </script>
+    <!-- Login Modal (Moved to root) -->
+    <div id="loginModal"
+        style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15, 23, 42, 0.9); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
+        <div
+            style="background:#fff; padding:32px; border-radius:16px; width:100%; max-width:400px; box-sizing:border-box; box-shadow:0 24px 50px rgba(0,0,0,0.2);">
+            <h2 style="color:#0b4f6c; margin-bottom:24px; text-align:center;">管理員登入</h2>
+            <div id="loginError" class="message error" style="display:none; margin-bottom:16px;"></div>
+            <form onsubmit="handleLogin(event)">
+                <div class="input-group" style="margin-bottom:16px;">
+                    <label>使用者名稱</label>
+                    <input type="text" id="loginUsername" autocomplete="username" required placeholder="admin"
+                        autofocus>
+                </div>
+                <div class="input-group" style="margin-bottom:24px;">
+                    <label>密碼</label>
+                    <input type="password" id="loginPassword" autocomplete="current-password" required
+                        placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="width:100%; padding:14px; font-size:1.1em;">登入</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

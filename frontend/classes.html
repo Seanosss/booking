@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Booking | 課堂與方案專區</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #0f172a;
+            --brand-secondary: #3b82f6;
+            --brand-secondary-hover: #2563eb;
+            --surface: #f8fafc;
+            --surface-alt: rgba(255, 255, 255, 0.85);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent: #10b981;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+            --glass-backdrop: blur(12px);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Bg Decor */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        header {
+            padding: 60px 24px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--brand-primary);
+            margin: 0 0 12px;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .nav-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-outline:hover {
+            background: #fff;
+            color: var(--brand-primary);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+        }
+
+        .hub-grid {
+            display: grid;
+            gap: 24px;
+            grid-template-columns: repeat(1, 1fr);
+        }
+
+        @media (min-width: 768px) {
+            .hub-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .hub-card {
+            background: var(--surface-alt);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            border: var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .hub-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .hub-card h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin: 0 0 12px;
+        }
+
+        .hub-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0 0 24px;
+            flex-grow: 1;
+        }
+
+        .card-link {
+            color: var(--brand-secondary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: gap 0.2s;
+        }
+
+        .hub-card:hover .card-link {
+            gap: 8px;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 600px) {
+            header { padding: 16px 16px 48px; }
+            .nav-bar { margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+            .nav-bar a { font-size: 0.85rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.95rem; }
+            main { padding: 0 12px; margin-bottom: 48px; }
+            .card { padding: 20px 16px; }
+            .hub-grid { grid-template-columns: 1fr; }
+            .hub-card { padding: 24px 20px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>課堂與方案專區</h1>
+        <p>瀏覽課程時間表、購買課程套票，或體驗一次性的試堂方案</p>
+    </header>
+
+    <div class="nav-actions">
+        <a href="./index.html" class="btn-outline">← 返回首頁</a>
+        <a href="./rental.html" class="btn-outline">場地租用</a>
+    </div>
+
+    <main>
+        <div class="hub-grid">
+            <!-- Card 1 -->
+            <a href="./class-schedule.html" class="hub-card">
+                <div class="card-icon">📅</div>
+                <h2>課堂時間表</h2>
+                <p>以週為單位瀏覽每日課堂。查看即時名額、講師安排，並預約單堂課程。</p>
+                <div class="card-link">開啟時間表 →</div>
+            </a>
+
+            <!-- Card 2 -->
+            <a href="./class-packages.html" class="hub-card">
+                <div class="card-icon">🎟️</div>
+                <h2>課程套票 / 月費</h2>
+                <p>選擇不同的課程組合方案，享受更優惠的價格。適合長期練習的學員。</p>
+                <div class="card-link">探索套票 →</div>
+            </a>
+
+            <!-- Card 3 -->
+            <a href="./trial.html" class="hub-card">
+                <!-- Assuming trial.html exists based on file list, or # if not ready -->
+                <div class="card-icon">✨</div>
+                <h2>試堂體驗</h2>
+                <p>針對新生設計的體驗方案。一次性的優惠價格，體驗我們的專業課程與空間。</p>
+                <div class="card-link">查看試堂方案 →</div>
+            </a>
+        </div>
+    </main>
+</body>
+
+</html>

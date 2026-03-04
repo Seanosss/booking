@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <style>
+        :root {
+            --brand-primary: #0f172a;
+            /* Deep Slate Navy */
+            --brand-secondary: #3b82f6;
+            /* Bright Blue */
+            --brand-secondary-hover: #2563eb;
+            --surface: #f8fafc;
+            /* Very light cool gray */
+            --surface-alt: rgba(255, 255, 255, 0.85);
+            /* Glassmorphism base */
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent: #10b981;
+            /* Emerald */
+            --danger: #ef4444;
+            /* Red */
+            --border: #e2e8f0;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+            --glass-backdrop: blur(12px);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
+            color: var(--text-main);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* Background decoration */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            filter: blur(60px);
+            z-index: -1;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            color: var(--text-main);
+            padding: 24px 24px 60px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            position: relative;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--brand-secondary), var(--brand-primary));
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto 40px;
+        }
+
+        .nav-bar a {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-bar a:hover {
+            color: var(--brand-secondary);
+        }
+
+        .hero {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: 16px;
+            color: var(--brand-primary);
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: -40px auto 80px;
+            padding: 0 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--surface-alt);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            border: var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            letter-spacing: -0.025em;
+        }
+
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        @media (min-width: 960px) {
+            .grid.two {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--brand-secondary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            /* Soft glow */
+        }
+
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+        }
+
+        .slot-button {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 8px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(4px);
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .slot-button:hover:not(.disabled) {
+            border-color: var(--brand-secondary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+            color: var(--brand-secondary);
+        }
+
+        .slot-button.selected {
+            background: var(--brand-primary);
+            color: #fff;
+            border-color: var(--brand-primary);
+            box-shadow: var(--shadow);
+            transform: scale(1.05);
+        }
+
+        .slot-button.disabled {
+            background: rgba(248, 250, 252, 0.5);
+            color: #cbd5e1;
+            cursor: not-allowed;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .slot-button.pending {
+            background: #fffbeb;
+            border-color: #fbbf24;
+            color: #b45309;
+            cursor: not-allowed;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            justify-content: center;
+        }
+
+        .legend span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .legend-box.available {
+            background: #fff;
+            border-color: var(--text-muted);
+        }
+
+        .legend-box.selected {
+            background: var(--brand-primary);
+            border-color: var(--brand-primary);
+        }
+
+        .legend-box.unavailable {
+            background: var(--surface);
+            border-color: transparent;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .hot-tag {
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 0.75rem;
+            color: #e11d48;
+            font-weight: 700;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .summary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .summary-item {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .summary-item:hover {
+            border-color: var(--brand-secondary);
+            transform: translateX(4px);
+            background: #fff;
+        }
+
+        .summary-date {
+            font-weight: 600;
+            color: var(--brand-primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .summary-item button {
+            border: none;
+            background: #fee2e2;
+            color: #ef4444;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .summary-item button:hover {
+            background: #ef4444;
+            color: #fff;
+            transform: rotate(90deg);
+        }
+
+        .summary-totals {
+            margin-top: 24px;
+            border-top: 1px dashed var(--border);
+            padding-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .totals-row.total {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--brand-primary);
+            margin-top: 8px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary:not(:disabled):hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:not(:disabled):hover::after {
+            opacity: 1;
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(1);
+        }
+
+        .btn-primary:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 99px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: auto;
+            min-width: 300px;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+
+        .toast.success {
+            color: #059669;
+            border: 1px solid #34d399;
+        }
+
+        .toast.error {
+            color: #dc2626;
+            border: 1px solid #f87171;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        .instruction-list {
+            background: #fffbeb;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #fde68a;
+        }
+
+        .instruction-list h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .payment-panel {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .payment-info-title {
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+        }
+
+        .payment-reminder-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Announcement Banner */
+        .announcement-banner {
+            background: var(--brand-primary);
+            color: white;
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .payment-reminder-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .payment-reminder-content {
+            background: #fff;
+            width: min(420px, 100%);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+            text-align: center;
+        }
+
+        .payment-reminder-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            border: none;
+            background: var(--surface);
+            color: var(--text-muted);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-reminder-close:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .whatsapp-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 24px;
+            background: #25d366;
+            color: #fff;
+            border-radius: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.2);
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .whatsapp-button:hover {
+            background: #1faf53;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(37, 211, 102, 0.3);
+        }
+
+        .skeleton {
+            background: #e2e8f0;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        /* Flatpickr Customization */
+        .flatpickr-calendar {
+            background: #ffffff !important;
+            border: 1px solid var(--border) !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08) !important;
+            border-radius: 16px !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        /* Normal day text — dark */
+        .flatpickr-day {
+            color: var(--text-main) !important;
+            border-radius: 8px !important;
+        }
+
+        .flatpickr-day:hover {
+            background: var(--surface) !important;
+            color: var(--text-main) !important;
+        }
+
+        /* Prev/next month days — muted */
+        .flatpickr-day.prevMonthDay,
+        .flatpickr-day.nextMonthDay {
+            color: var(--text-muted) !important;
+        }
+
+        /* Disabled days */
+        .flatpickr-day.disabled,
+        .flatpickr-day.disabled:hover {
+            color: #cbd5e1 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Selected / range — blue background, white text */
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange,
+        .flatpickr-day.selected.inRange,
+        .flatpickr-day.startRange.inRange,
+        .flatpickr-day.endRange.inRange,
+        .flatpickr-day.selected:focus,
+        .flatpickr-day.startRange:focus,
+        .flatpickr-day.endRange:focus,
+        .flatpickr-day.selected:hover,
+        .flatpickr-day.startRange:hover,
+        .flatpickr-day.endRange:hover,
+        .flatpickr-day.selected.prevMonthDay,
+        .flatpickr-day.startRange.prevMonthDay,
+        .flatpickr-day.endRange.prevMonthDay,
+        .flatpickr-day.selected.nextMonthDay,
+        .flatpickr-day.startRange.nextMonthDay,
+        .flatpickr-day.endRange.nextMonthDay {
+            background: var(--brand-secondary) !important;
+            border-color: var(--brand-secondary) !important;
+            color: #ffffff !important;
+        }
+
+        /* In-range days between start & end */
+        .flatpickr-day.inRange {
+            background: rgba(59, 130, 246, 0.12) !important;
+            border-color: transparent !important;
+            color: var(--brand-secondary) !important;
+            box-shadow: none !important;
+        }
+
+        /* Today marker */
+        .flatpickr-day.today {
+            border-color: var(--brand-secondary) !important;
+            color: var(--brand-secondary) !important;
+            font-weight: 600 !important;
+        }
+
+        .flatpickr-day.today:hover {
+            background: var(--brand-secondary) !important;
+            color: #ffffff !important;
+        }
+
+        /* Month/year header */
+        .flatpickr-months .flatpickr-month {
+            background: transparent !important;
+            color: var(--brand-primary) !important;
+            fill: var(--brand-primary) !important;
+        }
+
+        .flatpickr-current-month .flatpickr-monthDropdown-months,
+        .flatpickr-current-month input.cur-year {
+            background: transparent !important;
+            color: var(--brand-primary) !important;
+        }
+
+        /* Navigation arrows */
+        .flatpickr-prev-month svg,
+        .flatpickr-next-month svg {
+            fill: var(--brand-primary) !important;
+        }
+
+        /* Weekday labels */
+        span.flatpickr-weekday {
+            background: transparent !important;
+            color: var(--text-muted) !important;
+            font-weight: 600 !important;
+        }
+        /* Success Modal Overlay */
+        #successModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        #successModal.active {
+            display: flex;
+        }
+
+        /* ── Mobile Responsive ── */
+        @media (max-width: 600px) {
+            header { padding: 16px 16px 48px; }
+            .nav-bar { margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
+            .nav-bar a { font-size: 0.85rem; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero p { font-size: 0.95rem; }
+            main { padding: 0 12px; margin-bottom: 48px; }
+            .card { padding: 20px 16px; border-radius: 16px; }
+            .card h2 { font-size: 1.2rem; margin-bottom: 16px; }
+            .slot-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+            .slot-button { padding: 10px 6px; font-size: 0.85rem; }
+            .toast { min-width: 0; width: 90vw; padding: 12px 16px; font-size: 0.9rem; }
+            .toast-container { width: 100%; padding: 0 16px; left: 0; transform: none; }
+            .payment-reminder-content { padding: 24px 16px; }
+            .summary-item { flex-wrap: wrap; }
+            .totals-row.total { font-size: 1.1rem; }
+            .legend { gap: 12px; font-size: 0.82rem; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="nav-bar">
+            <a href="./index.html">← 返回首頁</a>
+            <a href="./classes.html">課堂體驗區</a>
+        </div>
+        <div class="hero">
+            <h1>場地租用預約</h1>
+            <p id="hero-subtitle">選擇日期與時段，立即預約整個場地。</p>
+        </div>
+    </header>
+    <main>
+        <div class="card instruction-list" id="instruction-card" style="display:none;"></div>
+        <div class="grid two">
+            <div class="card">
+                <h2>📅 選擇日期與時段</h2>
+                <div class="form-group">
+                    <label for="room-select">選擇空間 (如有指定)</label>
+                    <select id="room-select" disabled>
+                        <option value="">正在載入...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date-input">預約日期</label>
+                    <input type="text" id="date-input" placeholder="點擊選擇日期..." readonly style="background: white;">
+                </div>
+                <div id="slots-section" style="display:none;">
+                    <div class="slot-grid" id="slot-grid"></div>
+                    <div class="legend">
+                        <span><span class="legend-box available"></span> 可選</span>
+                        <span><span class="legend-box pending"></span> 待確認</span>
+                        <span><span class="legend-box unavailable"></span> 已預約</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>🛒 已選擇的時段</h2>
+
+                <div id="summary-list" class="summary-list"></div>
+                <div class="summary-totals">
+                    <div class="totals-row"><span>已選時段</span><span id="total-blocks">0</span></div>
+                    <div class="totals-row"><span>總時數</span><span id="total-hours">0 小時</span></div>
+                    <div class="totals-row"><span>總人數</span><span id="total-people">0</span></div>
+                    <div class="totals-row total"><span>預估金額</span><span>HK$ <span id="total-amount">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card" id="contact-card" style="display:none;">
+            <h2>👤 聯絡資料</h2>
+            <form id="booking-form">
+                <div class="grid" style="gap:18px;">
+                    <div>
+                        <label for="customerName">姓名 *</label>
+                        <input type="text" id="customerName" required>
+                    </div>
+                    <div>
+                        <label for="email">電子郵件 *</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div>
+                        <label for="phone">電話 / WhatsApp *</label>
+                        <input type="tel" id="phone" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="people-count">參與人數 (可選，最多 18 人)</label>
+                    <input type="number" id="people-count" min="1" max="18" placeholder="例如 6">
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="instagram">Instagram (可選)</label>
+                    <input type="text" id="instagram" placeholder="@youraccount">
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="usage-type">用途 *</label>
+                    <select id="usage-type" required>
+                        <option value="" disabled selected>請選擇用途...</option>
+                        <option value="practice">練習 Practice</option>
+                        <option value="commercial">商業拍攝 Commercial</option>
+                        <option value="event">活動 Event</option>
+                        <option value="private">私人聚會 Private</option>
+                        <option value="other">其他 Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top:18px;">
+                    <label for="notes">備註 (可選)</label>
+                    <textarea id="notes" rows="3" placeholder="告訴我們您的特別需求..."></textarea>
+                </div>
+                <div class="payment-panel" id="payment-info"></div>
+                <button type="submit" class="btn-primary" id="submit-btn" disabled>提交預約申請</button>
+            </form>
+        </div>
+    </main>
+    <!-- Success Modal (Glassmorphism) -->
+    <div class="payment-reminder-modal" id="payment-reminder-modal" aria-hidden="true">
+        <div class="payment-reminder-content">
+            <button type="button" class="payment-reminder-close" id="payment-reminder-close"
+                aria-label="Close">×</button>
+            <div style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+            <h3 style="margin: 0 0 12px; color: #0f172a; font-size: 1.5rem;">預約已提交</h3>
+            <p style="color: #475569; margin-bottom: 24px; line-height: 1.5;">
+                請在 <strong>30 分鐘內</strong> 完成付款，並將付款截圖傳送至 WhatsApp 以確認預約。
+            </p>
+            <a id="payment-reminder-whatsapp" class="whatsapp-button" href="#" target="_blank" rel="noopener"
+                style="display: inline-block; background: #25D366; color: white; padding: 12px 24px; border-radius: 99px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37, 211, 102, 0.4);">
+                <span style="margin-right: 6px;">💬</span> 打開 WhatsApp
+            </a>
+        </div>
+    </div>
+    <script>
+        // const API_BASE_URL = 'https://booking-ub69.onrender.com/api'; // OLD
+        const API_BASE_URL = '/api'; // Relative path for local/prod compatibility
+
+        const state = {
+            settings: null,
+            selectedDate: '',
+            availabilityByDate: new Map(),
+            selectedSlotsByDate: new Map(),
+            selectedRanges: [],
+            slotInterval: 30,
+            activeRoomId: null, // Track selected room
+            rooms: [] // Store fetched rooms
+        };
+
+        async function fetchRentalItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/items`); // Returns { workshops, roomRentals }
+                const data = await res.json();
+                return data.roomRentals || [];
+            } catch (e) {
+                console.error(e);
+                return [];
+            }
+        }
+
+        function populateRoomSelect(rooms) {
+            state.rooms = rooms;
+            const select = document.getElementById('room-select');
+            select.innerHTML = '<option value="">所有空間 (自動分配)</option>';
+
+            rooms.forEach(room => {
+                const opt = document.createElement('option');
+                opt.value = room.id;
+                opt.textContent = `${room.name} (容納 ${room.capacity}人)`;
+                select.appendChild(opt);
+            });
+
+            select.disabled = false;
+
+            select.addEventListener('change', (e) => {
+                state.activeRoomId = e.target.value || null;
+                // Refetch availability if date is selected
+                if (state.selectedDate) {
+                    fetchAvailability(state.selectedDate);
+                }
+            });
+        }
+
+        const elements = {
+            dateInput: document.getElementById('date-input'),
+            roomSelect: document.getElementById('room-select'),
+            peopleInput: document.getElementById('people-count'),
+            slotGrid: document.getElementById('slot-grid'),
+            slotsSection: document.getElementById('slots-section'),
+            summaryList: document.getElementById('summary-list'),
+            totalBlocks: document.getElementById('total-blocks'),
+            totalHours: document.getElementById('total-hours'),
+            totalPeople: document.getElementById('total-people'),
+            totalAmount: document.getElementById('total-amount'),
+            successMessage: document.getElementById('status-success'),
+            errorMessage: document.getElementById('status-error'),
+            submitButton: document.getElementById('submit-btn'),
+            contactCard: document.getElementById('contact-card'),
+            instructionCard: document.getElementById('instruction-card'),
+            paymentInfo: document.getElementById('payment-info'),
+            customerName: document.getElementById('customerName'),
+            email: document.getElementById('email'),
+            phone: document.getElementById('phone'),
+            instagram: document.getElementById('instagram'),
+            usageType: document.getElementById('usage-type'),
+            notes: document.getElementById('notes'),
+            heroSubtitle: document.getElementById('hero-subtitle'),
+            paymentReminderModal: document.getElementById('payment-reminder-modal'),
+            paymentReminderWhatsapp: document.getElementById('payment-reminder-whatsapp'),
+            paymentReminderClose: document.getElementById('payment-reminder-close')
+        };
+
+        function loadUserDetails() {
+            try {
+                const saved = localStorage.getItem('bookingUserDetails');
+                if (saved) {
+                    const details = JSON.parse(saved);
+                    if (details.name) elements.customerName.value = details.name;
+                    if (details.email) elements.email.value = details.email;
+                    if (details.phone) elements.phone.value = details.phone;
+                }
+            } catch (e) { console.warn('Failed to load user details', e); }
+        }
+
+        function saveUserDetails() {
+            try {
+                const details = {
+                    name: elements.customerName.value,
+                    email: elements.email.value,
+                    phone: elements.phone.value
+                };
+                localStorage.setItem('bookingUserDetails', JSON.stringify(details));
+            } catch (e) { console.warn('Failed to save user details', e); }
+        }
+
+        function renderSkeletonSlots() {
+            elements.slotGrid.innerHTML = '';
+            for (let i = 0; i < 18; i++) {
+                const div = document.createElement('div');
+                div.className = 'skeleton skeleton-slot';
+                elements.slotGrid.appendChild(div);
+            }
+            elements.slotsSection.style.display = 'block';
+        }
+
+        function formatDateInputValue(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+                return '';
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function timeToMinutes(value) {
+            const [h, m] = value.split(':').map(Number);
+            return (h * 60) + m;
+        }
+
+        function minutesToTime(minutes) {
+            const hour = Math.floor(minutes / 60);
+            const minute = minutes % 60;
+            return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        }
+
+        function generateSlots(startTime, endTime, intervalMinutes) {
+            const slots = [];
+            let cursor = timeToMinutes(startTime);
+            const end = timeToMinutes(endTime);
+            while (cursor < end) {
+                slots.push(minutesToTime(cursor));
+                cursor += intervalMinutes;
+            }
+            return slots;
+        }
+
+        function ensureSelectionSet(date) {
+            if (!date) {
+                return null;
+            }
+            let set = state.selectedSlotsByDate.get(date);
+            if (!set) {
+                set = new Set();
+                state.selectedSlotsByDate.set(date, set);
+            }
+            return set;
+        }
+
+        function cleanupEmptySelections() {
+            Array.from(state.selectedSlotsByDate.entries()).forEach(([date, slots]) => {
+                if (!slots || slots.size === 0) {
+                    state.selectedSlotsByDate.delete(date);
+                }
+            });
+        }
+
+        function groupSlotsForDate(date) {
+            const slots = state.selectedSlotsByDate.get(date);
+            if (!slots || slots.size === 0) {
+                return [];
+            }
+            const sorted = Array.from(slots)
+                .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+            const groups = [];
+            let current = [];
+            const interval = state.slotInterval;
+            sorted.forEach((slot) => {
+                if (current.length === 0) {
+                    current.push(slot);
+                    return;
+                }
+                const prev = current[current.length - 1];
+                if (timeToMinutes(slot) - timeToMinutes(prev) === interval) {
+                    current.push(slot);
+                } else {
+                    groups.push(current);
+                    current = [slot];
+                }
+            });
+            if (current.length > 0) {
+                groups.push(current);
+            }
+            return groups.map(group => ({
+                start: group[0],
+                end: minutesToTime(timeToMinutes(group[group.length - 1]) + interval),
+                slots: group
+            }));
+        }
+
+        function getAllSelectedGroups() {
+            cleanupEmptySelections();
+            const dates = Array.from(state.selectedSlotsByDate.keys()).sort();
+            const aggregated = [];
+            dates.forEach(date => {
+                const groups = groupSlotsForDate(date);
+                groups.forEach(group => {
+                    aggregated.push({ date, ...group });
+                });
+            });
+            state.selectedRanges = aggregated;
+            return aggregated;
+        }
+
+        function resolvePeakSchedule(settings) {
+            const schedule = settings?.pricing?.peakSchedule;
+            if (!schedule) return null;
+            const days = Array.isArray(schedule.days)
+                ? schedule.days.map(day => day.toString().toLowerCase())
+                : [];
+            return {
+                days,
+                startTime: schedule.startTime || '18:00',
+                endTime: schedule.endTime || '23:00'
+            };
+        }
+
+        function determinePeriodType(date, startTime, endTime, settings) {
+            const schedule = resolvePeakSchedule(settings);
+            if (!schedule || schedule.days.length === 0) return 'normal';
+            const parsed = new Date(`${date}T00:00:00`);
+            if (Number.isNaN(parsed.getTime())) return 'normal';
+            const dayToken = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][parsed.getDay()];
+            if (!schedule.days.includes(dayToken)) return 'normal';
+            const startMinutes = timeToMinutes(startTime);
+            const endMinutes = timeToMinutes(endTime);
+            const peakStart = timeToMinutes(schedule.startTime);
+            const peakEnd = timeToMinutes(schedule.endTime);
+            const overlaps = startMinutes < peakEnd && endMinutes > peakStart;
+            return overlaps ? 'peak' : 'normal';
+        }
+
+        function resolveHourlyRate(pricing, peopleCount, periodType) {
+            const rateTable = pricing || {};
+            const cap = Number(peopleCount);
+            if (cap > 18) {
+                throw new Error('最多 18 人');
+            }
+            const baseKey = periodType === 'peak' ? 'peak' : 'normal';
+            if (cap <= 10) {
+                return Number(rateTable[`${baseKey}UpTo10`] || 0);
+            }
+            return Number(rateTable[`${baseKey}UpTo18`] || 0);
+        }
+
+        function resolvePeopleCountInput() {
+            const value = Number(elements.peopleInput.value);
+            if (!Number.isFinite(value) || value <= 0) {
+                return null;
+            }
+            return Math.min(Math.floor(value), 18);
+        }
+
+        function calculateTotals() {
+            const groups = getAllSelectedGroups();
+            const providedPeopleCount = resolvePeopleCountInput();
+            const effectivePeopleCount = providedPeopleCount ?? 1;
+            let totalMinutes = 0;
+            let totalPrice = 0;
+
+            groups.forEach(group => {
+                const duration = timeToMinutes(group.end) - timeToMinutes(group.start);
+                totalMinutes += duration;
+                if (state.settings?.pricing) {
+                    try {
+                        const periodType = determinePeriodType(group.date, group.start, group.end, state.settings);
+                        const rate = resolveHourlyRate(state.settings.pricing, effectivePeopleCount, periodType);
+                        totalPrice += rate * (duration / 60);
+                    } catch (error) {
+                        console.error('Failed to resolve pricing for group:', error);
+                    }
+                }
+            });
+
+            elements.totalBlocks.textContent = groups.length.toString();
+            elements.totalHours.textContent = `${(totalMinutes / 60).toFixed(1)} 小時`;
+            elements.totalPeople.textContent = providedPeopleCount ? providedPeopleCount.toString() : '—';
+            elements.totalAmount.textContent = totalPrice.toFixed(2);
+            elements.submitButton.disabled = groups.length === 0;
+            elements.contactCard.style.display = groups.length > 0 ? 'block' : 'none';
+        }
+
+        function renderSummary() {
+            const groups = getAllSelectedGroups();
+            elements.summaryList.innerHTML = '';
+
+            if (groups.length === 0) {
+                const empty = document.createElement('div');
+                empty.textContent = '尚未選擇任何時段。';
+                empty.style.color = '#64748b';
+                elements.summaryList.appendChild(empty);
+                calculateTotals();
+                return;
+            }
+
+            const groupedByDate = new Map();
+            groups.forEach(group => {
+                if (!groupedByDate.has(group.date)) {
+                    groupedByDate.set(group.date, []);
+                }
+                groupedByDate.get(group.date).push(group);
+            });
+
+            Array.from(groupedByDate.entries()).forEach(([date, items]) => {
+                const header = document.createElement('div');
+                header.className = 'summary-date';
+                header.textContent = date;
+                elements.summaryList.appendChild(header);
+
+                items.forEach(group => {
+                    const row = document.createElement('div');
+                    row.className = 'summary-item';
+                    const info = document.createElement('div');
+                    info.innerHTML = `<div>${group.start} - ${group.end}</div>`;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = '移除';
+                    removeBtn.addEventListener('click', () => {
+                        const selection = state.selectedSlotsByDate.get(date);
+                        if (selection) {
+                            group.slots.forEach(slot => selection.delete(slot));
+                            if (selection.size === 0) {
+                                state.selectedSlotsByDate.delete(date);
+                            }
+                        }
+                        if (state.selectedDate === date) {
+                            renderSlots();
+                        }
+                        renderSummary();
+                    });
+                    row.appendChild(info);
+                    row.appendChild(removeBtn);
+                    elements.summaryList.appendChild(row);
+                });
+            });
+
+            calculateTotals();
+        }
+
+        function toggleSlotSelection(slot) {
+            const { time, status } = slot;
+            if (status !== 'available') return;
+
+            const date = state.selectedDate;
+            if (!date) return;
+
+            const selectedSet = state.selectedSlotsByDate.get(date) || new Set();
+            if (!state.selectedSlotsByDate.has(date)) {
+                state.selectedSlotsByDate.set(date, selectedSet);
+            }
+
+            if (selectedSet.has(time)) {
+                selectedSet.delete(time);
+            } else {
+                selectedSet.add(time);
+            }
+
+            renderSlots();
+            renderSummary();
+        }
+
+        function renderSlots() {
+            const date = state.selectedDate;
+            if (!date) {
+                elements.slotGrid.innerHTML = '';
+                elements.slotsSection.style.display = 'none';
+                return;
+            }
+
+            const availability = state.availabilityByDate.get(date);
+            if (!availability) return;
+
+            const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
+            const interval = state.slotInterval;
+            const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
+            const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
+
+            // Marketing Logic
+            const marketing = state.settings?.bookingRules?.marketing || {};
+            const showHotTags = marketing.enableHotTags;
+            const hotText = marketing.hotTagText || '🔥 熱門';
+
+            const isHotTime = (timeStr) => {
+                if (!showHotTags || !marketing.startTime || !marketing.endTime) return false;
+                return timeStr >= marketing.startTime && timeStr < marketing.endTime;
+            };
+
+            elements.slotGrid.innerHTML = '';
+
+            generatedSlots.forEach(time => {
+                const button = document.createElement('div');
+                button.className = 'slot-button';
+
+                // Base Content
+                let contentHtml = `<span>${time}</span>`;
+
+                // Status Logic
+                if (confirmedSlots.includes(time)) {
+                    button.classList.add('disabled', 'unavailable');
+                    button.title = '已預約';
+                } else if (pendingSlots.includes(time)) {
+                    button.classList.add('pending');
+                    button.title = '待確認';
+                } else {
+                    button.classList.add('available');
+                    button.addEventListener('click', () => toggleSlotSelection({ time, status: 'available' }));
+
+                    // Add Hot Tag if applicable
+                    if (isHotTime(time)) {
+                        contentHtml += `<span class="hot-tag">${hotText}</span>`;
+                    }
+                }
+
+                if (currentSelected.has(time)) {
+                    button.classList.add('selected');
+                }
+
+                button.innerHTML = contentHtml;
+                elements.slotGrid.appendChild(button);
+            });
+        }
+
+        async function fetchAvailability(date) {
+            if (!date) return;
+            state.selectedDate = date;
+            state.availabilityByDate.delete(date); // Clear previous availability for this date
+
+            // Show skeletons
+            renderSkeletonSlots();
+
+            try {
+                let url = `${API_BASE_URL}/rentals/availability?date=${date}`;
+                if (state.activeRoomId) {
+                    url += `&itemId=${state.activeRoomId}`;
+                }
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Failed to load availability');
+                }
+                const availability = await response.json();
+                state.availabilityByDate.set(date, availability);
+            } catch (error) {
+                console.error('Unable to load availability:', error);
+                state.availabilityByDate.delete(date);
+            } finally {
+                renderSlots(date);
+            }
+        }
+
+        function applyInstructions(settings) {
+            const instructions = settings?.bookingInstructions;
+            if (!instructions) return;
+            const zhTitle = instructions.titleZh || '重要預約須知';
+            const items = Object.keys(instructions)
+                .filter(key => /^instruction\d+Zh$/.test(key))
+                .sort((a, b) => a.localeCompare(b))
+                .map(key => instructions[key])
+                .filter(Boolean);
+            if (items.length === 0) return;
+            const card = elements.instructionCard;
+            card.innerHTML = `<h3>${zhTitle}</h3><ol>${items.map(item => `<li>${item}</li>`).join('')}</ol>`;
+            card.style.display = 'block';
+        }
+
+        function renderPaymentInfo(settings) {
+            const payments = settings?.paymentMethods || {};
+            const parts = [];
+            if (payments.bankTransfer?.enabled) {
+                parts.push(`銀行轉帳：${payments.bankTransfer.bankName} ${payments.bankTransfer.accountNumber} (${payments.bankTransfer.accountName})`);
+            }
+            if (payments.payme?.enabled) {
+                const name = payments.payme.displayName || 'PayMe';
+                const phone = payments.payme.phoneNumber || '';
+                parts.push(`PayMe：${`${name} ${phone}`.trim()}`);
+            }
+            if (payments.fps?.enabled) {
+                const label = payments.fps.displayName || 'FPS 轉數快';
+                const number = payments.fps.fpsNumber || '';
+                parts.push(`${label}：${number}`.trim());
+            }
+            if (parts.length === 0) {
+                elements.paymentInfo.textContent = '請依照工作人員指示完成付款。';
+            } else {
+                elements.paymentInfo.innerHTML = parts.map(text => `<div>• ${text}</div>`).join('');
+            }
+        }
+
+        function getWhatsappNumber() {
+            return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+        }
+
+        function buildWhatsappLink(bookingId = '') {
+            const number = getWhatsappNumber();
+            if (!number) return null;
+            const message = bookingId ? `你好，我剛提交了預約 (${bookingId})，這是我的付款證明。` : '付款證明';
+            return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+        }
+
+        function openPaymentReminderModal(bookingId = '') {
+            const modal = document.getElementById('payment-reminder-modal');
+            const whatsappBtn = document.getElementById('payment-reminder-whatsapp');
+
+            if (state.settings?.contactInfo?.whatsapp) {
+                const phone = state.settings.contactInfo.whatsapp;
+                const text = encodeURIComponent(`你好，我剛提交了預約 (編號: ${bookingId})，這是我的付款證明。`);
+                whatsappBtn.href = `https://wa.me/${phone}?text=${text}`;
+            }
+
+            if (modal) {
+                // Force display flex then add active for transition
+                // modal.style.display = 'flex'; 
+                // We rely on CSS flex + opacity, but just in case:
+                modal.classList.add('active');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closePaymentReminderModal() {
+            const modal = document.getElementById('payment-reminder-modal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden', 'true');
+                // setTimeout(() => modal.style.display = 'none', 300); // Optional if using display:none logic
+            }
+        } function saveUserDetails() {
+            try {
+                const userDetails = {
+                    customerName: elements.customerName.value,
+                    email: elements.email.value,
+                    phone: elements.phone.value
+                };
+                localStorage.setItem('bookingUserDetails', JSON.stringify(userDetails));
+            } catch (e) {
+                console.error('Failed to save user details to localStorage', e);
+            }
+        }
+
+        function loadUserDetails() {
+            try {
+                const savedDetails = localStorage.getItem('bookingUserDetails');
+                if (savedDetails) {
+                    const userDetails = JSON.parse(savedDetails);
+                    elements.customerName.value = userDetails.customerName || '';
+                    elements.email.value = userDetails.email || '';
+                    elements.phone.value = userDetails.phone || '';
+                }
+            } catch (e) {
+                console.error('Failed to load user details from localStorage', e);
+            }
+        }
+
+        function updateSubmitButtonState() {
+            elements.submitButton.disabled = getAllSelectedGroups().length === 0;
+        }
+
+        async function loadSettings() {
+            const response = await fetch(`${API_BASE_URL}/settings`);
+            if (!response.ok) {
+                throw new Error('Failed to load settings');
+            }
+            const settings = await response.json();
+            state.settings = settings;
+            state.slotInterval = Number(settings.bookingRules?.slotInterval || 30);
+
+            applyInterfaceSettings(settings); // NEW: Apply CMS settings
+            applyInstructions(settings);
+            renderPaymentInfo(settings);
+
+            // Legacy subtitle fallback (only if no custom subtitle)
+            if (settings.operatingHours?.daysLabelZh && !settings.ui?.heroSubtitleZh) {
+                elements.heroSubtitle.textContent = `${settings.operatingHours.daysLabelZh} · ${settings.operatingHours.startTime || '07:00'} - ${settings.operatingHours.endTime || '22:00'}`;
+            }
+
+            const rules = settings.bookingRules || {};
+            const minDays = Number(rules.minAdvanceBooking || 0);
+            const maxDays = Number(rules.maxAdvanceBooking || 30);
+            const today = new Date();
+            today.setDate(today.getDate() + minDays);
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + maxDays);
+            elements.dateInput.placeholder = `請選擇 ${formatDateInputValue(today)} 至 ${formatDateInputValue(maxDate)}`;
+            if (fpInstance) {
+                fpInstance.set('minDate', today);
+                fpInstance.set('maxDate', maxDate);
+            }
+        }
+
+        function applyInterfaceSettings(settings) {
+            const ui = settings.ui || {};
+
+            // Theme Color
+            if (ui.primaryColor) {
+                document.documentElement.style.setProperty('--brand-primary', ui.primaryColor);
+            }
+
+            // Hero Text
+            if (ui.heroTitleZh) {
+                const titleEl = document.querySelector('.hero h1');
+                if (titleEl) titleEl.textContent = ui.heroTitleZh;
+            }
+            if (ui.heroSubtitleZh) {
+                elements.heroSubtitle.textContent = ui.heroSubtitleZh;
+            }
+
+            // Announcement Banner
+            let banner = document.getElementById('announcement-banner');
+            if (ui.announcementActive && ui.announcementText) {
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'announcement-banner';
+                    banner.className = 'announcement-banner';
+                    document.body.prepend(banner);
+                }
+                banner.textContent = ui.announcementText;
+                banner.style.display = 'block';
+            } else if (banner) {
+                banner.style.display = 'none';
+            }
+
+            // Footer
+            if (ui.footerText) {
+                const footerP = document.querySelector('footer p');
+                if (footerP) footerP.textContent = ui.footerText;
+            }
+        }
+
+        function setTodayAsMinDate() {
+            // Deprecated for Flatpickr - logic moved to init/loadSettings
+        }
+
+        // Flatpickr Instance
+        let fpInstance;
+
+        async function handleDateChange(selectedDates, dateStr, instance) {
+            state.selectedDate = dateStr;
+            if (dateStr) {
+                elements.slotsSection.style.display = 'block';
+                renderSkeletonSlots();
+                await fetchAvailability(dateStr);
+            } else {
+                elements.slotsSection.style.display = 'none';
+                elements.slotGrid.innerHTML = '';
+            }
+            renderSummary();
+        }
+
+        // Initialize Flatpickr
+        function initFlatpickr(minDate, maxDate) {
+            if (fpInstance) fpInstance.destroy();
+
+            fpInstance = flatpickr(elements.dateInput, {
+                locale: "zh_tw",
+                minDate: minDate,
+                maxDate: maxDate,
+                dateFormat: "Y-m-d",
+                disableMobile: true,
+                altInput: true,
+                altFormat: "Y 年 m 月 d 日 (D)",
+                position: "below",
+                static: false,
+                onChange: handleDateChange,
+                onReady: function(selectedDates, dateStr, instance) {
+                    // Ensure alt input has same styling as original
+                    instance.altInput.style.cursor = 'pointer';
+                }
+            });
+        }
+
+        // elements.dateInput.addEventListener('change', handleDateChange); // Removed native listener
+
+        elements.peopleInput.addEventListener('input', () => {
+            const parsed = resolvePeopleCountInput();
+            if (parsed !== null && parsed.toString() !== elements.peopleInput.value) {
+                elements.peopleInput.value = parsed.toString();
+            }
+            if (parsed === null && elements.peopleInput.value) {
+                elements.peopleInput.value = '';
+            }
+            calculateTotals();
+        });
+
+        elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
+        elements.paymentReminderModal?.addEventListener('click', (event) => {
+            if (event.target === elements.paymentReminderModal) {
+                closePaymentReminderModal();
+            }
+        });
+        elements.paymentReminderWhatsapp?.addEventListener('click', (event) => {
+            if (elements.paymentReminderWhatsapp.getAttribute('aria-disabled') === 'true') {
+                event.preventDefault();
+            }
+        });
+
+        function showToast(message, type = 'success') {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            // Icon
+            const icon = type === 'success'
+                ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                toast.addEventListener('animationend', () => {
+                    toast.remove();
+                });
+            }, 3000);
+        }
+
+        // Helper to resolve people count
+        function resolvePeopleCountInput() {
+            const val = parseInt(elements.peopleInput.value, 10);
+            return (Number.isFinite(val) && val >= 1) ? val : null;
+        }
+
+        // --- Event Listeners ---
+
+        // Handle Booking Submit
+        document.getElementById('booking-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const groups = getAllSelectedGroups();
+            if (groups.length === 0) {
+                showToast('請先選擇預約時段', 'error');
+                return;
+            }
+
+            const payload = {
+                customerName: elements.customerName.value.trim(),
+                email: elements.email.value.trim(),
+                phone: elements.phone.value.trim(),
+                instagram: elements.instagram.value.trim(),
+                usageType: elements.usageType.value,
+                notes: elements.notes.value.trim(),
+                slots: groups.map(group => ({
+                    date: group.date,
+                    startTime: group.start,
+                    endTime: group.end,
+                    catalogItemId: state.activeRoomId || null
+                })),
+                peopleCount: resolvePeopleCountInput() ?? 1
+            };
+
+            if (!payload.customerName || !payload.email || !payload.phone) {
+                showToast('請填寫完整聯絡資料', 'error');
+                return;
+            }
+
+            if (!payload.usageType) {
+                showToast('請選擇用途', 'error');
+                return;
+            }
+
+            try {
+                elements.submitButton.disabled = true;
+                elements.submitButton.textContent = '提交中...';
+
+                const response = await fetch(`${API_BASE_URL}/bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    saveUserDetails();
+
+                    // 1. Show Toast
+                    showToast('預約已提交！', 'success');
+
+                    // 2. Open Success Modal
+                    const whatsappNum = (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+                    const link = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(`你好，我剛提交了場地預約 (編號: ${result.booking?.id})，這是我的付款證明。`)}`;
+                    const linkEl = document.getElementById('whatsappLink');
+                    if (linkEl) linkEl.href = link;
+
+                    document.getElementById('successModal').classList.add('active');
+
+                    // 3. Reset State & UI
+                    const affectedDates = Array.from(new Set(groups.map(group => group.date)));
+                    state.selectedSlotsByDate.clear();
+                    affectedDates.forEach(date => state.availabilityByDate.delete(date));
+                    renderSummary();
+                    calculateTotals();
+                    elements.notes.value = '';
+                    if (state.selectedDate) {
+                        fetchAvailability(state.selectedDate);
+                    }
+                } else {
+                    console.error('Booking create failed:', response.status, result);
+                    throw new Error(result?.error || '無法提交預約');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || '提交失敗，請稍後再試', 'error');
+            } finally {
+                elements.submitButton.disabled = false;
+                elements.submitButton.textContent = '提交預約申請';
+                updateSubmitButtonState();
+            }
+        });
+
+        // Initialize
+        (async function init() {
+            try {
+                setTodayAsMinDate();
+                loadUserDetails(); // Load saved user info
+
+                // Parallel fetch
+                const [settings, rentalItems] = await Promise.all([
+                    loadSettings().catch(e => {
+                        console.error('Settings load failed:', e);
+                        return null; // Fallback
+                    }),
+                    fetchRentalItems().catch(e => {
+                        console.error('Rental items load failed:', e);
+                        return [];
+                    })
+                ]);
+
+                populateRoomSelect(rentalItems || []);
+
+                // Use settings if available, else defaults
+                const minAdvance = Number(settings?.bookingRules?.minAdvanceBooking || 0);
+                const maxAdvance = Number(settings?.bookingRules?.maxAdvanceBooking || 30);
+
+                // Set default date logic
+                const today = new Date();
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() + minAdvance);
+
+                const maxDate = new Date();
+                maxDate.setDate(maxDate.getDate() + maxAdvance);
+
+                // Initialize Flatpickr with bounds
+                initFlatpickr(minDate, maxDate);
+            } catch (err) {
+                console.error('Initialization error:', err);
+                showToast('系統初始化失敗，請重新整理頁面', 'error');
+                // Ensure Flatpickr still inits even if everything else explodes
+                try { initFlatpickr(new Date(), new Date(Date.now() + 86400000 * 30)); } catch (e) { }
+            }
+
+
+            // Default select today/minDate if valid
+            // const dateStr = formatDateInputValue(minDate);
+            // fpInstance.setDate(dateStr, true); // Trigger change
+
+        })();
+
+        // Remove any legacy footer note that might persist from cached assets
+        document.querySelectorAll('footer').forEach((footer) => {
+            const text = footer.textContent.trim();
+            if (
+                text.includes('營業時間由後台設定自動套用') ||
+                text.includes('課堂資料與方案皆由後台設定') ||
+                text.includes('Powered by the Studio Booking backend API')
+            ) {
+                footer.remove();
+            }
+        });
+    </script>
+    <!-- Success Modal -->
+    <div id="successModal">
+        <div
+            style="background:#fff; padding:40px; border-radius:24px; width:90%; max-width:420px; text-align:center; box-shadow:0 24px 50px -12px rgba(0,0,0,0.25);">
+            <div
+                style="background:#ecfdf5; width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 24px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h2 style="color:#0f172a; font-size:1.5rem; margin-bottom:12px; font-weight:700;">預約已提交</h2>
+            <p style="color:#64748b; margin-bottom:24px; line-height:1.6;">請在 30 分鐘內完成付款，並將收據傳送至 WhatsApp
+                以確認預約。系統會發送確認電郵給您。</p>
+            <a id="whatsappLink" href="#" target="_blank"
+                style="display:inline-flex; align-items:center; justify-content:center; background:#10b981; color:white; padding:14px 28px; border-radius:12px; font-weight:600; text-decoration:none; width:100%; transition:all 0.2s;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px;">
+                    <path
+                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                </svg>
+                Open WhatsApp
+            </a>
+            <button onclick="document.getElementById('successModal').classList.remove('active')"
+                style="display:block; width:100%; margin-top:16px; background:transparent; border:none; color:#64748b; font-weight:500; cursor:pointer;">關閉</button>
+        </div>
+    </div>
+</body>
+
+</html>
