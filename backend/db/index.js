@@ -975,19 +975,19 @@ async function getRoomConflicts(date, startTime, endTime, excludeBookingId = nul
     const bookingResult = await pool.query(query, params);
     const bookingConflicts = bookingResult.rows.map(mapBookingItemRow);
 
+    // Use explicit +08:00 (HK time) so PostgreSQL converts correctly to UTC
+    // before comparing with stored timestamptz values.
     const classParams = [
-        date,
-        `${date}T${endTime}:00`,
-        `${date}T${startTime}:00`
+        `${date}T${endTime}:00+08:00`,
+        `${date}T${startTime}:00+08:00`
     ];
     // Classes block everything by default (as they assume full studio usage usually)
     // If classes had room allocation, we would filter here too.
     const classResult = await pool.query(`
         SELECT id, name, start_time, end_time
         FROM classes
-        WHERE DATE(start_time) = $1
-          AND start_time < $2::timestamptz
-          AND end_time > $3::timestamptz
+        WHERE start_time < $1::timestamptz
+          AND end_time > $2::timestamptz
     `, classParams);
 
     const classConflicts = classResult.rows.map(row => ({
