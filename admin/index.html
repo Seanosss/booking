@@ -1111,27 +1111,21 @@
                 </div>
             </div>
             <div class="section-card">
-                <h3>場地租用項目</h3>
+                <h3>場地空間管理</h3>
+                <p style="color:#52606d;font-size:0.9rem;margin-bottom:16px;">在此新增或編輯場地空間，即可控制預約頁面「選擇空間」下拉選單的選項。</p>
                 <div id="rentalItemsMessage" class="message"></div>
                 <form id="rentalItemForm">
                     <input type="hidden" id="rentalItemId">
                     <div class="form-grid two-columns">
-                        <div class="input-group"><label>名稱 *</label><input id="rentalItemName" type="text" required></div>
-                        <div class="input-group"><label>開始供應日期 (選填)</label><input id="rentalItemStart" type="datetime-local"></div>
-                        <div class="input-group"><label>結束供應日期 (選填)</label><input id="rentalItemEnd" type="datetime-local"></div>
-                        <div class="input-group"><label>預設時長 (分鐘, 選填)</label><input id="rentalItemDuration" type="number" min="1"></div>
-                        <div class="input-group"><label>每小時價錢 (選填)</label><input id="rentalItemPrice" type="number" min="0" step="1"></div>
-                        <div class="input-group"><label>導師名稱 / 工作人員</label><input id="rentalItemInstructor" type="text">
-                        </div>
-                        <div class="input-group"><label>人數上限</label><input id="rentalItemCapacity" type="number" min="1"
-                                required></div>
+                        <div class="input-group"><label>空間名稱 *</label><input id="rentalItemName" type="text" required placeholder="例如：Studio A"></div>
+                        <div class="input-group"><label>人數上限 *</label><input id="rentalItemCapacity" type="number" min="1" required placeholder="例如：20"></div>
                     </div>
                     <div style="margin-top:18px;">
-                        <button type="submit" class="btn btn-primary">儲存場地項目</button>
+                        <button type="submit" class="btn btn-primary">儲存空間</button>
                         <button type="button" class="btn btn-secondary" onclick="resetRentalItemForm()">清除</button>
                     </div>
                 </form>
-                <h4 style="margin-top:24px;color:#145da0;">現有場地項目</h4>
+                <h4 style="margin-top:24px;color:#145da0;">現有場地空間</h4>
                 <div id="rentalItemsList" class="item-list">
             </div>
         </div>
@@ -2965,16 +2959,10 @@
             currentRentalItems.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'item-card';
-                const start = item.startDateTime ? new Date(item.startDateTime) : null;
-                const end = item.endDateTime ? new Date(item.endDateTime) : null;
-                const remaining = item.availableCapacity != null
-                    ? item.availableCapacity
-                    : Math.max((item.capacity || 0) - (item.usedCapacity || 0), 0);
                 card.innerHTML = `
                     <h4>${escapeHtml(item.name)}</h4>
-                    <small>${start ? formatDateTime(start) : ''}${end ? ' - ' + formatTime(end) : ''}</small>
-                    <small>時長：${escapeHtml(String(item.duration || 0))} 分鐘｜價錢：HK$${Number(item.price || 0).toFixed(2)}</small>
-                    <small>人數上限：${escapeHtml(String(item.capacity || 0))}｜剩餘：${escapeHtml(String(Math.max(remaining, 0)))}</small>
+                    <small>容納人數：${escapeHtml(String(item.capacity || 0))} 人</small>
+                    <small style="color:#2563eb;">→ 前台下拉選單顯示：「${escapeHtml(item.name)} (容納 ${escapeHtml(String(item.capacity || 0))}人)」</small>
                 `;
 
                 const actions = document.createElement('div');
@@ -2997,11 +2985,6 @@
         function editRentalItem(item) {
             document.getElementById('rentalItemId').value = item.id;
             document.getElementById('rentalItemName').value = item.name || '';
-            document.getElementById('rentalItemStart').value = item.startDateTime ? item.startDateTime.slice(0, 16) : '';
-            document.getElementById('rentalItemEnd').value = item.endDateTime ? item.endDateTime.slice(0, 16) : '';
-            document.getElementById('rentalItemDuration').value = item.duration || '';
-            document.getElementById('rentalItemPrice').value = item.price != null ? item.price : '';
-            document.getElementById('rentalItemInstructor').value = item.instructorName || '';
             document.getElementById('rentalItemCapacity').value = item.capacity != null ? item.capacity : '';
         }
 
@@ -3015,35 +2998,10 @@
             event.preventDefault();
             const id = document.getElementById('rentalItemId').value;
             const name = document.getElementById('rentalItemName').value.trim();
-            const startDateTime = document.getElementById('rentalItemStart').value;
-            const endDateTime = document.getElementById('rentalItemEnd').value;
-            const durationValue = Number.parseInt(document.getElementById('rentalItemDuration').value, 10);
-            const priceValue = Number.parseFloat(document.getElementById('rentalItemPrice').value);
             const capacityValue = Number.parseInt(document.getElementById('rentalItemCapacity').value, 10);
 
             if (!name) {
-                showMessage('rentalItemsMessage', 'error', '請輸入項目名稱');
-                return;
-            }
-            // start/end datetime are optional for room_rental items (rooms are always available)
-            if (startDateTime && endDateTime) {
-                const rentalStart = new Date(startDateTime);
-                const rentalEnd = new Date(endDateTime);
-                if (Number.isNaN(rentalStart.getTime()) || Number.isNaN(rentalEnd.getTime())) {
-                    showMessage('rentalItemsMessage', 'error', '請輸入有效的日期時間');
-                    return;
-                }
-                if (rentalStart >= rentalEnd) {
-                    showMessage('rentalItemsMessage', 'error', '結束時間需晚於開始時間');
-                    return;
-                }
-            }
-            if (durationValue && (!Number.isInteger(durationValue) || durationValue <= 0)) {
-                showMessage('rentalItemsMessage', 'error', '請輸入有效的時長 (分鐘)');
-                return;
-            }
-            if (priceValue !== null && !Number.isNaN(priceValue) && priceValue < 0) {
-                showMessage('rentalItemsMessage', 'error', '價格不可小於 0');
+                showMessage('rentalItemsMessage', 'error', '請輸入空間名稱');
                 return;
             }
             if (!Number.isInteger(capacityValue) || capacityValue <= 0) {
@@ -3054,11 +3012,6 @@
             const payload = {
                 type: 'room_rental',
                 name,
-                startDateTime: startDateTime || null,
-                endDateTime: endDateTime || null,
-                duration: durationValue || 60,
-                price: Number.isFinite(priceValue) ? priceValue : 0,
-                instructorName: document.getElementById('rentalItemInstructor').value,
                 capacity: capacityValue
             };
 
