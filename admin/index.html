@@ -3159,39 +3159,37 @@
                     }
                 },
                 dateClick: async function (info) {
-                    if (confirm(`要在 ${info.dateStr} 建立"維護"封鎖時段嗎？`)) {
-                        // Quick Block
-                        // Create dummy booking
-                        try {
-                            const res = await authenticatedFetch(`${API_BASE_URL}/bookings`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    customerName: 'Maintenance',
-                                    email: 'admin@studio.com',
-                                    phone: '00000000',
-                                    date: info.dateStr,
-                                    startTime: '00:00',
-                                    endTime: '23:59',
-                                    itemType: 'room_rental',
-                                    deposit: 0,
-                                    paymentMethod: 'cash',
-                                    adminNotes: 'Quick Block',
-                                    status: 'confirmed' // Auto-confirm for quick block
-                                })
-                            });
-                            if (res.ok) {
-                                showMessage('bookingsMessage', 'success', '已成功封鎖時段');
-                                calendar.refetchEvents();
-                                loadRentalBookings(); // Refresh bookings table
-                            } else {
-                                const errorData = await res.json();
-                                showMessage('bookingsMessage', 'error', errorData.error || '封鎖失敗');
-                            }
-                        } catch (e) {
-                            console.error('Failed to block:', e);
-                            showMessage('bookingsMessage', 'error', '封鎖失敗');
+                    const startTime = prompt(`封鎖時段 ${info.dateStr}\n\n開始時間（格式 HH:MM，整天請填 00:00）：`, '00:00');
+                    if (startTime === null) return;
+                    const endTime = prompt(`結束時間（格式 HH:MM，整天請填 23:59）：`, '23:59');
+                    if (endTime === null) return;
+                    const label = prompt('備註標籤（可空白）：', '維護封鎖') || '維護封鎖';
+                    try {
+                        const res = await authenticatedFetch(`${API_BASE_URL}/admin/bookings`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                customerName: 'Maintenance',
+                                email: 'admin@studio.com',
+                                phone: '00000000',
+                                date: info.dateStr,
+                                startTime: startTime.trim(),
+                                endTime: endTime.trim(),
+                                adminNotes: label,
+                                status: 'confirmed'
+                            })
+                        });
+                        if (res.ok) {
+                            showMessage('bookingsMessage', 'success', `✅ 已封鎖 ${info.dateStr} ${startTime}–${endTime}`);
+                            calendar.refetchEvents();
+                            loadRentalBookings();
+                        } else {
+                            const errorData = await res.json();
+                            showMessage('bookingsMessage', 'error', errorData.error || '封鎖失敗');
                         }
+                    } catch (e) {
+                        console.error('Failed to block:', e);
+                        showMessage('bookingsMessage', 'error', '封鎖失敗，請稍後再試');
                     }
                 },
                 eventClick: function (info) {

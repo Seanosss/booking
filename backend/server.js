@@ -381,6 +381,38 @@ app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
     }
 });
 
+// Admin-only booking creation (used for Quick Block and admin-created bookings)
+app.post('/api/admin/bookings', authenticateAdmin, async (req, res) => {
+    try {
+        const { customerName, email, phone, date, startTime, endTime, adminNotes, status } = req.body;
+        if (!customerName || !email || !phone || !date || !startTime || !endTime) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const settings = await loadSettings();
+        const duration = minutesBetween(startTime, endTime);
+        const periodType = determinePeriodType(date, startTime, endTime, settings);
+        const bookingStatus = ['pending', 'confirmed', 'cancelled'].includes(status) ? status : 'confirmed';
+        const booking = await createBooking({
+            customerName, email, phone,
+            notes: adminNotes || '',
+            adminNotes: adminNotes || '',
+            status: bookingStatus,
+            totalPeople: 1,
+            items: [{
+                itemType: 'room_rental',
+                date, startTime, endTime, duration,
+                peopleCount: 1,
+                price: 0,
+                periodType
+            }]
+        });
+        res.status(201).json({ success: true, booking, message: '已建立預約' });
+    } catch (e) {
+        console.error('Admin booking creation error:', e);
+        res.status(500).json({ error: 'Booking creation failed' });
+    }
+});
+
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];

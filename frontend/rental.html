@@ -1300,7 +1300,11 @@
             }
 
             const availability = state.availabilityByDate.get(date);
-            if (!availability) return;
+            if (!availability) {
+                // API failed or still loading — clear skeleton and show retry prompt
+                elements.slotGrid.innerHTML = '<div style="text-align:center;padding:20px;color:#c0392b;grid-column:1/-1;">⚠️ 無法載入時段，請重新選擇日期或稍後再試。</div>';
+                return;
+            }
 
             const { openingHours, confirmedSlots = [], pendingSlots = [] } = availability;
             const interval = state.slotInterval;
