@@ -410,6 +410,7 @@
             }
         }
 
+        /* ── Stat Cards ── */
         .stat-card {
             background: #fff;
             color: var(--text-main);
@@ -420,29 +421,131 @@
             position: relative;
             overflow: hidden;
         }
-
-        .stat-card::after {
+        .stat-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            width: 6px;
-            background: var(--brand-secondary);
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: var(--stat-accent, var(--brand-secondary));
+            border-radius: 20px 20px 0 0;
         }
-
         .stat-card h4 {
-            font-size: 0.9em;
+            font-size: 0.85em;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 8px;
+            letter-spacing: 0.07em;
+            margin-bottom: 10px;
             color: var(--text-muted);
+            font-weight: 600;
         }
-
         .stat-card p {
-            font-size: 2.2em;
+            font-size: 2.4em;
             font-weight: 800;
-            color: var(--brand-primary);
+            color: var(--stat-accent, var(--brand-primary));
+            line-height: 1;
+        }
+        #stat-total   { --stat-accent: #6366f1; }
+        #stat-confirmed { --stat-accent: #10b981; }
+        #stat-pending { --stat-accent: #f59e0b; }
+
+        /* ── Status Select in table ── */
+        .status-select {
+            padding: 5px 8px;
+            border-radius: 20px;
+            border: 1.5px solid currentColor;
+            font-size: 0.82em;
+            font-weight: 600;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 24px;
+            transition: all 0.15s;
+        }
+        .status-select.status-pending   { background-color:#fef3c7; color:#92400e; border-color:#fcd34d; }
+        .status-select.status-confirmed { background-color:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+        .status-select.status-cancelled { background-color:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+
+        /* ── Overflow ⋮ menu ── */
+        .overflow-menu {
+            position: relative;
+            display: inline-block;
+            margin-left: 6px;
+        }
+        .overflow-trigger {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 1;
+            transition: all 0.15s;
+        }
+        .overflow-trigger:hover { background: #f1f5f9; color: var(--text-main); }
+        .overflow-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            min-width: 180px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .overflow-dropdown.open { display: block; }
+        .overflow-dropdown a,
+        .overflow-dropdown button {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            text-align: left;
+            background: none;
+            border: none;
+            font-size: 0.9em;
+            color: var(--text-main);
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+        .overflow-dropdown a:hover,
+        .overflow-dropdown button:hover { background: #f8fafc; }
+        .overflow-dropdown button.danger { color: var(--danger); }
+        .overflow-dropdown button.danger:hover { background: #fef2f2; }
+        .action-cell { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+        .filter-bar input[type=text],
+        .filter-bar input[type=date],
+        .filter-bar select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9em;
+            background: #fff;
+            color: var(--text-main);
+            transition: border 0.15s;
+        }
+        .filter-bar input[type=text] { flex: 1; min-width: 180px; }
+        .filter-bar input:focus, .filter-bar select:focus {
+            border-color: var(--brand-secondary);
+            outline: none;
         }
 
         .overview-grid {
@@ -583,7 +686,7 @@
             <h1 style="color:#0b4f6c; font-size:2.2em;">Studio Booking 管理面板</h1>
             <p style="color:#52606d;">快速管理預約、設定、課程與場地資訊。</p>
             <p id="adminIdentity" style="color:#52606d; font-size:0.95em; margin-top:6px; display:none;"></p>
-            <div id="apiStatusMessage" class="message" style="margin-top:12px;"></div>
+            <span id="apiStatusDot" style="display:none;font-size:0.8em;color:var(--danger);margin-top:4px;">⚠️ API 離線</span>
             <button class="logout-btn" onclick="logout()">登出</button>
             <div class="stat-grid">
                 <div class="stat-card" id="stat-total">
@@ -628,6 +731,17 @@
                     <h3>場地預約</h3>
                     <button class="btn btn-secondary" onclick="exportCsv()">匯出月報表 (CSV)</button>
                 </div>
+                <div class="filter-bar">
+                    <input type="text" id="rentalSearch" placeholder="🔍 搜尋客戶姓名或電話…" oninput="filterRentalBookings()">
+                    <input type="date" id="rentalDateFilter" onchange="filterRentalBookings()" title="依預約日期篩選">
+                    <select id="rentalStatusFilter" onchange="filterRentalBookings()">
+                        <option value="">全部狀態</option>
+                        <option value="pending">⏳ 待處理</option>
+                        <option value="confirmed">✅ 已確認</option>
+                        <option value="cancelled">✗ 已取消</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="clearRentalFilters()">✕ 清除</button>
+                </div>
                 <div id="bookingsMessage" class="message"></div>
                 <div style="overflow-x:auto;">
                     <table>
@@ -635,9 +749,9 @@
                             <tr>
                                 <th>預約編號</th>
                                 <th>客戶 / 聯絡</th>
-                                <th>項目</th>
-                                <th>總人數</th>
-                                <th>總金額</th>
+                                <th>預約項目</th>
+                                <th style="text-align:center;">人數</th>
+                                <th>金額</th>
                                 <th>狀態</th>
                                 <th>操作</th>
                             </tr>
@@ -648,6 +762,17 @@
             </div>
             <div class="section-card">
                 <h3>課程預約</h3>
+                <div class="filter-bar">
+                    <input type="text" id="classSearch" placeholder="🔍 搜尋學員姓名、電話或 Email…" oninput="filterClassBookings()">
+                    <input type="date" id="classDateFilter" onchange="filterClassBookings()" title="依課程日期篩選">
+                    <select id="classStatusFilter" onchange="filterClassBookings()">
+                        <option value="">全部狀態</option>
+                        <option value="pending">⏳ 待處理</option>
+                        <option value="confirmed">✅ 已確認</option>
+                        <option value="cancelled">✗ 已取消</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="clearClassFilters()">✕ 清除</button>
+                </div>
                 <div id="classBookingsMessage" class="message"></div>
                 <div style="overflow-x:auto;">
                     <table>
@@ -693,26 +818,8 @@
         </div>
         <div id="settingsTab" class="tab-content">
             <div id="settingsMessage" class="message"></div>
-            <div class="section-card">
-                <h3>管理密碼</h3>
-                <div id="passwordMessage" class="message"></div>
-                <form id="passwordForm" class="form-grid">
-                    <div class="input-group">
-                        <label>目前密碼</label>
-                        <input type="password" id="currentAdminPassword" autocomplete="current-password" required>
-                    </div>
-                    <div class="input-group">
-                        <label>新密碼</label>
-                        <input type="password" id="newAdminPassword" autocomplete="new-password" required>
-                    </div>
-                    <div class="input-group">
-                        <label>確認新密碼</label>
-                        <input type="password" id="confirmAdminPassword" autocomplete="new-password" required>
-                    </div>
-                    <div>
-                        <button type="submit" class="btn btn-primary">更新密碼</button>
-                    </div>
-                </form>
+            <div class="section-card" style="background:#fafbfc;border:1.5px dashed var(--border);">
+                <p style="color:var(--text-muted);font-size:0.9em;">💡 密碼管理已移至「用戶管理」分頁。</p>
             </div>
             <div class="section-card">
                 <h3>基本資料</h3>
@@ -1102,25 +1209,15 @@
         let currentClassProducts = [];
 
         async function checkApiHealth() {
-            const statusEl = document.getElementById('apiStatusMessage');
-            if (!statusEl) return;
             try {
                 const response = await fetch(`${API_BASE_URL}/health`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                statusEl.className = 'message success';
-                statusEl.textContent = '已連線至後端 API。';
-                statusEl.style.display = 'block';
-                console.log('Connected to backend API');
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 4000);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const dot = document.getElementById('apiStatusDot');
+                if (dot) dot.style.display = 'none';
             } catch (error) {
                 console.error('API health check failed:', error);
-                statusEl.className = 'message error';
-                statusEl.textContent = '後端 API 無法連線，請檢查 API_BASE_URL 設定或 Render 服務是否正常。';
-                statusEl.style.display = 'block';
+                const dot = document.getElementById('apiStatusDot');
+                if (dot) dot.style.display = 'inline';
             }
         }
 
@@ -1366,6 +1463,69 @@
             await Promise.all([loadRentalBookings(), loadClassBookings()]);
         }
 
+        let _allRentalBookings = [];
+        let _allClassBookings = [];
+
+        // Overflow ⋮ menu toggle (close others on open)
+        function toggleOverflow(btn) {
+            const menu = btn.nextElementSibling;
+            const isOpen = menu.classList.contains('open');
+            document.querySelectorAll('.overflow-dropdown.open').forEach(d => d.classList.remove('open'));
+            if (!isOpen) menu.classList.add('open');
+        }
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.overflow-menu')) {
+                document.querySelectorAll('.overflow-dropdown.open').forEach(d => d.classList.remove('open'));
+            }
+        });
+
+        // ── Rental filter ──
+        function filterRentalBookings() {
+            const q = (document.getElementById('rentalSearch')?.value || '').toLowerCase();
+            const date = document.getElementById('rentalDateFilter')?.value || '';
+            const status = document.getElementById('rentalStatusFilter')?.value || '';
+            const filtered = _allRentalBookings.filter(b => {
+                const matchQ = !q || (b.customerName||'').toLowerCase().includes(q) || (b.phone||'').includes(q);
+                const matchDate = !date || (b.items||[]).some(i => i.date === date);
+                const matchStatus = !status || b.status === status;
+                return matchQ && matchDate && matchStatus;
+            });
+            renderRentalBookings(filtered);
+        }
+        function clearRentalFilters() {
+            const s = document.getElementById('rentalSearch');
+            const d = document.getElementById('rentalDateFilter');
+            const sf = document.getElementById('rentalStatusFilter');
+            if (s) s.value = '';
+            if (d) d.value = '';
+            if (sf) sf.value = '';
+            renderRentalBookings(_allRentalBookings);
+        }
+
+        // ── Class filter ──
+        function filterClassBookings() {
+            const q = (document.getElementById('classSearch')?.value || '').toLowerCase();
+            const date = document.getElementById('classDateFilter')?.value || '';
+            const status = document.getElementById('classStatusFilter')?.value || '';
+            const filtered = _allClassBookings.filter(b => {
+                const matchQ = !q || (b.customerName||'').toLowerCase().includes(q)
+                    || (b.phone||'').includes(q) || (b.email||'').toLowerCase().includes(q);
+                const matchDate = !date || (b.classStartTime||'').startsWith(date);
+                const matchStatus = !status || b.status === status;
+                return matchQ && matchDate && matchStatus;
+            });
+            renderClassBookings(filtered);
+        }
+        function clearClassFilters() {
+            const s = document.getElementById('classSearch');
+            const d = document.getElementById('classDateFilter');
+            const sf = document.getElementById('classStatusFilter');
+            if (s) s.value = '';
+            if (d) d.value = '';
+            if (sf) sf.value = '';
+            renderClassBookings(_allClassBookings);
+        }
+
         async function loadRentalBookings() {
             try {
                 const response = await authenticatedFetch(`${API_BASE_URL}/bookings`);
@@ -1376,7 +1536,8 @@
                     return;
                 }
                 const bookings = await response.json();
-                renderRentalBookings(bookings);
+                _allRentalBookings = bookings;
+                filterRentalBookings();
                 hideMessage('bookingsMessage');
             } catch (error) {
                 console.error('Error loading bookings:', error);
@@ -1468,7 +1629,8 @@
                     return;
                 }
                 const bookings = await response.json();
-                renderClassBookings(bookings);
+                _allClassBookings = bookings;
+                filterClassBookings();
                 hideMessage('classBookingsMessage');
             } catch (error) {
                 console.error('Error loading class bookings:', error);
@@ -1878,7 +2040,9 @@
                             </div>
                         </td>
                         <td style="padding:10px 12px;">
-                            <button onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" style="padding:5px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.82em;">刪除</button>
+                            ${u.username === localStorage.getItem('adminUsername')
+                                ? '<span style="color:#94a3b8;font-size:0.82em;padding:5px 10px;display:inline-block;">（目前帳號）</span>'
+                                : `<button onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" style="padding:5px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.82em;">刪除</button>`}
                         </td>
                     </tr>
                 `).join('');
@@ -2010,22 +2174,14 @@
         });
 
         async function checkApiHealth() {
-            const statusEl = document.getElementById('apiStatusMessage');
-            if (!statusEl) return;
             try {
                 const res = await fetch(`${API_BASE_URL}/health`);
-                if (res.ok) {
-                    statusEl.textContent = 'System Online';
-                    statusEl.className = 'message success';
-                    statusEl.style.display = 'block';
-                    setTimeout(() => statusEl.style.display = 'none', 3000);
-                }
+                const dot = document.getElementById('apiStatusDot');
+                if (dot) dot.style.display = res.ok ? 'none' : 'inline';
             } catch (e) {
                 console.error('API Check Failed:', e);
-                // Don't block the UI, just show a warning
-                statusEl.textContent = '⚠️ API 連線失敗 (Offline)';
-                statusEl.className = 'message error';
-                statusEl.style.display = 'block';
+                const dot = document.getElementById('apiStatusDot');
+                if (dot) dot.style.display = 'inline';
             }
         }
 
