@@ -1462,34 +1462,60 @@
             }
         }
 
-        function getWhatsappNumber() {
-            return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+        function buildPaymentMethodsHtml(pm) {
+            if (!pm) return '<div>請依照工作人員指示完成付款。</div>';
+            const rows = [];
+            if (pm.fps?.enabled) {
+                const label = pm.fps.displayName || 'FPS 轉數快';
+                const num = pm.fps.fpsNumber || '';
+                rows.push(`<div><strong>${label}</strong>：${num}</div>`);
+            }
+            if (pm.payme?.enabled) {
+                const label = pm.payme.displayName || 'PayMe';
+                const phone = pm.payme.phoneNumber || '';
+                rows.push(`<div><strong>${label}</strong>：${phone}</div>`);
+            }
+            if (pm.bankTransfer?.enabled) {
+                const bank = pm.bankTransfer.bankName || '';
+                const acct = pm.bankTransfer.accountNumber || '';
+                const name = pm.bankTransfer.accountName || '';
+                rows.push(`<div><strong>銀行轉帳</strong>：${bank} ${acct}${name ? ` (${name})` : ''}</div>`);
+            }
+            return rows.length > 0 ? rows.join('') : '<div>請依照工作人員指示完成付款。</div>';
         }
 
-        function buildWhatsappLink(bookingId = '') {
-            const number = getWhatsappNumber();
-            if (!number) return null;
-            const message = bookingId ? `你好，我剛提交了預約 (${bookingId})，這是我的付款證明。` : '付款證明';
-            return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-        }
+        function openSuccessModal(bookingId, payload, totalAmount) {
+            // Set booking reference
+            const refEl = document.getElementById('successBookingRef');
+            if (refEl) refEl.textContent = `預約編號：#${bookingId}`;
 
-        function openPaymentReminderModal(bookingId = '') {
-            const modal = document.getElementById('payment-reminder-modal');
-            const whatsappBtn = document.getElementById('payment-reminder-whatsapp');
+            // Build payment methods HTML
+            const pmEl = document.getElementById('successPaymentMethods');
+            if (pmEl) pmEl.innerHTML = buildPaymentMethodsHtml(state.settings?.paymentMethods);
 
-            if (state.settings?.contactInfo?.whatsapp) {
-                const phone = state.settings.contactInfo.whatsapp;
-                const text = encodeURIComponent(`你好，我剛提交了預約 (編號: ${bookingId})，這是我的付款證明。`);
-                whatsappBtn.href = `https://wa.me/${phone}?text=${text}`;
+            // Build WhatsApp link with detailed pre-filled message
+            const phone = (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
+            const linkEl = document.getElementById('whatsappLink');
+            if (linkEl) {
+                if (phone) {
+                    const slotLines = (payload.slots || [])
+                        .map(s => `  • ${s.date}  ${s.startTime} - ${s.endTime}`)
+                        .join('\n');
+                    const msg =
+                        `你好！我想確認場地租用預約。\n\n` +
+                        `📋 預約編號：#${bookingId}\n` +
+                        `👤 姓名：${payload.customerName}\n` +
+                        `📅 預約時段：\n${slotLines}\n` +
+                        `💰 預估金額：HK$${totalAmount}\n\n` +
+                        `請問可以確認我的付款嗎？謝謝！`;
+                    linkEl.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                    linkEl.style.display = '';
+                } else {
+                    linkEl.style.display = 'none';
+                }
             }
 
-            if (modal) {
-                // Force display flex then add active for transition
-                // modal.style.display = 'flex'; 
-                // We rely on CSS flex + opacity, but just in case:
-                modal.classList.add('active');
-                modal.setAttribute('aria-hidden', 'false');
-            }
+            document.getElementById('successModal').classList.add('active');
         }
 
         function closePaymentReminderModal() {
@@ -1497,7 +1523,6 @@
             if (modal) {
                 modal.classList.remove('active');
                 modal.setAttribute('aria-hidden', 'true');
-                // setTimeout(() => modal.style.display = 'none', 300); // Optional if using display:none logic
             }
         } function saveUserDetails() {
             try {
@@ -1756,16 +1781,14 @@
                 if (response.ok) {
                     saveUserDetails();
 
-                    // 1. Show Toast
+                    // 1. Capture total before resetting UI
+                    const totalAmount = document.getElementById('total-amount')?.textContent || '0';
+
+                    // 2. Show Toast
                     showToast('預約已提交！', 'success');
 
-                    // 2. Open Success Modal
-                    const whatsappNum = (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
-                    const link = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(`你好，我剛提交了場地預約 (編號: ${result.booking?.id})，這是我的付款證明。`)}`;
-                    const linkEl = document.getElementById('whatsappLink');
-                    if (linkEl) linkEl.href = link;
-
-                    document.getElementById('successModal').classList.add('active');
+                    // 3. Open Success Modal with payment methods + WhatsApp
+                    openSuccessModal(result.booking?.id || result.id || '—', payload, totalAmount);
 
                     // 3. Reset State & UI
                     const affectedDates = Array.from(new Set(groups.map(group => group.date)));
@@ -1853,28 +1876,33 @@
     </script>
     <!-- Success Modal -->
     <div id="successModal">
-        <div
-            style="background:#fff; padding:40px; border-radius:24px; width:90%; max-width:420px; text-align:center; box-shadow:0 24px 50px -12px rgba(0,0,0,0.25);">
-            <div
-                style="background:#ecfdf5; width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 24px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ac8672" stroke-width="3"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+        <div style="background:#fff; padding:32px 28px; border-radius:24px; width:90%; max-width:480px; box-shadow:0 24px 50px -12px rgba(0,0,0,0.25); max-height:90vh; overflow-y:auto;">
+            <!-- Header -->
+            <div style="text-align:center; margin-bottom:22px;">
+                <div style="background:#dcfce7; width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h2 style="color:#15803d; font-size:1.35rem; margin:0 0 6px; font-weight:700;">預約已提交！🎉</h2>
+                <p id="successBookingRef" style="color:#64748b; font-size:0.88rem; margin:0; font-family:monospace;"></p>
             </div>
-            <h2 style="color:#4a3528; font-size:1.5rem; margin-bottom:12px; font-weight:700;">預約已提交</h2>
-            <p style="color:#9e7e6e; margin-bottom:24px; line-height:1.6;">請在 30 分鐘內完成付款，並將收據傳送至 WhatsApp
-                以確認預約。系統會發送確認電郵給您。</p>
-            <a id="whatsappLink" href="#" target="_blank"
-                style="display:inline-flex; align-items:center; justify-content:center; background:#ac8672; color:white; padding:14px 28px; border-radius:12px; font-weight:600; text-decoration:none; width:100%; transition:all 0.2s;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px;">
-                    <path
-                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                </svg>
-                Open WhatsApp
+
+            <!-- Payment Methods -->
+            <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:14px; padding:18px; margin-bottom:18px;">
+                <div style="font-weight:700; color:#92400e; margin-bottom:12px; font-size:0.95rem;">💳 付款方式</div>
+                <div id="successPaymentMethods" style="color:#78350f; font-size:0.9rem; line-height:1.9;">
+                    請依照工作人員指示完成付款。
+                </div>
+                <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #fcd34d; font-size:0.78rem; color:#b45309;">
+                    ⏰ 請於 <strong>30 分鐘內</strong> 完成付款並傳送收據至 WhatsApp 確認預約
+                </div>
+            </div>
+
+            <!-- WhatsApp Button -->
+            <a id="whatsappLink" href="#" target="_blank" rel="noopener" style="display:flex; align-items:center; justify-content:center; gap:8px; background:#25D366; color:white; padding:14px 20px; border-radius:12px; font-weight:700; text-decoration:none; width:100%; box-sizing:border-box; font-size:0.95rem; box-shadow:0 4px 12px rgba(37,211,102,0.35); transition:background 0.2s;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                傳送 WhatsApp 確認
             </a>
-            <button onclick="document.getElementById('successModal').classList.remove('active')"
-                style="display:block; width:100%; margin-top:16px; background:transparent; border:none; color:#9e7e6e; font-weight:500; cursor:pointer;">關閉</button>
+            <button onclick="document.getElementById('successModal').classList.remove('active')" style="display:block; width:100%; margin-top:10px; padding:10px; background:transparent; border:1px solid #e2e8f0; border-radius:10px; color:#64748b; font-size:0.88rem; cursor:pointer;">稍後再傳 / 關閉</button>
         </div>
     </div>
 </body>

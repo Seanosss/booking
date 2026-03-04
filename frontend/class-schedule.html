@@ -771,11 +771,39 @@
         </div>
     </main>
     <div class="payment-reminder-modal" id="payment-reminder-modal" aria-hidden="true">
-        <div class="payment-reminder-content"><button type="button" class="payment-reminder-close"
-                id="payment-reminder-close" aria-label="關閉提醒">×</button>
-            <h3>預約已提交</h3>
-            <p>預約已提交，請在 30 分鐘內完成付款，並將付款截圖 send 到 WhatsApp。</p><a id="payment-reminder-whatsapp" class="whatsapp-button"
-                href="#" target="_blank" rel="noopener">打開 WhatsApp</a>
+        <div class="payment-reminder-content" style="text-align:left; max-height:90vh; overflow-y:auto; width:min(480px,100%);">
+            <button type="button" class="payment-reminder-close" id="payment-reminder-close" aria-label="關閉提醒">×</button>
+
+            <!-- Header -->
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="background:#dcfce7; width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h3 style="color:#15803d; margin:0 0 6px;">預約已提交！🎉</h3>
+                <p id="classBookingRef" style="color:#64748b; font-size:0.85rem; margin:0; font-family:monospace;"></p>
+            </div>
+
+            <!-- Class Details -->
+            <div id="classBookingDetails" style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:12px; padding:14px; margin-bottom:14px; font-size:0.88rem; color:#0c4a6e; display:none;">
+            </div>
+
+            <!-- Payment Methods -->
+            <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:14px; padding:16px; margin-bottom:16px;">
+                <div style="font-weight:700; color:#92400e; margin-bottom:10px; font-size:0.92rem;">💳 付款方式</div>
+                <div id="classPaymentMethods" style="color:#78350f; font-size:0.88rem; line-height:2.0;">
+                    請依照工作人員指示完成付款。
+                </div>
+                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #fcd34d; font-size:0.77rem; color:#b45309;">
+                    ⏰ 請於 <strong>30 分鐘內</strong> 完成付款並傳送收據至 WhatsApp 確認
+                </div>
+            </div>
+
+            <!-- WhatsApp Button -->
+            <a id="payment-reminder-whatsapp" class="whatsapp-button" href="#" target="_blank" rel="noopener">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                傳送 WhatsApp 確認
+            </a>
+            <button onclick="document.getElementById('payment-reminder-modal').classList.remove('active')" style="display:block; width:100%; margin-top:10px; padding:9px; background:transparent; border:1px solid #e2e8f0; border-radius:10px; color:#64748b; font-size:0.85rem; cursor:pointer;">稍後再傳 / 關閉</button>
         </div>
     </div>
     <script>
@@ -1233,24 +1261,76 @@
             return (state.settings?.contactInfo?.whatsapp || '').toString().replace(/\D/g, '');
         }
 
-        function buildWhatsappLink(bookingId) {
-            const number = getWhatsappNumber();
-            if (!number) return null;
-
-            const message = bookingId ? `你好，我剛提交了課程預約(編號: ${bookingId})，這是我的付款證明。` : '付款證明';
-            return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+        function buildPaymentMethodsHtml(pm) {
+            if (!pm) return '<div>請依照工作人員指示完成付款。</div>';
+            const rows = [];
+            if (pm.fps?.enabled) {
+                const label = pm.fps.displayName || 'FPS 轉數快';
+                const num = pm.fps.fpsNumber || '';
+                rows.push(`<div><strong>${label}</strong>：${num}</div>`);
+            }
+            if (pm.payme?.enabled) {
+                const label = pm.payme.displayName || 'PayMe';
+                const phone = pm.payme.phoneNumber || '';
+                rows.push(`<div><strong>${label}</strong>：${phone}</div>`);
+            }
+            if (pm.bankTransfer?.enabled) {
+                const bank = pm.bankTransfer.bankName || '';
+                const acct = pm.bankTransfer.accountNumber || '';
+                const name = pm.bankTransfer.accountName || '';
+                rows.push(`<div><strong>銀行轉帳</strong>：${bank} ${acct}${name ? ` (${name})` : ''}</div>`);
+            }
+            return rows.length > 0 ? rows.join('') : '<div>請依照工作人員指示完成付款。</div>';
         }
 
-        function openPaymentReminderModal(bookingId) {
+        function openPaymentReminderModal(bookingId, classInfo, customerName, peopleCount) {
             if (!elements.paymentReminderModal) return;
-            const link = buildWhatsappLink(bookingId);
 
-            if (link) {
-                elements.paymentReminderWhatsapp.href = link;
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'false');
+            // Set booking ref
+            const refEl = document.getElementById('classBookingRef');
+            if (refEl) refEl.textContent = `預約編號：#${bookingId}`;
+
+            // Show class details card
+            if (classInfo) {
+                const detailsEl = document.getElementById('classBookingDetails');
+                if (detailsEl) {
+                    const start = classInfo.startTime ? new Date(classInfo.startTime) : null;
+                    const end = classInfo.endTime ? new Date(classInfo.endTime) : null;
+                    const dateStr = start ? start.toLocaleDateString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }) : '';
+                    const startT = start ? start.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+                    const endT = end ? end.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+                    detailsEl.innerHTML =
+                        `<div>📚 <strong>${classInfo.name || ''}</strong></div>` +
+                        `<div>📅 ${dateStr}  ${startT}${endT ? ' - ' + endT : ''}</div>` +
+                        (classInfo.price ? `<div>💰 HK$${classInfo.price}${peopleCount > 1 ? ` × ${peopleCount} 人` : ''}</div>` : '');
+                    detailsEl.style.display = 'block';
+                }
+            }
+
+            // Payment methods
+            const pmEl = document.getElementById('classPaymentMethods');
+            if (pmEl) pmEl.innerHTML = buildPaymentMethodsHtml(state.settings?.paymentMethods);
+
+            // Build WhatsApp link
+            const number = getWhatsappNumber();
+            if (number && classInfo) {
+                const start = classInfo.startTime ? new Date(classInfo.startTime) : null;
+                const end = classInfo.endTime ? new Date(classInfo.endTime) : null;
+                const dateStr = start ? start.toLocaleDateString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+                const startT = start ? start.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+                const endT = end ? end.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+                const msg =
+                    `你好！我想確認課堂預約。\n\n` +
+                    `📋 預約編號：#${bookingId}\n` +
+                    `👤 姓名：${customerName || ''}\n` +
+                    `📚 課堂：${classInfo.name || ''}\n` +
+                    `📅 日期：${dateStr}  ${startT}${endT ? ' - ' + endT : ''}\n` +
+                    (classInfo.price ? `💰 金額：HK$${classInfo.price}${peopleCount > 1 ? ` × ${peopleCount} 人` : ''}\n` : '') +
+                    `\n請問可以確認我的付款嗎？謝謝！`;
+                elements.paymentReminderWhatsapp.href = `https://wa.me/${number}?text=${encodeURIComponent(msg)}`;
+                elements.paymentReminderWhatsapp.style.display = '';
             } else {
-                elements.paymentReminderWhatsapp.href = '#';
-                elements.paymentReminderWhatsapp.setAttribute('aria-disabled', 'true');
+                elements.paymentReminderWhatsapp.style.display = 'none';
             }
 
             elements.paymentReminderModal.classList.add('active');
@@ -1342,9 +1422,12 @@
                 if (response.ok) {
                     saveUserDetails(); // Save user info
 
-                    // Check if function exists to avoid reference error
+                    // Capture class details BEFORE resetting state
+                    const classInfo = state.selectedClass ? { ...state.selectedClass } : null;
+
+                    // Open payment + WhatsApp modal
                     if (typeof openPaymentReminderModal === 'function') {
-                        openPaymentReminderModal(result.bookingId);
+                        openPaymentReminderModal(result.bookingId, classInfo, payload.customerName, payload.peopleCount);
                     }
 
                     // Clear form
