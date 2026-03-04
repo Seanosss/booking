@@ -3242,6 +3242,16 @@
                     const existing = document.getElementById('calEventPopup');
                     if (existing) existing.remove();
 
+                    // Build delete button for rental bookings
+                    const eventId = props.data?.id || null;
+                    const isRental = props.type === 'rental';
+                    const deleteBtn = (isRental && eventId) ? `
+                        <button onclick="
+                            document.getElementById('calEventPopup').remove();
+                            deleteRentalBooking('${eventId}');
+                        " class="btn btn-sm btn-danger" style="margin-left:auto;">🗑 刪除</button>
+                    ` : '';
+
                     const popup = document.createElement('div');
                     popup.id = 'calEventPopup';
                     popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);padding:24px;z-index:9999;min-width:280px;max-width:400px;font-size:0.95em;';
@@ -3251,9 +3261,10 @@
                             <button onclick="document.getElementById('calEventPopup').remove()" style="background:none;border:none;font-size:1.5em;cursor:pointer;color:#888;line-height:1;">×</button>
                         </div>
                         ${detailsHtml}
-                        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                             ${gCalUrl ? `<a href="${gCalUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-secondary" style="display:inline-flex;align-items:center;gap:5px;">📅 加入 Google Calendar</a>` : ''}
                             <button onclick="document.getElementById('calEventPopup').remove()" class="btn btn-sm btn-secondary">關閉</button>
+                            ${deleteBtn}
                         </div>
                     `;
                     document.body.appendChild(popup);
