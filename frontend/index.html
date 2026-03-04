@@ -10,28 +10,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
         rel="stylesheet">
 
     <style>
         :root {
-            --brand-primary: #0f172a;
-            /* Deep Slate Navy */
-            --brand-secondary: #3b82f6;
-            /* Bright Blue */
-            --brand-secondary-hover: #2563eb;
-            --surface: #f8fafc;
-            /* Very light cool gray */
-            --surface-alt: rgba(255, 255, 255, 0.85);
-            /* Glassmorphism base */
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
-            --glass-backdrop: blur(12px);
-        }
+    --brand-primary: #746055;
+    --brand-secondary: #ac8672;
+    --surface: #fff9f4;
+    --text-main: #4a3528;
+    --text-muted: #9e7e6e;
+    --accent: #b4947f;
+    --border: #e8d5c4;
+    --shadow-sm: 0 1px 2px 0 rgba(116,96,85,0.08);
+    --shadow: 0 4px 6px -1px rgba(116,96,85,0.12), 0 2px 4px -1px rgba(116,96,85,0.08);
+    --shadow-lg: 0 10px 15px -3px rgba(116,96,85,0.15), 0 4px 6px -4px rgba(116,96,85,0.1);
+}
 
         * {
             box-sizing: border-box;
@@ -39,8 +33,8 @@
 
         body {
             margin: 0;
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
+            font-family: 'Noto Serif TC', 'Noto Sans TC', serif;
+            background: linear-gradient(160deg, #f5ece3 0%, #f1e9db 100%);
             color: var(--text-main);
             min-height: 100vh;
             line-height: 1.5;
@@ -55,7 +49,7 @@
             left: -10%;
             width: 50%;
             height: 50%;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(207, 184, 167, 0.15) 0%, transparent 70%);
             filter: blur(40px);
             z-index: -1;
         }
@@ -204,13 +198,19 @@
             .nav-card { padding: 24px 20px; }
             .badge { top: 16px; right: 16px; font-size: 0.72rem; padding: 4px 10px; }
         }
+            .logo-symbol { font-size: 3rem; color: var(--brand-primary); font-family: 'Noto Serif TC', serif; letter-spacing: 0.05em; }
+        .logo-text { font-size: 1.1rem; letter-spacing: 0.3em; color: var(--text-muted); font-family: 'Noto Sans TC', sans-serif; font-weight: 500; margin-top: 0.25rem; }
+        .header-divider { color: var(--accent); margin: 1rem 0 0.5rem; font-size: 1rem; letter-spacing: 0.5em; }
+        .header-sub { color: var(--text-muted); font-size: 1rem; margin: 0; }
     </style>
 </head>
 
 <body>
     <header>
-        <h1>Studio Booking</h1>
-        <p>選擇您需要的服務流程：場地租用或課堂體驗</p>
+        <div class="logo-symbol">遇</div>
+        <div class="logo-text">ATSUMARU</div>
+        <div class="header-divider">✦</div>
+        <p class="header-sub">選擇您需要的服務流程：場地租用或課堂體驗</p>
     </header>
     <main>
         <div class="card-grid">
@@ -221,7 +221,7 @@
                 <div class="card-footer">進入場地預約 →</div>
             </a>
             <a class="nav-card" href="./classes.html">
-                <div class="badge" style="background:rgba(16, 185, 129, 0.1); color: #059669;">Classes</div>
+                <div class="badge" style="background:rgba(16, 185, 129, 0.1); color: #746055;">Classes</div>
                 <h2>Class Hub 課堂專區</h2>
                 <p>瀏覽每週課堂時間表、探索試堂方案與套票組合。即時查看名額與講師資訊，輕鬆完成課程預約。</p>
                 <div class="card-footer">前往課堂專區 →</div>
