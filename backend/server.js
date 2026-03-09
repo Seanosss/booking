@@ -533,9 +533,12 @@ app.delete('/api/bookings/:id', authenticateAdmin, async (req, res) => {
 // Admin-only booking creation (used for Quick Block and admin-created bookings)
 app.post('/api/admin/bookings', authenticateAdmin, async (req, res) => {
     try {
-        const { customerName, email, phone, date, startTime, endTime, adminNotes, status } = req.body;
-        if (!customerName || !email || !phone || !date || !startTime || !endTime) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        const { date, startTime, endTime, adminNotes, status, isBlock } = req.body;
+        const customerName = req.body.customerName || (isBlock ? 'Maintenance' : 'Walk-in');
+        const email = req.body.email || 'admin@studio.com';
+        const phone = req.body.phone || '00000000';
+        if (!date || !startTime || !endTime) {
+            return res.status(400).json({ error: 'Missing required fields: date, startTime, endTime' });
         }
         const settings = await loadSettings();
         const duration = minutesBetween(startTime, endTime);
