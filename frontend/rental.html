@@ -239,6 +239,35 @@
             }
         }
 
+        @media (max-width: 768px) {
+            .slot-grid {
+                grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+                gap: 6px;
+            }
+            .slot-grid .slot {
+                font-size: 0.8rem;
+                padding: 8px 4px;
+            }
+            .summary-totals .totals-row.total span:last-child {
+                font-size: 1.3rem;
+            }
+            .mode-btn {
+                padding: 10px 8px;
+                font-size: 0.85rem;
+            }
+            h2 {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (min-width: 960px) {
+            .grid.two > .card:last-child {
+                position: sticky;
+                top: 20px;
+                align-self: start;
+            }
+        }
+
         label {
             font-weight: 600;
             color: var(--text-main);
@@ -270,6 +299,71 @@
             background: #fff;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
             /* Soft glow */
+        }
+
+        .booking-steps {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin: 0 0 24px;
+            padding: 16px 20px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .step.active {
+            color: var(--brand-primary);
+            font-weight: 700;
+        }
+        .step.completed {
+            color: var(--accent);
+        }
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 2px solid var(--border);
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .step.active .step-num {
+            background: var(--brand-primary);
+            color: white;
+            border-color: var(--brand-primary);
+        }
+        .step.completed .step-num {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .step-connector {
+            width: 40px;
+            height: 2px;
+            background: var(--border);
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+        .step.completed + .step-connector {
+            background: var(--accent);
+        }
+        @media (max-width: 600px) {
+            .booking-steps { padding: 12px; gap: 0; }
+            .step { font-size: 0; gap: 0; }
+            .step-num { width: 28px; height: 28px; font-size: 0.8rem; }
+            .step-connector { width: 24px; margin: 0 4px; }
         }
 
         .slot-grid {
@@ -926,6 +1020,13 @@
     </header>
     <main>
         <div class="card instruction-list" id="instruction-card" style="display:none;"></div>
+        <div class="booking-steps" id="booking-steps">
+            <div class="step active" data-step="1"><span class="step-num">1</span> 選擇時段</div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="2"><span class="step-num">2</span> 填寫資料</div>
+            <div class="step-connector"></div>
+            <div class="step" data-step="3"><span class="step-num">3</span> 確認送出</div>
+        </div>
         <div class="grid two">
             <div class="card">
                 <h2>📅 選擇日期與時段</h2>
@@ -942,7 +1043,7 @@
                         <button type="button" class="mode-btn" data-mode="shared" onclick="setBookingMode('shared')">🎵 單點練習</button>
                     </div>
                     <div id="mode-description" style="font-size:0.85rem; color:#6b5347; padding:6px 0;">
-                        包場預約：獨享整個空間，適合團體活動或私人聚會。
+                        包場預約：獨享整個空間，適合團體活動或私人聚會。<br><small style="color:var(--accent);font-weight:600;">價格將在載入設定後顯示</small>
                     </div>
                 </div>
                 <div class="form-group">
@@ -1412,11 +1513,11 @@
             const desc = document.getElementById('mode-description');
             const pcGroup = document.getElementById('people-count-group');
             if (mode === 'shared') {
-                desc.textContent = '單點練習：與其他人共用空間，每人獨立預約付款。';
+                desc.innerHTML = '單點練習：與其他人共用空間，每人獨立預約付款。<br><small style="color:var(--accent);font-weight:600;">💰 一般 $' + (state.settings?.pricing?.singlePracticeNormal || '—') + '/hr · 高峰 $' + (state.settings?.pricing?.singlePracticePeak || '—') + '/hr</small>';
                 pcGroup.style.display = 'none';
                 elements.peopleInput.value = '';
             } else {
-                desc.textContent = '包場預約：獨享整個空間，適合團體活動或私人聚會。';
+                desc.innerHTML = '包場預約：獨享整個空間，適合團體活動或私人聚會。<br><small style="color:var(--accent);font-weight:600;">💰 ≤10人 $' + (state.settings?.pricing?.normalUpTo10 || '—') + '/hr · 11-18人 $' + (state.settings?.pricing?.normalUpTo18 || '—') + '/hr</small>';
                 pcGroup.style.display = 'block';
             }
             // Re-render slots and recalculate
@@ -1492,6 +1593,13 @@
 
         function renderSummary() {
             const groups = getAllSelectedGroups();
+            // Update step indicator
+            const steps = document.querySelectorAll('.booking-steps .step');
+            const hasSlots = groups.length > 0;
+            if (steps.length >= 2) {
+                steps[0].className = hasSlots ? 'step completed' : 'step active';
+                steps[1].className = hasSlots ? 'step active' : 'step';
+            }
             elements.summaryList.innerHTML = '';
 
             if (groups.length === 0) {
