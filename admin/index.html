@@ -3430,37 +3430,59 @@
                     }
                 },
                 dateClick: async function (info) {
-                    const startTime = prompt(`封鎖時段 ${info.dateStr}\n\n開始時間（格式 HH:MM，整天請填 00:00）：`, '00:00');
+                    const action = prompt(
+                        `📅 ${info.dateStr}\n\n請選擇操作：\n1 = 新增預約 (Add Booking)\n2 = 封鎖時段 (Block/Maintenance)\n\n輸入 1 或 2：`,
+                        '1'
+                    );
+                    if (action === null) return;
+
+                    const isMaintenance = action.trim() === '2';
+                    const startTime = prompt(`${isMaintenance ? '封鎖' : '預約'}時段\n\n開始時間（格式 HH:MM）：`, '10:00');
                     if (startTime === null) return;
-                    const endTime = prompt(`結束時間（格式 HH:MM，整天請填 23:59）：`, '23:59');
+                    const endTime = prompt(`結束時間（格式 HH:MM）：`, '12:00');
                     if (endTime === null) return;
-                    const label = prompt('備註標籤（可空白）：', '維護封鎖') || '維護封鎖';
+
+                    let customerName, email, phone, adminNotes;
+                    if (isMaintenance) {
+                        adminNotes = prompt('備註標籤（可空白）：', '維護封鎖') || '維護封鎖';
+                        customerName = 'Maintenance';
+                        email = 'admin@studio.com';
+                        phone = '00000000';
+                    } else {
+                        customerName = prompt('客戶姓名：');
+                        if (!customerName) return;
+                        email = prompt('客戶 Email：', '');
+                        phone = prompt('客戶電話 / WhatsApp：', '');
+                        adminNotes = prompt('備註（可空白）：', '') || '';
+                    }
+
                     try {
                         const res = await authenticatedFetch(`${API_BASE_URL}/admin/bookings`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                customerName: 'Maintenance',
-                                email: 'admin@studio.com',
-                                phone: '00000000',
+                                customerName,
+                                email: email || 'admin@studio.com',
+                                phone: phone || '00000000',
                                 date: info.dateStr,
                                 startTime: startTime.trim(),
                                 endTime: endTime.trim(),
-                                adminNotes: label,
+                                adminNotes,
                                 status: 'confirmed'
                             })
                         });
                         if (res.ok) {
-                            showMessage('bookingsMessage', 'success', `✅ 已封鎖 ${info.dateStr} ${startTime}–${endTime}`);
+                            const label = isMaintenance ? '封鎖' : '預約';
+                            showMessage('bookingsMessage', 'success', `✅ 已新增${label} ${info.dateStr} ${startTime}–${endTime}${isMaintenance ? '' : ' (' + customerName + ')'}`);
                             calendar.refetchEvents();
                             loadRentalBookings();
                         } else {
                             const errorData = await res.json();
-                            showMessage('bookingsMessage', 'error', errorData.error || '封鎖失敗');
+                            showMessage('bookingsMessage', 'error', errorData.error || '操作失敗');
                         }
                     } catch (e) {
-                        console.error('Failed to block:', e);
-                        showMessage('bookingsMessage', 'error', '封鎖失敗，請稍後再試');
+                        console.error('Failed to create:', e);
+                        showMessage('bookingsMessage', 'error', '操作失敗，請稍後再試');
                     }
                 },
                 eventClick: function (info) {
