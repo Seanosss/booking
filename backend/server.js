@@ -22,6 +22,7 @@ const {
     updateCatalogItem,
     deleteCatalogItem,
     getCatalogItemCapacityUsage,
+    getSharedSlotUsage,
     getClasses,
     getClassById,
     createClass,
@@ -138,39 +139,70 @@ function normalizeIsoToDateTimeStrings(isoString) {
     };
 }
 
-function resolvePeakSchedule(settings) {
-    const schedule = settings.pricing?.peakSchedule;
-    if (!schedule) return null;
-    return {
-        days: Array.isArray(schedule.days) ? schedule.days.map(d => d.toLowerCase()) : [],
-        startTime: schedule.startTime || '18:00',
-        endTime: schedule.endTime || '23:00'
-    };
-}
-
+// --- Peak Schedule Resolution (supports per-day and legacy format) ---
 function determinePeriodType(date, startTime, endTime, settings) {
-    const schedule = resolvePeakSchedule(settings);
-    if (!schedule || schedule.days.length === 0) return 'normal';
+    const schedule = settings.pricing?.peakSchedule;
+    if (!schedule) return 'normal';
+
     const parsed = new Date(`${date}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return 'normal';
     const dayToken = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][parsed.getDay()];
-    if (!schedule.days.includes(dayToken)) return 'normal';
 
-    const startM = parseTimeToMinutes(startTime);
-    const endM = parseTimeToMinutes(endTime);
-    const peakStart = parseTimeToMinutes(schedule.startTime);
-    const peakEnd = parseTimeToMinutes(schedule.endTime);
-    return (startM < peakEnd && endM > peakStart) ? 'peak' : 'normal';
+    // New per-day format: { mon: { enabled, allDay, startTime, endTime }, ... }
+    if (schedule[dayToken] !== undefined) {
+        const dayConfig = schedule[dayToken];
+        if (!dayConfig || !dayConfig.enabled) return 'normal';
+        if (dayConfig.allDay) return 'peak';
+        // Partial day — check time overlap
+        const startM = parseTimeToMinutes(startTime);
+        const endM = parseTimeToMinutes(endTime);
+        const peakStart = parseTimeToMinutes(dayConfig.startTime || '18:00');
+        const peakEnd = parseTimeToMinutes(dayConfig.endTime || '23:00');
+        return (startM < peakEnd && endM > peakStart) ? 'peak' : 'normal';
+    }
+
+    // Legacy format: { days: ['fri','sat','sun'], startTime, endTime }
+    if (Array.isArray(schedule.days)) {
+        const days = schedule.days.map(d => d.toLowerCase());
+        if (!days.includes(dayToken)) return 'normal';
+        const startM = parseTimeToMinutes(startTime);
+        const endM = parseTimeToMinutes(endTime);
+        const peakStart = parseTimeToMinutes(schedule.startTime || '18:00');
+        const peakEnd = parseTimeToMinutes(schedule.endTime || '23:00');
+        return (startM < peakEnd && endM > peakStart) ? 'peak' : 'normal';
+    }
+
+    return 'normal';
 }
 
-function resolveHourlyRate(pricing, peopleCount, periodType) {
+// --- Hourly Rate Resolution (3 tiers: exclusive ≤10, exclusive 11-18, single practice) ---
+function resolveHourlyRate(pricing, peopleCount, periodType, bookingMode) {
+    if (bookingMode === 'shared') {
+        return periodType === 'peak'
+            ? Number(pricing.singlePracticePeak || 0)
+            : Number(pricing.singlePracticeNormal || 0);
+    }
     if (peopleCount > 18) throw new Error('Maximum capacity is 18');
     const base = periodType === 'peak' ? 'peak' : 'normal';
     return peopleCount <= 10 ? Number(pricing[`${base}UpTo10`]) : Number(pricing[`${base}UpTo18`]);
 }
 
-function calculateRoomRentalPrice({ duration, peopleCount, periodType }, settings) {
-    const rate = resolveHourlyRate(settings.pricing || {}, peopleCount, periodType);
+// --- Early Bird Discount ---
+function applyEarlyBirdDiscount(rate, pricing, bookingMode) {
+    const eb = pricing.earlyBird;
+    if (!eb?.enabled) return rate;
+    if (eb.expiryDate && new Date() > new Date(eb.expiryDate)) return rate;
+    if (eb.appliesTo === 'exclusive' && bookingMode === 'shared') return rate;
+    if (eb.appliesTo === 'singlePractice' && bookingMode !== 'shared') return rate;
+    if (eb.type === 'percentage') return Math.round(rate * (1 - Number(eb.value) / 100) * 100) / 100;
+    if (eb.type === 'fixed') return Number(eb.value);
+    return rate;
+}
+
+function calculateRoomRentalPrice({ duration, peopleCount, periodType, bookingMode }, settings) {
+    const pricing = settings.pricing || {};
+    let rate = resolveHourlyRate(pricing, peopleCount, periodType, bookingMode || 'exclusive');
+    rate = applyEarlyBirdDiscount(rate, pricing, bookingMode || 'exclusive');
     return Math.round((rate * (duration / 60)) * 100) / 100;
 }
 
@@ -300,39 +332,79 @@ app.get('/api/rentals/availability', async (req, res) => {
     }
 });
 
+// Shared (single practice) slot availability
+app.get('/api/bookings/shared-availability', async (req, res) => {
+    try {
+        if (!req.query.date) return res.status(400).json({ error: 'Date required' });
+        const settings = await loadSettings();
+        const maxSpots = Number(settings.pricing?.singlePracticeMaxSpots || 4);
+        const usage = await getSharedSlotUsage(req.query.date);
+        res.json({ maxSpots, slots: usage });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to check shared availability' });
+    }
+});
+
 app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
     try {
-        const { customerName, email, phone, notes, slots, peopleCount: sharedCount } = req.body;
+        const { customerName, email, phone, notes, slots, peopleCount: sharedCount, bookingMode, companionInfo } = req.body;
         if (!customerName || !email || !phone) return res.status(400).json({ error: 'Missing contact info' });
 
-        const bookingItems = slots.map(s => ({ ...s, type: 'room_rental', peopleCount: sharedCount || 1 }));
+        const mode = bookingMode === 'shared' ? 'shared' : 'exclusive';
+        const peopleCount = mode === 'shared' ? 1 : (sharedCount || 1);
+
+        const bookingItems = slots.map(s => ({ ...s, type: 'room_rental', peopleCount }));
         if (!bookingItems.length) return res.status(400).json({ error: 'No slots selected' });
 
         const settings = await loadSettings();
+        const maxSpots = Number(settings.pricing?.singlePracticeMaxSpots || 4);
         const normalizedItems = [];
 
         for (const item of bookingItems) {
             const { date, startTime, endTime } = item;
             const periodType = determinePeriodType(date, startTime, endTime, settings);
             const duration = minutesBetween(startTime, endTime);
-            const availability = await checkRentalAvailability(date, startTime, endTime);
 
-            if (!availability.available) return res.status(409).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
+            if (mode === 'shared') {
+                // Shared mode: check capacity, allow co-booking
+                const sharedUsage = await getSharedSlotUsage(date);
+                const slotUsage = sharedUsage.find(s => s.startTime === startTime && s.endTime === endTime);
+                const currentCount = slotUsage ? slotUsage.bookedCount : 0;
+                if (currentCount >= maxSpots) {
+                    return res.status(409).json({ error: `此時段已額滿 (${currentCount}/${maxSpots})` });
+                }
+                // Also check for exclusive bookings / class conflicts blocking this slot
+                const exclusiveConflicts = await checkRentalAvailability(date, startTime, endTime);
+                const hasExclusiveBlock = exclusiveConflicts.conflicts.some(c =>
+                    c.bookingMode !== 'shared' || c.itemType === 'class_session'
+                );
+                if (hasExclusiveBlock) {
+                    return res.status(409).json({ error: '此時段已有包場預約或課堂安排' });
+                }
+            } else {
+                // Exclusive mode: full conflict check (existing behavior)
+                const availability = await checkRentalAvailability(date, startTime, endTime);
+                if (!availability.available) {
+                    return res.status(409).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
+                }
+            }
 
             normalizedItems.push({
                 itemType: 'room_rental',
                 date, startTime, endTime, duration,
                 peopleCount: item.peopleCount,
-                price: calculateRoomRentalPrice({ duration, peopleCount: item.peopleCount, periodType }, settings),
-                periodType
+                price: calculateRoomRentalPrice({ duration, peopleCount: item.peopleCount, periodType, bookingMode: mode }, settings),
+                periodType,
+                bookingMode: mode
             });
         }
 
         const status = settings.bookingRules?.autoConfirm ? 'confirmed' : 'pending';
         const booking = await createBooking({
             customerName, email, phone, notes, status,
-            totalPeople: sharedCount || 1,
-            items: normalizedItems
+            totalPeople: peopleCount,
+            items: normalizedItems,
+            companionInfo: Array.isArray(companionInfo) ? companionInfo : []
         });
 
         res.status(201).json({ success: true, booking, message: 'Booking created' });

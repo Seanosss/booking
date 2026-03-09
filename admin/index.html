@@ -1035,20 +1035,75 @@
                 </div>
             </div>
             <div class="section-card">
-                <h3>價格設定</h3>
+                <h3>📋 包場預約價格 (Exclusive Rates)</h3>
+                <p style="color:var(--text-muted);font-size:0.88em;margin-bottom:12px;">包場租用的每小時收費，根據人數階梯自動套用。</p>
                 <div class="form-grid two-columns">
-                    <div class="input-group"><label>一般時段 (≤10人)</label><input id="normalUpTo10" type="number" min="0">
+                    <div class="input-group"><label>一般時段 (≤10人) /hr</label><input id="normalUpTo10" type="number" min="0"></div>
+                    <div class="input-group"><label>一般時段 (11-18人) /hr</label><input id="normalUpTo18" type="number" min="0"></div>
+                    <div class="input-group"><label>高峰時段 (≤10人) /hr</label><input id="peakUpTo10" type="number" min="0"></div>
+                    <div class="input-group"><label>高峰時段 (11-18人) /hr</label><input id="peakUpTo18" type="number" min="0"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>🎵 單點練習價格 (Single Practice)</h3>
+                <p style="color:var(--text-muted);font-size:0.88em;margin-bottom:12px;">共享空間模式，每人獨立付費。不同客人可預約同一時段直到額滿。</p>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>一般時段 (每人/hr)</label><input id="singlePracticeNormal" type="number" min="0"></div>
+                    <div class="input-group"><label>高峰時段 (每人/hr)</label><input id="singlePracticePeak" type="number" min="0"></div>
+                    <div class="input-group"><label>每時段最大人數</label><input id="singlePracticeMaxSpots" type="number" min="1" max="20" value="4"></div>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>⏰ 高峰時段設定 (Peak Hours)</h3>
+                <p style="color:var(--text-muted);font-size:0.88em;margin-bottom:12px;">為每天獨立設定高峰時段。勾選「全日」代表整天都套用高峰價格。</p>
+                <div style="overflow-x:auto;">
+                    <table id="peakScheduleTable" style="width:100%;font-size:0.92em;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding:8px;">星期</th>
+                                <th style="text-align:center;padding:8px;">啟用</th>
+                                <th style="text-align:center;padding:8px;">全日 Peak</th>
+                                <th style="padding:8px;">開始時間</th>
+                                <th style="padding:8px;">結束時間</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>週一 (Mon)</td><td style="text-align:center;"><input type="checkbox" id="peak_mon_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_mon_allDay" onchange="togglePeakAllDay('mon')"></td><td><input type="time" id="peak_mon_start" value="18:00"></td><td><input type="time" id="peak_mon_end" value="23:00"></td></tr>
+                            <tr><td>週二 (Tue)</td><td style="text-align:center;"><input type="checkbox" id="peak_tue_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_tue_allDay" onchange="togglePeakAllDay('tue')"></td><td><input type="time" id="peak_tue_start" value="18:00"></td><td><input type="time" id="peak_tue_end" value="23:00"></td></tr>
+                            <tr><td>週三 (Wed)</td><td style="text-align:center;"><input type="checkbox" id="peak_wed_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_wed_allDay" onchange="togglePeakAllDay('wed')"></td><td><input type="time" id="peak_wed_start" value="18:00"></td><td><input type="time" id="peak_wed_end" value="23:00"></td></tr>
+                            <tr><td>週四 (Thu)</td><td style="text-align:center;"><input type="checkbox" id="peak_thu_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_thu_allDay" onchange="togglePeakAllDay('thu')"></td><td><input type="time" id="peak_thu_start" value="18:00"></td><td><input type="time" id="peak_thu_end" value="23:00"></td></tr>
+                            <tr><td>週五 (Fri)</td><td style="text-align:center;"><input type="checkbox" id="peak_fri_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_fri_allDay" onchange="togglePeakAllDay('fri')"></td><td><input type="time" id="peak_fri_start" value="18:00"></td><td><input type="time" id="peak_fri_end" value="23:00"></td></tr>
+                            <tr><td>週六 (Sat)</td><td style="text-align:center;"><input type="checkbox" id="peak_sat_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sat_allDay" checked onchange="togglePeakAllDay('sat')"></td><td><input type="time" id="peak_sat_start" value="07:00" disabled></td><td><input type="time" id="peak_sat_end" value="23:00" disabled></td></tr>
+                            <tr><td>週日 (Sun)</td><td style="text-align:center;"><input type="checkbox" id="peak_sun_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sun_allDay" checked onchange="togglePeakAllDay('sun')"></td><td><input type="time" id="peak_sun_start" value="07:00" disabled></td><td><input type="time" id="peak_sun_end" value="23:00" disabled></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="section-card">
+                <h3>🐦 早鳥優惠 (Early Bird)</h3>
+                <p style="color:var(--text-muted);font-size:0.88em;margin-bottom:12px;">設定早鳥折扣，到期後自動恢復原價。</p>
+                <div class="form-grid two-columns">
+                    <div class="input-group"><label>啟用早鳥優惠</label>
+                        <select id="earlyBirdEnabled">
+                            <option value="false">停用</option>
+                            <option value="true">啟用</option>
+                        </select>
                     </div>
-                    <div class="input-group"><label>一般時段 (11-18人)</label><input id="normalUpTo18" type="number" min="0">
+                    <div class="input-group"><label>折扣類型</label>
+                        <select id="earlyBirdType">
+                            <option value="percentage">百分比折扣 (e.g. 20% off)</option>
+                            <option value="fixed">固定早鳥價 (e.g. $200/hr)</option>
+                        </select>
                     </div>
-                    <div class="input-group"><label>高峰時段 (≤10人)</label><input id="peakUpTo10" type="number" min="0">
+                    <div class="input-group"><label>折扣數值</label><input id="earlyBirdValue" type="number" min="0" placeholder="20 = 8折 / 200 = 固定$200"></div>
+                    <div class="input-group"><label>到期日</label><input id="earlyBirdExpiry" type="date"></div>
+                    <div class="input-group"><label>適用範圍</label>
+                        <select id="earlyBirdAppliesTo">
+                            <option value="all">全部 (包場+單點)</option>
+                            <option value="exclusive">僅包場</option>
+                            <option value="singlePractice">僅單點練習</option>
+                        </select>
                     </div>
-                    <div class="input-group"><label>高峰時段 (11-18人)</label><input id="peakUpTo18" type="number" min="0">
-                    </div>
-                    <div class="input-group"><label>高峰時段適用星期 (以逗號分隔，例如 fri,sat,sun)</label><input id="peakDays"
-                            type="text"></div>
-                    <div class="input-group"><label>高峰開始時間</label><input id="peakStart" type="time"></div>
-                    <div class="input-group"><label>高峰結束時間</label><input id="peakEnd" type="time"></div>
                 </div>
             </div>
             <div class="section-card">
@@ -2409,6 +2464,23 @@
             }
         }
 
+        function togglePeakAllDay(day) {
+            const allDayEl = document.getElementById(`peak_${day}_allDay`);
+            const startEl = document.getElementById(`peak_${day}_start`);
+            const endEl = document.getElementById(`peak_${day}_end`);
+            if (!allDayEl || !startEl || !endEl) return;
+            const isAllDay = allDayEl.checked;
+            startEl.disabled = isAllDay;
+            endEl.disabled = isAllDay;
+            if (isAllDay) {
+                startEl.style.opacity = '0.4';
+                endEl.style.opacity = '0.4';
+            } else {
+                startEl.style.opacity = '1';
+                endEl.style.opacity = '1';
+            }
+        }
+
         async function loadSettings() {
             try {
                 const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
@@ -2496,17 +2568,61 @@
                     }
                 }
 
-                // Pricing
+                // Pricing — Exclusive rates
                 if (settings.pricing) {
                     document.getElementById('normalUpTo10').value = settings.pricing.normalUpTo10 || 0;
                     document.getElementById('normalUpTo18').value = settings.pricing.normalUpTo18 || 0;
                     document.getElementById('peakUpTo10').value = settings.pricing.peakUpTo10 || 0;
                     document.getElementById('peakUpTo18').value = settings.pricing.peakUpTo18 || 0;
 
-                    if (settings.pricing.peakSchedule) {
-                        document.getElementById('peakDays').value = (settings.pricing.peakSchedule.days || []).join(',');
-                        document.getElementById('peakStart').value = settings.pricing.peakSchedule.startTime || '';
-                        document.getElementById('peakEnd').value = settings.pricing.peakSchedule.endTime || '';
+                    // Single Practice rates
+                    document.getElementById('singlePracticeNormal').value = settings.pricing.singlePracticeNormal || 0;
+                    document.getElementById('singlePracticePeak').value = settings.pricing.singlePracticePeak || 0;
+                    document.getElementById('singlePracticeMaxSpots').value = settings.pricing.singlePracticeMaxSpots || 4;
+
+                    // Per-day Peak Schedule
+                    const ps = settings.pricing.peakSchedule;
+                    if (ps) {
+                        const days = ['mon','tue','wed','thu','fri','sat','sun'];
+                        // Handle new per-day format
+                        if (ps.mon !== undefined || ps.tue !== undefined) {
+                            days.forEach(day => {
+                                const cfg = ps[day] || { enabled: false };
+                                const enabledEl = document.getElementById(`peak_${day}_enabled`);
+                                const allDayEl = document.getElementById(`peak_${day}_allDay`);
+                                const startEl = document.getElementById(`peak_${day}_start`);
+                                const endEl = document.getElementById(`peak_${day}_end`);
+                                if (enabledEl) enabledEl.checked = !!cfg.enabled;
+                                if (allDayEl) allDayEl.checked = !!cfg.allDay;
+                                if (startEl) startEl.value = cfg.startTime || '18:00';
+                                if (endEl) endEl.value = cfg.endTime || '23:00';
+                                togglePeakAllDay(day);
+                            });
+                        }
+                        // Legacy format fallback: { days: [...], startTime, endTime }
+                        else if (Array.isArray(ps.days)) {
+                            days.forEach(day => {
+                                const enabledEl = document.getElementById(`peak_${day}_enabled`);
+                                const allDayEl = document.getElementById(`peak_${day}_allDay`);
+                                const startEl = document.getElementById(`peak_${day}_start`);
+                                const endEl = document.getElementById(`peak_${day}_end`);
+                                if (enabledEl) enabledEl.checked = ps.days.includes(day);
+                                if (allDayEl) allDayEl.checked = false;
+                                if (startEl) startEl.value = ps.startTime || '18:00';
+                                if (endEl) endEl.value = ps.endTime || '23:00';
+                                togglePeakAllDay(day);
+                            });
+                        }
+                    }
+
+                    // Early Bird
+                    const eb = settings.pricing.earlyBird;
+                    if (eb) {
+                        document.getElementById('earlyBirdEnabled').checked = !!eb.enabled;
+                        document.getElementById('earlyBirdType').value = eb.type || 'percentage';
+                        document.getElementById('earlyBirdValue').value = eb.value || 0;
+                        document.getElementById('earlyBirdExpiry').value = eb.expiryDate || '';
+                        document.getElementById('earlyBirdAppliesTo').value = eb.appliesTo || 'all';
                     }
                 }
 
@@ -2584,14 +2700,38 @@
                 },
                 bookingRules: updatedBookingRules,
                 pricing: {
+                    // Exclusive rates
                     normalUpTo10: Number(document.getElementById('normalUpTo10').value),
                     normalUpTo18: Number(document.getElementById('normalUpTo18').value),
                     peakUpTo10: Number(document.getElementById('peakUpTo10').value),
                     peakUpTo18: Number(document.getElementById('peakUpTo18').value),
-                    peakSchedule: {
-                        days: document.getElementById('peakDays').value.split(',').map(d => d.trim()).filter(Boolean),
-                        startTime: document.getElementById('peakStart').value,
-                        endTime: document.getElementById('peakEnd').value
+                    // Single Practice rates
+                    singlePracticeNormal: Number(document.getElementById('singlePracticeNormal').value),
+                    singlePracticePeak: Number(document.getElementById('singlePracticePeak').value),
+                    singlePracticeMaxSpots: Number(document.getElementById('singlePracticeMaxSpots').value),
+                    // Per-day Peak Schedule
+                    peakSchedule: (() => {
+                        const days = ['mon','tue','wed','thu','fri','sat','sun'];
+                        const schedule = {};
+                        days.forEach(day => {
+                            const enabled = document.getElementById(`peak_${day}_enabled`)?.checked || false;
+                            const allDay = document.getElementById(`peak_${day}_allDay`)?.checked || false;
+                            schedule[day] = {
+                                enabled,
+                                allDay,
+                                startTime: document.getElementById(`peak_${day}_start`)?.value || '18:00',
+                                endTime: document.getElementById(`peak_${day}_end`)?.value || '23:00'
+                            };
+                        });
+                        return schedule;
+                    })(),
+                    // Early Bird
+                    earlyBird: {
+                        enabled: document.getElementById('earlyBirdEnabled')?.checked || false,
+                        type: document.getElementById('earlyBirdType')?.value || 'percentage',
+                        value: Number(document.getElementById('earlyBirdValue')?.value || 0),
+                        expiryDate: document.getElementById('earlyBirdExpiry')?.value || null,
+                        appliesTo: document.getElementById('earlyBirdAppliesTo')?.value || 'all'
                     }
                 }
             };

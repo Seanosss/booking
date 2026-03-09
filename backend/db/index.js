@@ -24,9 +24,13 @@ const DEFAULT_OPERATING_HOURS = {
 };
 
 const DEFAULT_PEAK_SCHEDULE = {
-    days: ['fri', 'sat', 'sun'],
-    startTime: '18:00',
-    endTime: '23:00'
+    mon: { enabled: false },
+    tue: { enabled: false },
+    wed: { enabled: false },
+    thu: { enabled: false },
+    fri: { enabled: true, allDay: false, startTime: '18:00', endTime: '23:00' },
+    sat: { enabled: true, allDay: true },
+    sun: { enabled: true, allDay: true }
 };
 
 const DEFAULT_PAYMENT_METHODS = {
@@ -59,7 +63,17 @@ const defaultSettings = {
         normalUpTo18: 320,
         peakUpTo10: 280,
         peakUpTo18: 350,
-        peakSchedule: DEFAULT_PEAK_SCHEDULE
+        singlePracticeNormal: 120,
+        singlePracticePeak: 150,
+        singlePracticeMaxSpots: 4,
+        peakSchedule: DEFAULT_PEAK_SCHEDULE,
+        earlyBird: {
+            enabled: false,
+            type: 'percentage',
+            value: 20,
+            expiryDate: null,
+            appliesTo: 'all'
+        }
     },
     paymentMethods: { ...DEFAULT_PAYMENT_METHODS },
     contactInfo: {
@@ -232,7 +246,8 @@ function mapBookingRow(row) {
         updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
         confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
         cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).toISOString() : null,
-        adminNotes: row.admin_notes || null
+        adminNotes: row.admin_notes || null,
+        companionInfo: row.companion_info || []
     };
 }
 
@@ -248,7 +263,8 @@ function mapBookingItemRow(row) {
         duration: row.duration,
         peopleCount: Number(row.people_count),
         price: Number(row.price),
-        periodType: row.period_type
+        periodType: row.period_type,
+        bookingMode: row.booking_mode || 'exclusive'
     };
 }
 
@@ -527,6 +543,14 @@ async function initializeDatabase() {
         ADD COLUMN IF NOT EXISTS admin_notes TEXT
     `,
         `
+        ALTER TABLE booking_items
+        ADD COLUMN IF NOT EXISTS booking_mode TEXT DEFAULT 'exclusive'
+    `,
+        `
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS companion_info JSONB DEFAULT '[]'::jsonb
+    `,
+        `
         CREATE TABLE IF NOT EXISTS class_products (
             id SERIAL PRIMARY KEY,
             type TEXT NOT NULL CHECK (type IN ('package', 'trial')),
@@ -757,9 +781,10 @@ async function createBooking(bookingData) {
                 updated_at,
                 confirmed_at,
                 cancelled_at,
-                admin_notes
+                admin_notes,
+                companion_info
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             RETURNING *
         `, [
             id,
@@ -777,7 +802,8 @@ async function createBooking(bookingData) {
             now,
             confirmedAt,
             null,
-            bookingData.adminNotes || null
+            bookingData.adminNotes || null,
+            JSON.stringify(bookingData.companionInfo || [])
         ]);
 
         console.log('[BookingCreate] Database stored date fields:', {
@@ -797,9 +823,10 @@ async function createBooking(bookingData) {
                     duration,
                     people_count,
                     price,
-                    period_type
+                    period_type,
+                    booking_mode
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             `, [
                 id,
                 item.catalogItemId,
@@ -810,7 +837,8 @@ async function createBooking(bookingData) {
                 item.duration,
                 item.peopleCount,
                 item.price,
-                item.periodType
+                item.periodType,
+                item.bookingMode || 'exclusive'
             ]);
         }
 
@@ -1151,6 +1179,23 @@ async function getCatalogItemCapacityUsage(catalogItemId, excludeBookingId = nul
 
     const result = await pool.query(query, params);
     return Number(result.rows[0].used_capacity);
+}
+
+async function getSharedSlotUsage(date) {
+    const result = await pool.query(`
+        SELECT bi.start_time, bi.end_time, COUNT(*) AS booked_count
+        FROM booking_items bi
+        JOIN bookings b ON b.id = bi.booking_id
+        WHERE bi.date = $1
+          AND bi.booking_mode = 'shared'
+          AND b.status IN ('pending', 'confirmed')
+        GROUP BY bi.start_time, bi.end_time
+    `, [date]);
+    return result.rows.map(r => ({
+        startTime: normalizeTimeString(r.start_time),
+        endTime: normalizeTimeString(r.end_time),
+        bookedCount: Number(r.booked_count)
+    }));
 }
 
 async function getClasses({ includePast = false, startDate = null, endDate = null, onDate = null } = {}) {
@@ -1586,6 +1631,7 @@ module.exports = {
     updateCatalogItem,
     deleteCatalogItem,
     getCatalogItemCapacityUsage,
+    getSharedSlotUsage,
     getClasses,
     getClassById,
     getClassConflicts,

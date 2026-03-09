@@ -56,6 +56,73 @@
             z-index: -1;
         }
 
+        .mode-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.6);
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover {
+            border-color: var(--brand-secondary);
+        }
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            border-color: transparent;
+        }
+        .early-bird-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .shared-capacity {
+            font-size: 0.7rem;
+            display: block;
+            margin-top: 2px;
+            color: inherit;
+        }
+        .peak-indicator {
+            font-size: 0.65rem;
+            display: block;
+            color: #f59e0b;
+            margin-top: 1px;
+        }
+        .companion-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .companion-row input {
+            font-size: 0.9rem;
+        }
+        .split-payment-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+
         a {
             color: inherit;
             text-decoration: none;
@@ -864,6 +931,16 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>預約模式</label>
+                    <div id="booking-mode-toggle" style="display:flex; gap:8px; margin-bottom:8px;">
+                        <button type="button" class="mode-btn active" data-mode="exclusive" onclick="setBookingMode('exclusive')">🏠 包場預約</button>
+                        <button type="button" class="mode-btn" data-mode="shared" onclick="setBookingMode('shared')">🎵 單點練習</button>
+                    </div>
+                    <div id="mode-description" style="font-size:0.85rem; color:#6b5347; padding:6px 0;">
+                        包場預約：獨享整個空間，適合團體活動或私人聚會。
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="date-input">預約日期</label>
                     <input type="text" id="date-input" placeholder="點擊選擇日期..." readonly style="background: white;">
                 </div>
@@ -884,7 +961,9 @@
                 <div class="summary-totals">
                     <div class="totals-row"><span>已選時段</span><span id="total-blocks">0</span></div>
                     <div class="totals-row"><span>總時數</span><span id="total-hours">0 小時</span></div>
-                    <div class="totals-row"><span>總人數</span><span id="total-people">0</span></div>
+                    <div class="totals-row" id="total-people-row"><span>總人數</span><span id="total-people">0</span></div>
+                    <div class="totals-row" id="per-person-row" style="display:none;"><span>每人每小時</span><span id="per-person-rate">HK$ 0</span></div>
+                    <div id="early-bird-row" style="display:none;" class="totals-row"><span>早鳥優惠</span><span id="early-bird-label" class="early-bird-badge">🐦 早鳥</span></div>
                     <div class="totals-row total"><span>預估金額</span><span>HK$ <span id="total-amount">0</span></span>
                     </div>
                 </div>
@@ -907,9 +986,18 @@
                         <input type="tel" id="phone" required>
                     </div>
                 </div>
-                <div class="form-group" style="margin-top:18px;">
+                <div class="form-group" style="margin-top:18px;" id="people-count-group">
                     <label for="people-count">參與人數 (可選，最多 18 人)</label>
                     <input type="number" id="people-count" min="1" max="18" placeholder="例如 6">
+                </div>
+                <div id="companion-section" style="display:none; margin-top:14px;">
+                    <label>同行者資料</label>
+                    <div id="companion-fields"></div>
+                </div>
+                <div id="split-payment-section" style="display:none;">
+                    <div class="split-payment-info">
+                        💡 多人同行請把確認訊息轉發給朋友，各自付款後傳送收據至 WhatsApp 確認。
+                    </div>
                 </div>
                 <div class="form-group" style="margin-top:18px;">
                     <label for="instagram">Instagram (可選)</label>
@@ -964,8 +1052,10 @@
             selectedSlotsByDate: new Map(),
             selectedRanges: [],
             slotInterval: 30,
-            activeRoomId: null, // Track selected room
-            rooms: [] // Store fetched rooms
+            activeRoomId: null,
+            rooms: [],
+            bookingMode: 'exclusive', // 'exclusive' or 'shared'
+            sharedAvailability: []     // [{startTime, endTime, bookedCount}]
         };
 
         async function fetchRentalItems() {
@@ -1163,45 +1253,63 @@
             return aggregated;
         }
 
-        function resolvePeakSchedule(settings) {
-            const schedule = settings?.pricing?.peakSchedule;
-            if (!schedule) return null;
-            const days = Array.isArray(schedule.days)
-                ? schedule.days.map(day => day.toString().toLowerCase())
-                : [];
-            return {
-                days,
-                startTime: schedule.startTime || '18:00',
-                endTime: schedule.endTime || '23:00'
-            };
-        }
-
         function determinePeriodType(date, startTime, endTime, settings) {
-            const schedule = resolvePeakSchedule(settings);
-            if (!schedule || schedule.days.length === 0) return 'normal';
+            const schedule = settings?.pricing?.peakSchedule;
+            if (!schedule) return 'normal';
             const parsed = new Date(`${date}T00:00:00`);
             if (Number.isNaN(parsed.getTime())) return 'normal';
             const dayToken = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][parsed.getDay()];
-            if (!schedule.days.includes(dayToken)) return 'normal';
-            const startMinutes = timeToMinutes(startTime);
-            const endMinutes = timeToMinutes(endTime);
-            const peakStart = timeToMinutes(schedule.startTime);
-            const peakEnd = timeToMinutes(schedule.endTime);
-            const overlaps = startMinutes < peakEnd && endMinutes > peakStart;
-            return overlaps ? 'peak' : 'normal';
+
+            // New per-day format
+            if (schedule[dayToken] !== undefined) {
+                const dayConfig = schedule[dayToken];
+                if (!dayConfig || !dayConfig.enabled) return 'normal';
+                if (dayConfig.allDay) return 'peak';
+                const startM = timeToMinutes(startTime);
+                const endM = timeToMinutes(endTime);
+                const peakStart = timeToMinutes(dayConfig.startTime || '18:00');
+                const peakEnd = timeToMinutes(dayConfig.endTime || '23:00');
+                return (startM < peakEnd && endM > peakStart) ? 'peak' : 'normal';
+            }
+
+            // Legacy format fallback
+            if (Array.isArray(schedule.days)) {
+                const days = schedule.days.map(d => d.toLowerCase());
+                if (!days.includes(dayToken)) return 'normal';
+                const startM = timeToMinutes(startTime);
+                const endM = timeToMinutes(endTime);
+                const peakStart = timeToMinutes(schedule.startTime || '18:00');
+                const peakEnd = timeToMinutes(schedule.endTime || '23:00');
+                return (startM < peakEnd && endM > peakStart) ? 'peak' : 'normal';
+            }
+
+            return 'normal';
         }
 
-        function resolveHourlyRate(pricing, peopleCount, periodType) {
+        function resolveHourlyRate(pricing, peopleCount, periodType, bookingMode) {
             const rateTable = pricing || {};
+            if (bookingMode === 'shared') {
+                return periodType === 'peak'
+                    ? Number(rateTable.singlePracticePeak || 0)
+                    : Number(rateTable.singlePracticeNormal || 0);
+            }
             const cap = Number(peopleCount);
-            if (cap > 18) {
-                throw new Error('最多 18 人');
-            }
+            if (cap > 18) throw new Error('最多 18 人');
             const baseKey = periodType === 'peak' ? 'peak' : 'normal';
-            if (cap <= 10) {
-                return Number(rateTable[`${baseKey}UpTo10`] || 0);
-            }
-            return Number(rateTable[`${baseKey}UpTo18`] || 0);
+            return cap <= 10
+                ? Number(rateTable[`${baseKey}UpTo10`] || 0)
+                : Number(rateTable[`${baseKey}UpTo18`] || 0);
+        }
+
+        function applyEarlyBirdDiscount(rate, pricing, bookingMode) {
+            const eb = pricing?.earlyBird;
+            if (!eb?.enabled) return rate;
+            if (eb.expiryDate && new Date() > new Date(eb.expiryDate)) return rate;
+            if (eb.appliesTo === 'exclusive' && bookingMode === 'shared') return rate;
+            if (eb.appliesTo === 'singlePractice' && bookingMode !== 'shared') return rate;
+            if (eb.type === 'percentage') return Math.round(rate * (1 - Number(eb.value) / 100) * 100) / 100;
+            if (eb.type === 'fixed') return Number(eb.value);
+            return rate;
         }
 
         function resolvePeopleCountInput() {
@@ -1216,8 +1324,10 @@
             const groups = getAllSelectedGroups();
             const providedPeopleCount = resolvePeopleCountInput();
             const effectivePeopleCount = providedPeopleCount ?? 1;
+            const bm = state.bookingMode;
             let totalMinutes = 0;
             let totalPrice = 0;
+            let sampleRate = 0;
 
             groups.forEach(group => {
                 const duration = timeToMinutes(group.end) - timeToMinutes(group.start);
@@ -1225,7 +1335,9 @@
                 if (state.settings?.pricing) {
                     try {
                         const periodType = determinePeriodType(group.date, group.start, group.end, state.settings);
-                        const rate = resolveHourlyRate(state.settings.pricing, effectivePeopleCount, periodType);
+                        let rate = resolveHourlyRate(state.settings.pricing, effectivePeopleCount, periodType, bm);
+                        rate = applyEarlyBirdDiscount(rate, state.settings.pricing, bm);
+                        if (!sampleRate) sampleRate = rate;
                         totalPrice += rate * (duration / 60);
                     } catch (error) {
                         console.error('Failed to resolve pricing for group:', error);
@@ -1235,10 +1347,125 @@
 
             elements.totalBlocks.textContent = groups.length.toString();
             elements.totalHours.textContent = `${(totalMinutes / 60).toFixed(1)} 小時`;
-            elements.totalPeople.textContent = providedPeopleCount ? providedPeopleCount.toString() : '—';
+
+            // People count display
+            const peopleRow = document.getElementById('total-people-row');
+            const perPersonRow = document.getElementById('per-person-row');
+            if (bm === 'shared') {
+                elements.totalPeople.textContent = '1 (個人練習)';
+                if (perPersonRow) {
+                    perPersonRow.style.display = 'flex';
+                    document.getElementById('per-person-rate').textContent = `HK$ ${sampleRate}`;
+                }
+            } else {
+                elements.totalPeople.textContent = providedPeopleCount ? providedPeopleCount.toString() : '—';
+                if (perPersonRow) perPersonRow.style.display = 'none';
+            }
+
+            // Early bird badge
+            const ebRow = document.getElementById('early-bird-row');
+            const eb = state.settings?.pricing?.earlyBird;
+            if (eb?.enabled && (!eb.expiryDate || new Date() <= new Date(eb.expiryDate))) {
+                const shouldShow = eb.appliesTo === 'all' ||
+                    (eb.appliesTo === 'exclusive' && bm === 'exclusive') ||
+                    (eb.appliesTo === 'singlePractice' && bm === 'shared');
+                if (ebRow && shouldShow) {
+                    ebRow.style.display = 'flex';
+                    const label = eb.type === 'percentage' ? `🐦 早鳥 -${eb.value}%` : `🐦 早鳥價 HK$${eb.value}/hr`;
+                    document.getElementById('early-bird-label').textContent = label;
+                }
+            } else if (ebRow) {
+                ebRow.style.display = 'none';
+            }
+
             elements.totalAmount.textContent = totalPrice.toFixed(2);
             elements.submitButton.disabled = groups.length === 0;
             elements.contactCard.style.display = groups.length > 0 ? 'block' : 'none';
+
+            // Companion fields
+            updateCompanionFields(providedPeopleCount);
+        }
+
+        function setBookingMode(mode) {
+            state.bookingMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            const desc = document.getElementById('mode-description');
+            const pcGroup = document.getElementById('people-count-group');
+            if (mode === 'shared') {
+                desc.textContent = '單點練習：與其他人共用空間，每人獨立預約付款。';
+                pcGroup.style.display = 'none';
+                elements.peopleInput.value = '';
+            } else {
+                desc.textContent = '包場預約：獨享整個空間，適合團體活動或私人聚會。';
+                pcGroup.style.display = 'block';
+            }
+            // Re-render slots and recalculate
+            if (state.selectedDate) {
+                if (mode === 'shared') {
+                    fetchSharedAvailability(state.selectedDate).then(() => renderSlots());
+                } else {
+                    renderSlots();
+                }
+            }
+            renderSummary();
+        }
+
+        async function fetchSharedAvailability(date) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/bookings/shared-availability?date=${date}`);
+                if (res.ok) {
+                    state.sharedAvailability = await res.json();
+                } else {
+                    state.sharedAvailability = [];
+                }
+            } catch (e) {
+                console.error('Failed to fetch shared availability:', e);
+                state.sharedAvailability = [];
+            }
+        }
+
+        function getSharedBookedCount(time) {
+            const interval = state.slotInterval;
+            const slotEnd = minutesToTime(timeToMinutes(time) + interval);
+            for (const sa of state.sharedAvailability) {
+                if (sa.startTime === time || (timeToMinutes(time) >= timeToMinutes(sa.startTime) && timeToMinutes(time) < timeToMinutes(sa.endTime))) {
+                    return sa.bookedCount || 0;
+                }
+            }
+            return 0;
+        }
+
+        function updateCompanionFields(peopleCount) {
+            const section = document.getElementById('companion-section');
+            const fields = document.getElementById('companion-fields');
+            const splitSection = document.getElementById('split-payment-section');
+            if (!section || !fields) return;
+
+            if (state.bookingMode === 'exclusive' && peopleCount && peopleCount > 1) {
+                section.style.display = 'block';
+                if (splitSection) splitSection.style.display = 'block';
+                const needed = peopleCount - 1;
+                // Keep existing values
+                const existing = fields.querySelectorAll('.companion-row');
+                if (existing.length === needed) return;
+
+                fields.innerHTML = '';
+                for (let i = 0; i < needed; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'companion-row';
+                    row.innerHTML = `
+                        <input type="text" placeholder="同行者 ${i + 1} 姓名" class="companion-name">
+                        <input type="tel" placeholder="電話 / WhatsApp" class="companion-phone">
+                    `;
+                    fields.appendChild(row);
+                }
+            } else {
+                section.style.display = 'none';
+                if (splitSection) splitSection.style.display = 'none';
+                fields.innerHTML = '';
+            }
         }
 
         function renderSummary() {
@@ -1320,6 +1547,12 @@
             renderSummary();
         }
 
+        function isSlotPeak(date, time) {
+            const interval = state.slotInterval;
+            const endTime = minutesToTime(timeToMinutes(time) + interval);
+            return determinePeriodType(date, time, endTime, state.settings) === 'peak';
+        }
+
         function renderSlots() {
             const date = state.selectedDate;
             if (!date) {
@@ -1330,7 +1563,6 @@
 
             const availability = state.availabilityByDate.get(date);
             if (!availability) {
-                // API failed or still loading — clear skeleton and show retry prompt
                 elements.slotGrid.innerHTML = '<div style="text-align:center;padding:20px;color:#c0392b;grid-column:1/-1;">⚠️ 無法載入時段，請重新選擇日期或稍後再試。</div>';
                 return;
             }
@@ -1339,12 +1571,13 @@
             const interval = state.slotInterval;
             const generatedSlots = generateSlots(openingHours.startTime, openingHours.endTime, interval);
             const currentSelected = state.selectedSlotsByDate.get(date) || new Set();
+            const bm = state.bookingMode;
+            const maxSpots = Number(state.settings?.pricing?.singlePracticeMaxSpots || 4);
 
             // Marketing Logic
             const marketing = state.settings?.bookingRules?.marketing || {};
             const showHotTags = marketing.enableHotTags;
             const hotText = marketing.hotTagText || '🔥 熱門';
-
             const isHotTime = (timeStr) => {
                 if (!showHotTags || !marketing.startTime || !marketing.endTime) return false;
                 return timeStr >= marketing.startTime && timeStr < marketing.endTime;
@@ -1355,28 +1588,50 @@
             generatedSlots.forEach(time => {
                 const button = document.createElement('div');
                 button.className = 'slot-button';
-
-                // Base Content
                 let contentHtml = `<span>${time}</span>`;
 
-                // Status Logic — class slots take priority, then confirmed, then pending
+                // Peak indicator
+                if (isSlotPeak(date, time)) {
+                    contentHtml += `<span class="peak-indicator">⚡Peak</span>`;
+                }
+
+                // Status Logic
                 if (classSlots.includes(time)) {
                     button.classList.add('disabled', 'class-occupied');
                     button.title = '課堂時段';
                     contentHtml += `<span class="class-tag">課堂</span>`;
-                } else if (confirmedSlots.includes(time)) {
-                    button.classList.add('disabled', 'unavailable');
-                    button.title = '已預約';
-                } else if (pendingSlots.includes(time)) {
-                    button.classList.add('pending');
-                    button.title = '待確認';
+                } else if (bm === 'shared') {
+                    // Shared mode: check capacity instead of exclusive conflicts
+                    const bookedCount = getSharedBookedCount(time);
+                    // Also blocked if there's an exclusive booking
+                    if (confirmedSlots.includes(time) || pendingSlots.includes(time)) {
+                        button.classList.add('disabled', 'unavailable');
+                        button.title = '已有包場預約';
+                        contentHtml += `<span class="shared-capacity">已包場</span>`;
+                    } else if (bookedCount >= maxSpots) {
+                        button.classList.add('disabled', 'unavailable');
+                        button.title = '已滿';
+                        contentHtml += `<span class="shared-capacity">${bookedCount}/${maxSpots} 已滿</span>`;
+                    } else {
+                        button.classList.add('available');
+                        button.addEventListener('click', () => toggleSlotSelection({ time, status: 'available' }));
+                        const color = bookedCount >= maxSpots - 1 ? '#f59e0b' : '#22c55e';
+                        contentHtml += `<span class="shared-capacity" style="color:${color}">${bookedCount}/${maxSpots}</span>`;
+                    }
                 } else {
-                    button.classList.add('available');
-                    button.addEventListener('click', () => toggleSlotSelection({ time, status: 'available' }));
-
-                    // Add Hot Tag if applicable
-                    if (isHotTime(time)) {
-                        contentHtml += `<span class="hot-tag">${hotText}</span>`;
+                    // Exclusive mode (original logic)
+                    if (confirmedSlots.includes(time)) {
+                        button.classList.add('disabled', 'unavailable');
+                        button.title = '已預約';
+                    } else if (pendingSlots.includes(time)) {
+                        button.classList.add('pending');
+                        button.title = '待確認';
+                    } else {
+                        button.classList.add('available');
+                        button.addEventListener('click', () => toggleSlotSelection({ time, status: 'available' }));
+                        if (isHotTime(time)) {
+                            contentHtml += `<span class="hot-tag">${hotText}</span>`;
+                        }
                     }
                 }
 
@@ -1392,9 +1647,8 @@
         async function fetchAvailability(date) {
             if (!date) return;
             state.selectedDate = date;
-            state.availabilityByDate.delete(date); // Clear previous availability for this date
+            state.availabilityByDate.delete(date);
 
-            // Show skeletons
             renderSkeletonSlots();
 
             try {
@@ -1402,11 +1656,12 @@
                 if (state.activeRoomId) {
                     url += `&itemId=${state.activeRoomId}`;
                 }
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Failed to load availability');
+                const fetches = [fetch(url).then(r => r.ok ? r.json() : Promise.reject('Failed'))];
+                // Also fetch shared availability if in shared mode
+                if (state.bookingMode === 'shared') {
+                    fetches.push(fetchSharedAvailability(date));
                 }
-                const availability = await response.json();
+                const [availability] = await Promise.all(fetches);
                 state.availabilityByDate.set(date, availability);
             } catch (error) {
                 console.error('Unable to load availability:', error);
@@ -1746,6 +2001,14 @@
                 return;
             }
 
+            // Collect companion info
+            const companionInfo = [];
+            document.querySelectorAll('.companion-row').forEach(row => {
+                const name = row.querySelector('.companion-name')?.value?.trim();
+                const phone = row.querySelector('.companion-phone')?.value?.trim();
+                if (name) companionInfo.push({ name, phone: phone || '' });
+            });
+
             const payload = {
                 customerName: elements.customerName.value.trim(),
                 email: elements.email.value.trim(),
@@ -1759,7 +2022,9 @@
                     endTime: group.end,
                     catalogItemId: state.activeRoomId || null
                 })),
-                peopleCount: resolvePeopleCountInput() ?? 1
+                peopleCount: state.bookingMode === 'shared' ? 1 : (resolvePeopleCountInput() ?? 1),
+                bookingMode: state.bookingMode,
+                companionInfo: companionInfo
             };
 
             if (!payload.customerName || !payload.email || !payload.phone) {
