@@ -3629,10 +3629,10 @@
                     const existing = document.getElementById('calEventPopup');
                     if (existing) existing.remove();
 
-                    // Build delete button for rental bookings
+                    // Build delete button for rental and maintenance bookings
                     const eventId = props.data?.id || null;
-                    const isRental = props.type === 'rental';
-                    const deleteBtn = (isRental && eventId) ? `
+                    const canDelete = (props.type === 'rental' || props.type === 'maintenance') && eventId;
+                    const deleteBtn = canDelete ? `
                         <button onclick="
                             document.getElementById('calEventPopup').remove();
                             deleteRentalBooking('${eventId}');
