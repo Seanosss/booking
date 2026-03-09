@@ -796,11 +796,48 @@
                             <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#ffc107;display:inline-block;"></span>場地 (待處理)</span>
                             <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#007bff;display:inline-block;"></span>課程 (已確認)</span>
                             <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#6c757d;display:inline-block;"></span>課程 (待處理)</span>
+                            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#9b59b6;display:inline-block;"></span>封鎖 / 維護</span>
                         </div>
                         <span style="font-size:0.78rem;color:#94a3b8;background:#f1f5f9;padding:4px 10px;border-radius:99px;">💡 點擊空格快速封鎖時段</span>
                     </div>
                 </div>
                 <div id='calendar'></div>
+            </div>
+
+            <!-- Quick Add Modal -->
+            <div id="calendarAddModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:9999;justify-content:center;align-items:center;">
+                <div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+                    <h3 id="calModalTitle" style="margin:0 0 20px 0;color:#1e293b;">📅 新增項目</h3>
+
+                    <div style="margin-bottom:16px;">
+                        <label style="font-weight:600;font-size:0.9rem;color:#475569;display:block;margin-bottom:6px;">類型</label>
+                        <div style="display:flex;gap:10px;">
+                            <button id="calTypeBooking" onclick="setCalType(false)" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;font-size:0.9rem;transition:all 0.2s;">📋 預約 Booking</button>
+                            <button id="calTypeBlock" onclick="setCalType(true)" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;font-size:0.9rem;transition:all 0.2s;">🔒 封鎖 Block</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:12px;margin-bottom:16px;">
+                        <div style="flex:1;">
+                            <label style="font-weight:600;font-size:0.9rem;color:#475569;display:block;margin-bottom:6px;">開始時間</label>
+                            <input id="calStartTime" type="time" value="10:00" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-size:0.95rem;box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-weight:600;font-size:0.9rem;color:#475569;display:block;margin-bottom:6px;">結束時間</label>
+                            <input id="calEndTime" type="time" value="12:00" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-size:0.95rem;box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label style="font-weight:600;font-size:0.9rem;color:#475569;display:block;margin-bottom:6px;">備註 Note</label>
+                        <input id="calNote" type="text" placeholder="例：私人租用 / 設備維護..." style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-size:0.95rem;box-sizing:border-box;">
+                    </div>
+
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button onclick="closeCalModal()" style="padding:10px 20px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;font-size:0.9rem;color:#64748b;">取消</button>
+                        <button id="calModalSubmit" onclick="submitCalModal()" style="padding:10px 24px;border:none;border-radius:10px;background:#1a6baa;color:#fff;cursor:pointer;font-size:0.9rem;font-weight:600;">確認新增</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="bookingsTab" class="tab-content active">
@@ -3341,6 +3378,94 @@
             el.style.display = 'none';
         }
 
+        // ── Calendar Quick-Add Modal ──
+        let calModalDate = '';
+        let calModalIsBlock = false;
+
+        function openCalModal(dateStr) {
+            calModalDate = dateStr;
+            calModalIsBlock = false;
+            document.getElementById('calModalTitle').textContent = `📅 ${dateStr} — 新增項目`;
+            document.getElementById('calStartTime').value = '10:00';
+            document.getElementById('calEndTime').value = '12:00';
+            document.getElementById('calNote').value = '';
+            setCalType(false);
+            const modal = document.getElementById('calendarAddModal');
+            modal.style.display = 'flex';
+            document.getElementById('calStartTime').focus();
+        }
+
+        function closeCalModal() {
+            document.getElementById('calendarAddModal').style.display = 'none';
+        }
+
+        function setCalType(isBlock) {
+            calModalIsBlock = isBlock;
+            const bookingBtn = document.getElementById('calTypeBooking');
+            const blockBtn = document.getElementById('calTypeBlock');
+            bookingBtn.style.borderColor = isBlock ? '#e2e8f0' : '#1a6baa';
+            bookingBtn.style.background = isBlock ? '#fff' : '#eff6ff';
+            bookingBtn.style.color = isBlock ? '#475569' : '#1a6baa';
+            blockBtn.style.borderColor = isBlock ? '#9b59b6' : '#e2e8f0';
+            blockBtn.style.background = isBlock ? '#f3e8ff' : '#fff';
+            blockBtn.style.color = isBlock ? '#9b59b6' : '#475569';
+            document.getElementById('calNote').placeholder = isBlock ? '例：設備維護 / 私人活動...' : '例：Walk-in 客人 / 朋友租用...';
+        }
+
+        async function submitCalModal() {
+            const startTime = document.getElementById('calStartTime').value;
+            const endTime = document.getElementById('calEndTime').value;
+            const note = document.getElementById('calNote').value || (calModalIsBlock ? '維護封鎖' : '管理員預約');
+
+            if (!startTime || !endTime) {
+                alert('請填寫開始和結束時間');
+                return;
+            }
+
+            const submitBtn = document.getElementById('calModalSubmit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '處理中...';
+
+            try {
+                const res = await authenticatedFetch(`${API_BASE_URL}/admin/bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerName: calModalIsBlock ? 'Maintenance' : 'Walk-in',
+                        email: 'admin@studio.com',
+                        phone: '00000000',
+                        date: calModalDate,
+                        startTime: startTime,
+                        endTime: endTime,
+                        adminNotes: note,
+                        status: 'confirmed',
+                        isBlock: calModalIsBlock
+                    })
+                });
+                if (res.ok) {
+                    const label = calModalIsBlock ? '封鎖' : '預約';
+                    showMessage('bookingsMessage', 'success', `✅ 已新增${label}：${calModalDate} ${startTime}–${endTime}（${note}）`);
+                    calendar.refetchEvents();
+                    loadRentalBookings();
+                    closeCalModal();
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || '操作失敗');
+                }
+            } catch (e) {
+                console.error('Failed to create:', e);
+                alert('操作失敗，請稍後再試');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '確認新增';
+            }
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('calendarAddModal')?.addEventListener('click', function (e) {
+            if (e.target === this) closeCalModal();
+        });
+
         function showMessage(elementId, type, message) {
             const el = document.getElementById(elementId);
             if (!el) return;
@@ -3438,56 +3563,8 @@
                         failureCallback(e);
                     }
                 },
-                dateClick: async function (info) {
-                    const action = prompt(
-                        `📅 ${info.dateStr}\n\n請選擇操作：\n1 = 新增預約 (Booking)\n2 = 封鎖時段 (Block/Maintenance)\n\n輸入 1 或 2：`,
-                        '1'
-                    );
-                    if (action === null) return;
-                    const trimmed = action.trim();
-                    if (trimmed !== '1' && trimmed !== '2') {
-                        alert('請輸入 1 或 2');
-                        return;
-                    }
-
-                    const isBlock = trimmed === '2';
-                    const label = isBlock ? '封鎖' : '預約';
-
-                    const startTime = prompt(`${label}開始時間（格式 HH:MM）：`, '10:00');
-                    if (startTime === null) return;
-                    const endTime = prompt(`${label}結束時間（格式 HH:MM）：`, '12:00');
-                    if (endTime === null) return;
-
-                    const note = prompt('備註 (Note)：', isBlock ? '維護封鎖' : '') || (isBlock ? '維護封鎖' : '管理員預約');
-
-                    try {
-                        const res = await authenticatedFetch(`${API_BASE_URL}/admin/bookings`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                customerName: isBlock ? 'Maintenance' : 'Walk-in',
-                                email: 'admin@studio.com',
-                                phone: '00000000',
-                                date: info.dateStr,
-                                startTime: startTime.trim(),
-                                endTime: endTime.trim(),
-                                adminNotes: note,
-                                status: 'confirmed',
-                                isBlock: isBlock
-                            })
-                        });
-                        if (res.ok) {
-                            showMessage('bookingsMessage', 'success', `✅ 已新增${label}：${info.dateStr} ${startTime}–${endTime}（${note}）`);
-                            calendar.refetchEvents();
-                            loadRentalBookings();
-                        } else {
-                            const errorData = await res.json();
-                            showMessage('bookingsMessage', 'error', errorData.error || '操作失敗');
-                        }
-                    } catch (e) {
-                        console.error('Failed to create:', e);
-                        showMessage('bookingsMessage', 'error', '操作失敗，請稍後再試');
-                    }
+                dateClick: function (info) {
+                    openCalModal(info.dateStr);
                 },
                 eventClick: function (info) {
                     const props = info.event.extendedProps;
