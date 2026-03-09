@@ -1068,13 +1068,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td>週一 (Mon)</td><td style="text-align:center;"><input type="checkbox" id="peak_mon_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_mon_allDay" onchange="togglePeakAllDay('mon')"></td><td><input type="time" id="peak_mon_start" value="18:00"></td><td><input type="time" id="peak_mon_end" value="23:00"></td></tr>
-                            <tr><td>週二 (Tue)</td><td style="text-align:center;"><input type="checkbox" id="peak_tue_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_tue_allDay" onchange="togglePeakAllDay('tue')"></td><td><input type="time" id="peak_tue_start" value="18:00"></td><td><input type="time" id="peak_tue_end" value="23:00"></td></tr>
-                            <tr><td>週三 (Wed)</td><td style="text-align:center;"><input type="checkbox" id="peak_wed_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_wed_allDay" onchange="togglePeakAllDay('wed')"></td><td><input type="time" id="peak_wed_start" value="18:00"></td><td><input type="time" id="peak_wed_end" value="23:00"></td></tr>
-                            <tr><td>週四 (Thu)</td><td style="text-align:center;"><input type="checkbox" id="peak_thu_enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_thu_allDay" onchange="togglePeakAllDay('thu')"></td><td><input type="time" id="peak_thu_start" value="18:00"></td><td><input type="time" id="peak_thu_end" value="23:00"></td></tr>
-                            <tr><td>週五 (Fri)</td><td style="text-align:center;"><input type="checkbox" id="peak_fri_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_fri_allDay" onchange="togglePeakAllDay('fri')"></td><td><input type="time" id="peak_fri_start" value="18:00"></td><td><input type="time" id="peak_fri_end" value="23:00"></td></tr>
-                            <tr><td>週六 (Sat)</td><td style="text-align:center;"><input type="checkbox" id="peak_sat_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sat_allDay" checked onchange="togglePeakAllDay('sat')"></td><td><input type="time" id="peak_sat_start" value="07:00" disabled></td><td><input type="time" id="peak_sat_end" value="23:00" disabled></td></tr>
-                            <tr><td>週日 (Sun)</td><td style="text-align:center;"><input type="checkbox" id="peak_sun_enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sun_allDay" checked onchange="togglePeakAllDay('sun')"></td><td><input type="time" id="peak_sun_start" value="07:00" disabled></td><td><input type="time" id="peak_sun_end" value="23:00" disabled></td></tr>
+                            <tr><td>週一 (Mon)</td><td style="text-align:center;"><input type="checkbox" id="peak_mon_enabled" aria-label="Monday peak enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_mon_allDay" aria-label="Monday peak all day" onchange="togglePeakAllDay('mon')"></td><td><input type="time" id="peak_mon_start" aria-label="Monday peak start time" value="18:00"></td><td><input type="time" id="peak_mon_end" aria-label="Monday peak end time" value="23:00"></td></tr>
+                            <tr><td>週二 (Tue)</td><td style="text-align:center;"><input type="checkbox" id="peak_tue_enabled" aria-label="Tuesday peak enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_tue_allDay" aria-label="Tuesday peak all day" onchange="togglePeakAllDay('tue')"></td><td><input type="time" id="peak_tue_start" aria-label="Tuesday peak start time" value="18:00"></td><td><input type="time" id="peak_tue_end" aria-label="Tuesday peak end time" value="23:00"></td></tr>
+                            <tr><td>週三 (Wed)</td><td style="text-align:center;"><input type="checkbox" id="peak_wed_enabled" aria-label="Wednesday peak enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_wed_allDay" aria-label="Wednesday peak all day" onchange="togglePeakAllDay('wed')"></td><td><input type="time" id="peak_wed_start" aria-label="Wednesday peak start time" value="18:00"></td><td><input type="time" id="peak_wed_end" aria-label="Wednesday peak end time" value="23:00"></td></tr>
+                            <tr><td>週四 (Thu)</td><td style="text-align:center;"><input type="checkbox" id="peak_thu_enabled" aria-label="Thursday peak enabled"></td><td style="text-align:center;"><input type="checkbox" id="peak_thu_allDay" aria-label="Thursday peak all day" onchange="togglePeakAllDay('thu')"></td><td><input type="time" id="peak_thu_start" aria-label="Thursday peak start time" value="18:00"></td><td><input type="time" id="peak_thu_end" aria-label="Thursday peak end time" value="23:00"></td></tr>
+                            <tr><td>週五 (Fri)</td><td style="text-align:center;"><input type="checkbox" id="peak_fri_enabled" aria-label="Friday peak enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_fri_allDay" aria-label="Friday peak all day" onchange="togglePeakAllDay('fri')"></td><td><input type="time" id="peak_fri_start" aria-label="Friday peak start time" value="18:00"></td><td><input type="time" id="peak_fri_end" aria-label="Friday peak end time" value="23:00"></td></tr>
+                            <tr><td>週六 (Sat)</td><td style="text-align:center;"><input type="checkbox" id="peak_sat_enabled" aria-label="Saturday peak enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sat_allDay" aria-label="Saturday peak all day" checked onchange="togglePeakAllDay('sat')"></td><td><input type="time" id="peak_sat_start" aria-label="Saturday peak start time" value="07:00" disabled></td><td><input type="time" id="peak_sat_end" aria-label="Saturday peak end time" value="23:00" disabled></td></tr>
+                            <tr><td>週日 (Sun)</td><td style="text-align:center;"><input type="checkbox" id="peak_sun_enabled" aria-label="Sunday peak enabled" checked></td><td style="text-align:center;"><input type="checkbox" id="peak_sun_allDay" aria-label="Sunday peak all day" checked onchange="togglePeakAllDay('sun')"></td><td><input type="time" id="peak_sun_start" aria-label="Sunday peak start time" value="07:00" disabled></td><td><input type="time" id="peak_sun_end" aria-label="Sunday peak end time" value="23:00" disabled></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2618,7 +2618,7 @@
                     // Early Bird
                     const eb = settings.pricing.earlyBird;
                     if (eb) {
-                        document.getElementById('earlyBirdEnabled').checked = !!eb.enabled;
+                        document.getElementById('earlyBirdEnabled').value = eb.enabled ? 'true' : 'false';
                         document.getElementById('earlyBirdType').value = eb.type || 'percentage';
                         document.getElementById('earlyBirdValue').value = eb.value || 0;
                         document.getElementById('earlyBirdExpiry').value = eb.expiryDate || '';
@@ -2633,7 +2633,54 @@
             }
         }
 
+        function validatePricingFields() {
+            const pricingFields = [
+                { id: 'normalUpTo10', name: 'Normal rate (up to 10 people)' },
+                { id: 'normalUpTo18', name: 'Normal rate (up to 18 people)' },
+                { id: 'peakUpTo10', name: 'Peak rate (up to 10 people)' },
+                { id: 'peakUpTo18', name: 'Peak rate (up to 18 people)' },
+                { id: 'singlePracticeNormal', name: 'Single practice normal rate' },
+                { id: 'singlePracticePeak', name: 'Single practice peak rate' },
+                { id: 'singlePracticeMaxSpots', name: 'Single practice max spots' },
+                { id: 'earlyBirdValue', name: 'Early bird discount value' }
+            ];
+
+            for (const field of pricingFields) {
+                const el = document.getElementById(field.id);
+                if (!el) continue;
+
+                const value = el.value;
+                if (value === '' || value === null) {
+                    showMessage('settingsMessage', 'error', `${field.name} cannot be empty`);
+                    return false;
+                }
+
+                const numValue = Number(value);
+                if (isNaN(numValue)) {
+                    showMessage('settingsMessage', 'error', `${field.name} must be a valid number`);
+                    return false;
+                }
+
+                if (numValue < 0) {
+                    showMessage('settingsMessage', 'error', `${field.name} cannot be negative`);
+                    return false;
+                }
+
+                if (numValue > 9999) {
+                    showMessage('settingsMessage', 'error', `${field.name} cannot exceed 9999`);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         async function saveSettings() {
+            // Validate pricing fields before saving
+            if (!validatePricingFields()) {
+                return;
+            }
+
             // Gather existing settings
             const marketingSettings = {
                 enableHotTags: document.getElementById('marketingEnableHotTags').value === 'true',
@@ -2701,14 +2748,14 @@
                 bookingRules: updatedBookingRules,
                 pricing: {
                     // Exclusive rates
-                    normalUpTo10: Number(document.getElementById('normalUpTo10').value),
-                    normalUpTo18: Number(document.getElementById('normalUpTo18').value),
-                    peakUpTo10: Number(document.getElementById('peakUpTo10').value),
-                    peakUpTo18: Number(document.getElementById('peakUpTo18').value),
+                    normalUpTo10: Number(document.getElementById('normalUpTo10')?.value || 0),
+                    normalUpTo18: Number(document.getElementById('normalUpTo18')?.value || 0),
+                    peakUpTo10: Number(document.getElementById('peakUpTo10')?.value || 0),
+                    peakUpTo18: Number(document.getElementById('peakUpTo18')?.value || 0),
                     // Single Practice rates
-                    singlePracticeNormal: Number(document.getElementById('singlePracticeNormal').value),
-                    singlePracticePeak: Number(document.getElementById('singlePracticePeak').value),
-                    singlePracticeMaxSpots: Number(document.getElementById('singlePracticeMaxSpots').value),
+                    singlePracticeNormal: Number(document.getElementById('singlePracticeNormal')?.value || 0),
+                    singlePracticePeak: Number(document.getElementById('singlePracticePeak')?.value || 0),
+                    singlePracticeMaxSpots: Number(document.getElementById('singlePracticeMaxSpots')?.value || 0),
                     // Per-day Peak Schedule
                     peakSchedule: (() => {
                         const days = ['mon','tue','wed','thu','fri','sat','sun'];
@@ -2727,7 +2774,7 @@
                     })(),
                     // Early Bird
                     earlyBird: {
-                        enabled: document.getElementById('earlyBirdEnabled')?.checked || false,
+                        enabled: document.getElementById('earlyBirdEnabled')?.value === 'true',
                         type: document.getElementById('earlyBirdType')?.value || 'percentage',
                         value: Number(document.getElementById('earlyBirdValue')?.value || 0),
                         expiryDate: document.getElementById('earlyBirdExpiry')?.value || null,

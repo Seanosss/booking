@@ -497,6 +497,9 @@ async function initializeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_booking_items_catalog ON booking_items(catalog_item_id)
     `,
         `
+        CREATE INDEX IF NOT EXISTS idx_booking_items_date_mode ON booking_items(date, booking_mode)
+    `,
+        `
         ALTER TABLE bookings
         ALTER COLUMN total_people SET DEFAULT 0
     `,

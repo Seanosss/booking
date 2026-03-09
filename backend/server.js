@@ -346,15 +346,44 @@ app.get('/api/bookings/shared-availability', async (req, res) => {
 });
 
 app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
+    const client = await pool.connect();
     try {
         const { customerName, email, phone, notes, slots, peopleCount: sharedCount, bookingMode, companionInfo } = req.body;
         if (!customerName || !email || !phone) return res.status(400).json({ error: 'Missing contact info' });
+
+        // Validate email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        // Validate phone format
+        if (phone.length < 8 || phone.length > 20) {
+            return res.status(400).json({ error: 'Invalid phone number' });
+        }
+
+        // Validate slots array
+        if (!Array.isArray(slots) || slots.length === 0) {
+            return res.status(400).json({ error: 'No slots selected' });
+        }
+
+        // Validate companion info structure and size
+        if (companionInfo && Array.isArray(companionInfo)) {
+            if (companionInfo.length > 17) {
+                return res.status(400).json({ error: 'Too many companions' });
+            }
+            for (const c of companionInfo) {
+                if (typeof c.name !== 'string' || c.name.length > 100) {
+                    return res.status(400).json({ error: 'Invalid companion info' });
+                }
+            }
+        }
 
         const mode = bookingMode === 'shared' ? 'shared' : 'exclusive';
         const peopleCount = mode === 'shared' ? 1 : (sharedCount || 1);
 
         const bookingItems = slots.map(s => ({ ...s, type: 'room_rental', peopleCount }));
-        if (!bookingItems.length) return res.status(400).json({ error: 'No slots selected' });
+
+        await client.query('BEGIN');
 
         const settings = await loadSettings();
         const maxSpots = Number(settings.pricing?.singlePracticeMaxSpots || 4);
@@ -362,30 +391,70 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
 
         for (const item of bookingItems) {
             const { date, startTime, endTime } = item;
-            const periodType = determinePeriodType(date, startTime, endTime, settings);
+
+            // Validate time format
+            if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Invalid time format' });
+            }
+
             const duration = minutesBetween(startTime, endTime);
+            if (duration <= 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'End time must be after start time' });
+            }
+
+            const periodType = determinePeriodType(date, startTime, endTime, settings);
 
             if (mode === 'shared') {
-                // Shared mode: check capacity, allow co-booking
-                const sharedUsage = await getSharedSlotUsage(date);
-                const slotUsage = sharedUsage.find(s => s.startTime === startTime && s.endTime === endTime);
-                const currentCount = slotUsage ? slotUsage.bookedCount : 0;
+                // Use advisory lock to prevent race condition
+                const lockKey = Buffer.from(`${date}-${startTime}`).reduce((a, b) => a + b, 0);
+                await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
+
+                // Now safely check capacity within the transaction
+                const usageResult = await client.query(`
+                    SELECT COUNT(*) AS booked_count
+                    FROM booking_items bi
+                    JOIN bookings b ON b.id = bi.booking_id
+                    WHERE bi.date = $1
+                      AND bi.start_time = $2
+                      AND bi.end_time = $3
+                      AND bi.booking_mode = 'shared'
+                      AND b.status IN ('pending', 'confirmed')
+                `, [date, startTime, endTime]);
+                const currentCount = Number(usageResult.rows[0].booked_count);
                 if (currentCount >= maxSpots) {
+                    await client.query('ROLLBACK');
                     return res.status(409).json({ error: `此時段已額滿 (${currentCount}/${maxSpots})` });
                 }
-                // Also check for exclusive bookings / class conflicts blocking this slot
+
                 const exclusiveConflicts = await checkRentalAvailability(date, startTime, endTime);
                 const hasExclusiveBlock = exclusiveConflicts.conflicts.some(c =>
                     c.bookingMode !== 'shared' || c.itemType === 'class_session'
                 );
                 if (hasExclusiveBlock) {
+                    await client.query('ROLLBACK');
                     return res.status(409).json({ error: '此時段已有包場預約或課堂安排' });
                 }
             } else {
-                // Exclusive mode: full conflict check (existing behavior)
                 const availability = await checkRentalAvailability(date, startTime, endTime);
                 if (!availability.available) {
+                    await client.query('ROLLBACK');
                     return res.status(409).json({ error: '時間衝突：此時段已有場地租用或課堂安排' });
+                }
+            }
+
+            // Validate pricing fields exist
+            const pricing = settings.pricing || {};
+            if (mode === 'shared') {
+                if (!pricing.singlePracticeNormal && !pricing.singlePracticePeak) {
+                    await client.query('ROLLBACK');
+                    return res.status(500).json({ error: 'Pricing not configured for single practice mode' });
+                }
+            } else {
+                if (!pricing.normalUpTo10 && !pricing.peakUpTo10) {
+                    await client.query('ROLLBACK');
+                    return res.status(500).json({ error: 'Pricing not configured' });
                 }
             }
 
@@ -407,10 +476,14 @@ app.post('/api/bookings', bookingCreationLimiter, async (req, res) => {
             companionInfo: Array.isArray(companionInfo) ? companionInfo : []
         });
 
-        res.status(201).json({ success: true, booking, message: 'Booking created' });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Booking creation failed' });
+        await client.query('COMMIT');
+        res.status(201).json(booking);
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Booking creation error:', error);
+        res.status(500).json({ error: 'Failed to create booking' });
+    } finally {
+        client.release();
     }
 });
 

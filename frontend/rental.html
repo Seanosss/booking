@@ -100,7 +100,7 @@
         .peak-indicator {
             font-size: 0.65rem;
             display: block;
-            color: #f59e0b;
+            color: #b45309;
             margin-top: 1px;
         }
         .companion-row {
@@ -111,6 +111,11 @@
         }
         .companion-row input {
             font-size: 0.9rem;
+        }
+        @media (max-width: 480px) {
+            .companion-row {
+                grid-template-columns: 1fr;
+            }
         }
         .split-payment-info {
             background: #eff6ff;
@@ -1103,8 +1108,6 @@
             totalHours: document.getElementById('total-hours'),
             totalPeople: document.getElementById('total-people'),
             totalAmount: document.getElementById('total-amount'),
-            successMessage: document.getElementById('status-success'),
-            errorMessage: document.getElementById('status-error'),
             submitButton: document.getElementById('submit-btn'),
             contactCard: document.getElementById('contact-card'),
             instructionCard: document.getElementById('instruction-card'),
@@ -1388,6 +1391,21 @@
 
         function setBookingMode(mode) {
             state.bookingMode = mode;
+
+            // Clear selected slots when switching modes
+            const groups = getAllSelectedGroups();
+            if (groups.length > 0) {
+                if (!confirm('切換模式將清除已選擇的時段，確定繼續？')) {
+                    // Revert mode
+                    state.bookingMode = state.bookingMode === 'shared' ? 'exclusive' : 'shared';
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.mode === state.bookingMode);
+                    });
+                    return;
+                }
+                state.selectedSlots.clear();
+            }
+
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === mode);
             });
@@ -1413,6 +1431,8 @@
         }
 
         async function fetchSharedAvailability(date) {
+            const grid = document.getElementById('slot-grid');
+            if (grid) grid.style.opacity = '0.5';
             try {
                 const res = await fetch(`${API_BASE_URL}/bookings/shared-availability?date=${date}`);
                 if (res.ok) {
@@ -1423,6 +1443,8 @@
             } catch (e) {
                 console.error('Failed to fetch shared availability:', e);
                 state.sharedAvailability = [];
+            } finally {
+                if (grid) grid.style.opacity = '1';
             }
         }
 
@@ -1785,31 +1807,6 @@
                 modal.classList.remove('active');
                 modal.setAttribute('aria-hidden', 'true');
             }
-        } function saveUserDetails() {
-            try {
-                const userDetails = {
-                    customerName: elements.customerName.value,
-                    email: elements.email.value,
-                    phone: elements.phone.value
-                };
-                localStorage.setItem('bookingUserDetails', JSON.stringify(userDetails));
-            } catch (e) {
-                console.error('Failed to save user details to localStorage', e);
-            }
-        }
-
-        function loadUserDetails() {
-            try {
-                const savedDetails = localStorage.getItem('bookingUserDetails');
-                if (savedDetails) {
-                    const userDetails = JSON.parse(savedDetails);
-                    elements.customerName.value = userDetails.customerName || '';
-                    elements.email.value = userDetails.email || '';
-                    elements.phone.value = userDetails.phone || '';
-                }
-            } catch (e) {
-                console.error('Failed to load user details from localStorage', e);
-            }
         }
 
         function updateSubmitButtonState() {
@@ -1931,16 +1928,25 @@
 
         // elements.dateInput.addEventListener('change', handleDateChange); // Removed native listener
 
-        elements.peopleInput.addEventListener('input', () => {
-            const parsed = resolvePeopleCountInput();
-            if (parsed !== null && parsed.toString() !== elements.peopleInput.value) {
-                elements.peopleInput.value = parsed.toString();
-            }
-            if (parsed === null && elements.peopleInput.value) {
-                elements.peopleInput.value = '';
-            }
-            calculateTotals();
-        });
+        // Debounce people count input
+        let peopleCountTimer = null;
+        if (elements.peopleInput) {
+            elements.peopleInput.addEventListener('input', () => {
+                const parsed = resolvePeopleCountInput();
+                if (parsed !== null && parsed.toString() !== elements.peopleInput.value) {
+                    elements.peopleInput.value = parsed.toString();
+                }
+                if (parsed === null && elements.peopleInput.value) {
+                    elements.peopleInput.value = '';
+                }
+
+                clearTimeout(peopleCountTimer);
+                peopleCountTimer = setTimeout(() => {
+                    calculateTotals();
+                    renderSummary();
+                }, 300);
+            });
+        }
 
         elements.paymentReminderClose?.addEventListener('click', closePaymentReminderModal);
         elements.paymentReminderModal?.addEventListener('click', (event) => {
@@ -1981,12 +1987,6 @@
                     toast.remove();
                 });
             }, 3000);
-        }
-
-        // Helper to resolve people count
-        function resolvePeopleCountInput() {
-            const val = parseInt(elements.peopleInput.value, 10);
-            return (Number.isFinite(val) && val >= 1) ? val : null;
         }
 
         // --- Event Listeners ---
