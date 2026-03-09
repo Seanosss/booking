@@ -3383,11 +3383,17 @@
         let calModalIsBlock = false;
 
         function openCalModal(dateStr) {
-            calModalDate = dateStr;
+            // dateStr could be ISO like "2026-03-10T09:00:00+08:00" or "2026-03-10"
+            const dateOnly = dateStr.substring(0, 10); // Extract YYYY-MM-DD
+            calModalDate = dateOnly;
             calModalIsBlock = false;
-            document.getElementById('calModalTitle').textContent = `📅 ${dateStr} — 新增項目`;
-            document.getElementById('calStartTime').value = '10:00';
-            document.getElementById('calEndTime').value = '12:00';
+            document.getElementById('calModalTitle').textContent = `📅 ${dateOnly} — 新增項目`;
+            // If clicked on a specific time slot, pre-fill the start time
+            const clickedTime = dateStr.length > 10 ? dateStr.substring(11, 16) : '10:00';
+            const startH = parseInt(clickedTime.split(':')[0]);
+            const endTime = `${String(Math.min(startH + 2, 23)).padStart(2, '0')}:${clickedTime.split(':')[1]}`;
+            document.getElementById('calStartTime').value = clickedTime;
+            document.getElementById('calEndTime').value = endTime;
             document.getElementById('calNote').value = '';
             setCalType(false);
             const modal = document.getElementById('calendarAddModal');
