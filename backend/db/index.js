@@ -1,5 +1,11 @@
 require('dotenv').config();
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Fix: Override pg DATE parser to return raw date strings instead of Date objects.
+// pg-types default DATE parser creates Date objects at midnight LOCAL time, which
+// causes day-shift bugs when the server timezone differs from UTC.
+// OID 1082 = DATE type in PostgreSQL.
+types.setTypeParser(1082, (val) => val); // Return 'YYYY-MM-DD' string as-is
 
 const poolConfig = {
     connectionString: process.env.DATABASE_URL,
