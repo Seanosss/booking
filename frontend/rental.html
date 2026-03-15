@@ -1880,6 +1880,16 @@
             const refEl = document.getElementById('successBookingRef');
             if (refEl) refEl.textContent = `預約編號：#${bookingId}`;
 
+            // Show total price
+            const priceEl = document.getElementById('successTotalPrice');
+            const amountEl = document.getElementById('successTotalAmount');
+            if (priceEl && amountEl && totalAmount && totalAmount !== '0') {
+                amountEl.textContent = `HK$ ${totalAmount}`;
+                priceEl.style.display = 'block';
+            } else if (priceEl) {
+                priceEl.style.display = 'none';
+            }
+
             // Build payment methods HTML
             const pmEl = document.getElementById('successPaymentMethods');
             if (pmEl) pmEl.innerHTML = buildPaymentMethodsHtml(state.settings?.paymentMethods);
@@ -2262,7 +2272,11 @@
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <h2 style="color:#15803d; font-size:1.35rem; margin:0 0 6px; font-weight:700;">預約已提交！🎉</h2>
-                <p id="successBookingRef" style="color:#64748b; font-size:0.88rem; margin:0; font-family:monospace;"></p>
+                <p id="successBookingRef" style="color:#64748b; font-size:0.88rem; margin:0 0 8px; font-family:monospace;"></p>
+                <div id="successTotalPrice" style="display:none; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #bbf7d0; border-radius:12px; padding:12px 18px; margin-top:10px;">
+                    <span style="font-size:0.85rem; color:#166534;">預估總金額</span>
+                    <div style="font-size:1.5rem; font-weight:800; color:#15803d; margin-top:2px;" id="successTotalAmount">HK$ 0</div>
+                </div>
             </div>
 
             <!-- Payment Methods -->

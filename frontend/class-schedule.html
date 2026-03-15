@@ -780,7 +780,11 @@
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <h3 style="color:#15803d; margin:0 0 6px;">預約已提交！🎉</h3>
-                <p id="classBookingRef" style="color:#64748b; font-size:0.85rem; margin:0; font-family:monospace;"></p>
+                <p id="classBookingRef" style="color:#64748b; font-size:0.85rem; margin:0 0 8px; font-family:monospace;"></p>
+                <div id="classTotalPrice" style="display:none; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #bbf7d0; border-radius:12px; padding:12px 18px; margin-top:10px;">
+                    <span style="font-size:0.85rem; color:#166534;">預估總金額</span>
+                    <div style="font-size:1.5rem; font-weight:800; color:#15803d; margin-top:2px;" id="classTotalAmount">HK$ 0</div>
+                </div>
             </div>
 
             <!-- Class Details -->
@@ -1295,6 +1299,17 @@
             // Set booking ref
             const refEl = document.getElementById('classBookingRef');
             if (refEl) refEl.textContent = `預約編號：#${bookingId}`;
+
+            // Show total price
+            const priceBox = document.getElementById('classTotalPrice');
+            const priceAmountEl = document.getElementById('classTotalAmount');
+            if (priceBox && priceAmountEl && classInfo?.price) {
+                const total = Number(classInfo.price) * (peopleCount || 1);
+                priceAmountEl.textContent = `HK$ ${total.toLocaleString()}`;
+                priceBox.style.display = 'block';
+            } else if (priceBox) {
+                priceBox.style.display = 'none';
+            }
 
             // Show class details card
             if (classInfo) {
